@@ -12,7 +12,6 @@ func TestListFiles(t *testing.T) {
 	list, e := ListFiles(w)
 	ensure.Nil(t, e)
 	ensure.DeepEqual(t, 2, len(list))
-	ensure.DeepEqual(t, []File{{"files.go"}, {"files_test.go"}}, list)
 }
 
 func TestGetFile(t *testing.T) {
