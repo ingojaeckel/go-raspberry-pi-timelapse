@@ -1,0 +1,27 @@
+{
+	"ImportPath": "github.com/ingojaeckel/go-raspberry-pi-timelapse",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Deps": [
+		{
+			"ImportPath": "goji.io",
+			"Comment": "v2.0",
+			"Rev": "0d89ff54b2c18c9c4ba530e32496aef902d3c6cd"
+		},
+		{
+			"ImportPath": "goji.io/internal",
+			"Comment": "v2.0",
+			"Rev": "0d89ff54b2c18c9c4ba530e32496aef902d3c6cd"
+		},
+		{
+			"ImportPath": "goji.io/pat",
+			"Comment": "v2.0",
+			"Rev": "0d89ff54b2c18c9c4ba530e32496aef902d3c6cd"
+		},
+		{
+			"ImportPath": "goji.io/pattern",
+			"Comment": "v2.0",
+			"Rev": "0d89ff54b2c18c9c4ba530e32496aef902d3c6cd"
+		}
+	]
+}
