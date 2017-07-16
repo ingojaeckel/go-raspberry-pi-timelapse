@@ -1,38 +1,16 @@
 package main
 
 import (
-	"fmt"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
 	"goji.io"
 	"goji.io/pat"
 	"net/http"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 )
 
-func getVersion(w http.ResponseWriter, r *http.Request) {
-	fmt.Print(w, "Hello!")
-}
-
-func getFile(w http.ResponseWriter, r *http.Request) {
-	name := pat.Param(r, "fileName")
-
-	content, e := files.GetFile(name)
-	if e != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Print(e.Error())
-		return
-	}
-
-	contentType := http.DetectContentType(content)
-	w.Header().Add("Content-Type", contentType)
-	w.Write(content)
-}
-
 func main() {
-	fmt.Println("Hello World from ARM")
-
 	mux := goji.NewMux()
-	mux.HandleFunc(pat.Get("/version"), getVersion)
-	mux.HandleFunc(pat.Get("/file/:fileName"), getFile)
+	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
+	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
 
 	http.ListenAndServe("localhost:8080", mux)
 }

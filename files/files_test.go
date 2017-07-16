@@ -3,8 +3,8 @@ package files
 import (
 	"github.com/facebookgo/ensure"
 	"os"
-	"testing"
 	"strings"
+	"testing"
 )
 
 func TestListFiles(t *testing.T) {
