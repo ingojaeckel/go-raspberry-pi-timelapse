@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	addr := "localhost:8080"
+	addr := ":8080"
 	fmt.Printf("Listening on %s...\n", addr)
 
 	mux := goji.NewMux()
