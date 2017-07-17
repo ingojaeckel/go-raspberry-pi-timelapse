@@ -53,6 +53,7 @@ func Tar(filePaths []string) ([]byte, error) {
 		if err != nil {
 			return []byte{}, err
 		}
+		// TODO consider using tar.FileInfoHeader(info, link)
 		if err := tw.WriteHeader(&tar.Header{Name: info.Name(), Mode: 0400, Size: info.Size()}); err != nil {
 			return []byte{}, err
 		}
