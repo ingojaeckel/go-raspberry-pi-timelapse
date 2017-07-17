@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io"
 	"goji.io/pat"
 	"net/http"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"time"
 )
 
@@ -22,7 +22,7 @@ func main() {
 
 	mux.HandleFunc(pat.Get("/archive"), rest.GetArchive)
 
-	t, err := timelapse.New("timelapse-pictures", 1 * time.Minute)
+	t, err := timelapse.New("timelapse-pictures", 1*time.Minute)
 	if err != nil {
 		fmt.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless

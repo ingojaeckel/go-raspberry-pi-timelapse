@@ -34,12 +34,14 @@ func New(folder string, timeBetweenCapture time.Duration) (*Timelapse, error) {
 
 func (t Timelapse) CapturePeriodically() {
 	go func() {
-		s, err := t.Camera.Capture()
-		if err != nil {
-			fmt.Errorf("Error during capture: %s\n", err.Error())
-		}
+		for {
+			s, err := t.Camera.Capture()
+			if err != nil {
+				fmt.Errorf("Error during capture: %s\n", err.Error())
+			}
 
-		fmt.Printf("captured picture in %s\n", s)
-		time.Sleep(t.TimeBetweenCapture)
+			fmt.Printf("captured picture in %s\n", s)
+			time.Sleep(t.TimeBetweenCapture)
+		}
 	}()
 }
