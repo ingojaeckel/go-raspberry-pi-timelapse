@@ -7,11 +7,11 @@ Golang application to take timelapse pictures on a ARM platform like Raspberry P
 ## Setting up Pi for Timelapse
 
 * Install Raspbian Jessie Lite, see [docs](https://www.raspberrypi.org/downloads/raspbian/)
-* Install required software:
-
+* Install required software and run the main service:
+```
     aptitude update
     aptitude safe-upgrade -y
     apt-get install -y htop screen
     wget https://github.com/ingojaeckel/go-raspberry-pi-timelapse/raw/master/bin/arm/go-raspberry-pi-timelapse
-
-* Run the main service: `./go-raspberry-pi-timelapse`
+    ./go-raspberry-pi-timelapse
+```
