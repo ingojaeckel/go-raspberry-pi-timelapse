@@ -2,7 +2,27 @@
 	"ImportPath": "github.com/ingojaeckel/go-raspberry-pi-timelapse",
 	"GoVersion": "go1.8",
 	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Comment": "v1.1.0-6-gadab964",
+			"Rev": "adab96458c51a58dc1783b3335dcce5461522e75"
+		},
+		{
+			"ImportPath": "github.com/facebookgo/ensure",
+			"Rev": "b4ab57deab51ee655ae4bd85281f0715a068016d"
+		},
+		{
+			"ImportPath": "github.com/facebookgo/stack",
+			"Rev": "751773369052141c013c6e827a71e8f35c07879c"
+		},
+		{
+			"ImportPath": "github.com/facebookgo/subset",
+			"Rev": "8dac2c3c48703541e481feddf22975953d4ff842"
+		},
 		{
 			"ImportPath": "goji.io",
 			"Comment": "v2.0",
