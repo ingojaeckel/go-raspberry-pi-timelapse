@@ -1,10 +1,10 @@
 package files
 
 import (
-	"io/ioutil"
-	"os"
 	"archive/tar"
 	"bytes"
+	"io/ioutil"
+	"os"
 )
 
 type File struct {

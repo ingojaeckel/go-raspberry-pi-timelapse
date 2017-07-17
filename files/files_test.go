@@ -1,14 +1,14 @@
 package files
 
 import (
+	"archive/tar"
+	"bytes"
 	"github.com/facebookgo/ensure"
+	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
-	"io/ioutil"
-	"bytes"
-	"io"
-	"archive/tar"
 )
 
 func TestListFiles(t *testing.T) {
@@ -68,7 +68,7 @@ func TestTar(t *testing.T) {
 		fileContent, _ := ioutil.ReadFile(f[count])
 		ensure.DeepEqual(t, int64(len(fileContent)), hdr.Size)
 
-		count++;
+		count++
 	}
 	ensure.DeepEqual(t, count, 2)
 }
