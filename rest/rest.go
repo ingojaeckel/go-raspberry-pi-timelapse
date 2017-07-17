@@ -49,3 +49,24 @@ func GetFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(b)
 }
+
+func GetArchive(w http.ResponseWriter, r *http.Request) {
+	// TODO let client pass in directory name / timestamp to control which files are downloaded. for now, tar everything in the CWD.
+	d, _ := os.Getwd()
+	allFiles, _ := files.ListFiles(d)
+
+	actualFiles := make([]string, len(allFiles))
+	i := 0
+
+	for _, file := range allFiles {
+		if !file.IsDir {
+			actualFiles[i] = file.Name
+			i = i + 1
+		}
+	}
+
+	tarBytes, _ := files.Tar(actualFiles[:i])
+
+	w.Header().Add("Content-Type", "application/tar")
+	w.Write(tarBytes)
+}

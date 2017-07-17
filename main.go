@@ -14,8 +14,11 @@ func main() {
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
+
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
+
+	mux.HandleFunc(pat.Get("/archive"), rest.GetArchive)
 
 	http.ListenAndServe(addr, mux)
 }
