@@ -3,6 +3,8 @@ package files
 import (
 	"io/ioutil"
 	"os"
+	"archive/tar"
+	"bytes"
 )
 
 type File struct {
@@ -32,10 +34,39 @@ func GetFile(path string) ([]byte, error) {
 	return ioutil.ReadFile(path)
 }
 
+// CanServeFile True if the given file can be served via HTTP. False otherwise because it does not exist, is a directory, or because it is too large.
 func CanServeFile(path string, maxFileSizeBytes int64) (bool, error) {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return false, err
 	}
 	return !fileInfo.IsDir() && fileInfo.Size() <= maxFileSizeBytes, nil
+}
+
+// Tar creates a .tar archive containing all files within the filePaths array.
+func Tar(filePaths []string) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+
+	for _, f := range filePaths {
+		info, err := os.Stat(f)
+		if err != nil {
+			return []byte{}, err
+		}
+		if err := tw.WriteHeader(&tar.Header{Name: info.Name(), Mode: 0400, Size: info.Size()}); err != nil {
+			return []byte{}, err
+		}
+		content, err := ioutil.ReadFile(f)
+		if err != nil {
+			return []byte{}, err
+		}
+		if _, err := tw.Write(content); err != nil {
+			return []byte{}, err
+		}
+	}
+	if err := tw.Close(); err != nil {
+		return []byte{}, err
+	}
+	// Return in-memory representation of .tar archive containing all files.
+	return buf.Bytes(), nil
 }

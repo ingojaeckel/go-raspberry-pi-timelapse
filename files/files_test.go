@@ -5,6 +5,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"io/ioutil"
+	"bytes"
+	"io"
+	"archive/tar"
 )
 
 func TestListFiles(t *testing.T) {
@@ -38,4 +42,33 @@ func TestCanServeFile(t *testing.T) {
 	ensure.False(t, s3)
 	ensure.NotNil(t, e3)
 	ensure.True(t, os.IsNotExist(e3))
+}
+
+func TestTar(t *testing.T) {
+	f := []string{"files.go", "files_test.go"}
+	tarBytes, err := Tar(f)
+	ensure.Nil(t, err)
+	ensure.NotNil(t, tarBytes)
+	ensure.True(t, len(tarBytes) > 0)
+
+	// Open the tar archive for reading.
+	r := bytes.NewReader(tarBytes)
+	tr := tar.NewReader(r)
+
+	count := 0
+	// Iterate through the files in the archive.
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // end of tar archive
+		}
+		ensure.Nil(t, err)
+		ensure.DeepEqual(t, f[count], hdr.Name)
+
+		fileContent, _ := ioutil.ReadFile(f[count])
+		ensure.DeepEqual(t, int64(len(fileContent)), hdr.Size)
+
+		count++;
+	}
+	ensure.DeepEqual(t, count, 2)
 }
