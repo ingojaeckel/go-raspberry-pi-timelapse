@@ -1,10 +1,8 @@
 #!/bin/sh
-# source function library
-. /etc/rc.d/init.d/functions
 
 RETVAL=0
-prog="timelapse"
-EXECUTABLE="/home/pi/go-raspberry-pi-timelapse"
+prog="go-raspberry-pi-timelapse"
+EXECUTABLE="/home/pi/${prog}"
 
 start() {
 	echo -n $"Starting $prog:"
@@ -16,7 +14,7 @@ start() {
 
 stop() {
 	echo -n $"Stopping $prog:"
-	killproc $prog -TERM
+	killall -9 $prog
 	RETVAL=$?
 	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/$prog
 	echo
