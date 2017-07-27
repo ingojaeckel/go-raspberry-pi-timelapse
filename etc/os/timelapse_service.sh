@@ -5,7 +5,7 @@ prog="go-raspberry-pi-timelapse"
 EXECUTABLE="/home/pi/${prog}"
 
 start() {
-	echo -n $"Starting $prog:"
+	echo -n "Starting $prog"
 	nohup ${EXECUTABLE} &
 	RETVAL=$?
 	[ "$RETVAL" = 0 ] && touch /var/lock/subsys/$prog
@@ -13,7 +13,7 @@ start() {
 }
 
 stop() {
-	echo -n $"Stopping $prog:"
+	echo -n "Stopping $prog"
 	killall -9 $prog
 	RETVAL=$?
 	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/$prog
@@ -32,7 +32,7 @@ case "$1" in
 		RETVAL=$?
 		;;
 	*)	(10)
-		echo $"Usage: $0 {start|stop|status}"
+		echo "Usage: $0 {start|stop|status}"
 		RETVAL=1
 esac
 exit $RETVAL
