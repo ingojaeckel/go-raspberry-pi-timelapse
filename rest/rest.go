@@ -3,6 +3,7 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"goji.io/pat"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 
 const MaxFileSizeBytes = 100485760
 
-func GetVersion(w http.ResponseWriter, r *http.Request) {
+func GetVersion(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprintf(w, "Hello from %s on %s", runtime.GOARCH, runtime.GOOS)
 }
 
@@ -40,7 +41,7 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
-func GetFiles(w http.ResponseWriter, r *http.Request) {
+func GetFiles(w http.ResponseWriter, _ *http.Request) {
 	d, _ := os.Getwd()
 	f, _ := files.ListFiles(d)
 	resp := ListFilesResponse{f}
@@ -50,7 +51,7 @@ func GetFiles(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func GetArchive(w http.ResponseWriter, r *http.Request) {
+func GetArchive(w http.ResponseWriter, _ *http.Request) {
 	// TODO let client pass in directory name / timestamp to control which files are downloaded. for now, tar everything in the CWD.
 	d, _ := os.Getwd()
 	allFiles, _ := files.ListFiles(d)
@@ -69,4 +70,9 @@ func GetArchive(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/tar")
 	w.Write(tarBytes)
+}
+
+func Admin(_ http.ResponseWriter, r *http.Request) {
+	command := pat.Param(r, "command")
+	admin.HandleCommand(command)
 }

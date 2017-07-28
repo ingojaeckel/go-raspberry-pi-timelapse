@@ -17,10 +17,15 @@ func main() {
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
 
+	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
+	mux.HandleFunc(pat.Get("/index.html"), rest.GetIndex)
+
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
 
 	mux.HandleFunc(pat.Get("/archive"), rest.GetArchive)
+
+	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 
 	t, err := timelapse.New("timelapse-pictures", 1*time.Minute)
 	if err != nil {
