@@ -39,6 +39,7 @@ const HtmlTemplate = `
 func GetIndex(w http.ResponseWriter, _ *http.Request) {
 	t, _ := template.New("index").Parse(HtmlTemplate)
 	p := Page{
+		Time:           getCommandHtml("/bin/date"),
 		GpuTemperature: getCommandHtml("/opt/vc/bin/vcgencmd", "measure_temp"),
 		CpuTemperature: getCommandHtml("/bin/cat", "/sys/class/thermal/thermal_zone0/temp"),
 		Uptime:         getCommandHtml("/usr/bin/uptime"),
@@ -67,5 +68,5 @@ func getCommandHtml(cmd string, args ...string) template.HTML {
 }
 
 type Page struct {
-	FreeDiskSpace, CpuTemperature, GpuTemperature, Uptime, Screenshots template.HTML
+	Time, FreeDiskSpace, CpuTemperature, GpuTemperature, Uptime, Screenshots template.HTML
 }
