@@ -25,6 +25,7 @@ const HtmlTemplate = `
 
 		<h1>Monitoring</h1>
 		<table>
+		<tr><td>Time</td><td>{{ .Time }}</td></tr>
 		<tr><td>Free Disk Space</td><td>{{ .FreeDiskSpace }}</td></tr>
 		<tr><td>Uptime</td><td>{{ .Uptime }}</td></tr>
 		<tr><td>Temperature</td><td><ul><li>CPU: {{ .CpuTemperature }}</li><li>GPU: {{ .GpuTemperature }}</li></ul></td></tr>
