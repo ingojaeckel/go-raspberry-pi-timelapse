@@ -11,6 +11,7 @@ type File struct {
 	Name    string `json:"name"`
 	ModTime string `json:"mod_time"`
 	IsDir   bool   `json:"is_dir"`
+	Bytes   int64  `json:"bytes"`
 }
 
 func ListFiles(dirname string) ([]File, error) {
@@ -24,6 +25,7 @@ func ListFiles(dirname string) ([]File, error) {
 			Name:    f.Name(),
 			ModTime: f.ModTime().String(),
 			IsDir:   f.IsDir(),
+			Bytes:   f.Size(),
 		}
 	}
 	return files, nil
