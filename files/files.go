@@ -5,29 +5,41 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"sort"
 )
 
 type File struct {
-	Name    string `json:"name"`
-	ModTime string `json:"mod_time"`
-	IsDir   bool   `json:"is_dir"`
-	Bytes   int64  `json:"bytes"`
+	Name         string `json:"name"`
+	ModTime      string `json:"mod_time"`
+	ModTimeEpoch int64  `json:"mod_time_epoch"`
+	IsDir        bool   `json:"is_dir"`
+	Bytes        int64  `json:"bytes"`
 }
 
-func ListFiles(dirname string) ([]File, error) {
+func ListFiles(dirname string, skipDirectories bool) ([]File, error) {
 	fileInfo, e := ioutil.ReadDir(dirname)
 	if e != nil {
 		return []File{}, e
 	}
+	numberOfFiles := 0
 	files := make([]File, len(fileInfo))
-	for i, f := range fileInfo {
-		files[i] = File{
-			Name:    f.Name(),
-			ModTime: f.ModTime().String(),
-			IsDir:   f.IsDir(),
-			Bytes:   f.Size(),
+	for _, f := range fileInfo {
+		if skipDirectories && f.IsDir() {
+			continue
 		}
+		files[numberOfFiles] = File{
+			Name:         f.Name(),
+			ModTime:      f.ModTime().String(),
+			ModTimeEpoch: f.ModTime().Unix(),
+			IsDir:        f.IsDir(),
+			Bytes:        f.Size(),
+		}
+		numberOfFiles = numberOfFiles + 1
 	}
+
+	files = files[:numberOfFiles]
+	sort.Sort(ByAge(files))
+
 	return files, nil
 }
 
@@ -72,4 +84,17 @@ func Tar(filePaths []string) ([]byte, error) {
 	}
 	// Return in-memory representation of .tar archive containing all files.
 	return buf.Bytes(), nil
+}
+
+// BySize Implements the sort.Interface to allow sorting files by their age.
+type ByAge []File
+
+func (b ByAge) Len() int {
+	return len(b)
+}
+func (a ByAge) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+func (a ByAge) Less(i, j int) bool {
+	return a[i].ModTimeEpoch < a[j].ModTimeEpoch
 }

@@ -13,7 +13,7 @@ import (
 
 func TestListFiles(t *testing.T) {
 	w, _ := os.Getwd()
-	list, e := ListFiles(w)
+	list, e := ListFiles(w, true)
 	ensure.Nil(t, e)
 	ensure.DeepEqual(t, 2, len(list))
 }
