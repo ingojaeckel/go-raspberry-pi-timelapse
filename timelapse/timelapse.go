@@ -9,12 +9,12 @@ import (
 )
 
 type Timelapse struct {
-	Camera             camera.Camera
-	Folder             string
-	TimeBetweenCapture time.Duration
+	Camera                camera.Camera
+	Folder                string
+	SecondsBetweenCapture int64
 }
 
-func New(folder string, timeBetweenCapture time.Duration) (*Timelapse, error) {
+func New(folder string, secondsBetweenCapture int64) (*Timelapse, error) {
 	_, err := os.Stat(folder)
 	createFolder := err != nil && os.IsNotExist(err)
 
@@ -29,19 +29,23 @@ func New(folder string, timeBetweenCapture time.Duration) (*Timelapse, error) {
 		return nil, errors.New("Failed to instantiate camera")
 	}
 
-	return &Timelapse{*c, folder, timeBetweenCapture}, nil
+	return &Timelapse{*c, folder, secondsBetweenCapture}, nil
 }
 
 func (t Timelapse) CapturePeriodically() {
 	go func() {
 		for {
+			beforeCapture := time.Now()
 			s, err := t.Camera.Capture()
 			if err != nil {
 				fmt.Errorf("Error during capture: %s\n", err.Error())
 			}
 
 			fmt.Printf("captured picture in %s\n", s)
-			time.Sleep(t.TimeBetweenCapture)
+			timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
+
+			fmt.Printf("capture took %d seconds, will sleep for %d seconds\n", timeToCaptureSeconds, t.SecondsBetweenCapture-timeToCaptureSeconds)
+			time.Sleep((t.SecondsBetweenCapture - timeToCaptureSeconds) * time.Second)
 		}
 	}()
 }

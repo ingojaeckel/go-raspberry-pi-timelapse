@@ -11,10 +11,11 @@ import (
 	"strings"
 )
 
-const MaxFileSizeBytes = 100485760
+const MaxFileSizeBytes = 100485760 // 100 MB
+const Version = 1
 
 func GetVersion(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintf(w, "Hello from %s on %s", runtime.GOARCH, runtime.GOOS)
+	fmt.Fprintf(w, "Hello from %s on %s [version:%d]", runtime.GOARCH, runtime.GOOS, Version)
 }
 
 func GetFile(w http.ResponseWriter, r *http.Request) {

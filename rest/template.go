@@ -77,7 +77,7 @@ func getTotalSizeHtml(folder string) template.HTML {
 }
 
 func getHumanReadableSize(sizeInBytes int64) string {
-	if sizeInBytes > 1024 * 1024 {
+	if sizeInBytes > 1024*1024 {
 		// At least 1MB of files
 		return fmt.Sprintf("%d MB", sizeInBytes/1024/1024)
 	}

@@ -15,20 +15,16 @@ func main() {
 	fmt.Printf("Listening on %s...\n", addr)
 
 	mux := goji.NewMux()
-	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
-
 	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
 	mux.HandleFunc(pat.Get("/index.html"), rest.GetIndex)
-
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
-
 	mux.HandleFunc(pat.Get("/archive"), rest.GetArchive)
-
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
+	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
 
-	t, err := timelapse.New("timelapse-pictures", 1*time.Minute)
+	t, err := timelapse.New("timelapse-pictures", 60)
 	if err != nil {
 		fmt.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless
