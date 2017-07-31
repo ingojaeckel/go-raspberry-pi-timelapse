@@ -35,7 +35,7 @@ const HtmlTemplate = `
 		</table>
 
 		<h1>Administration</h1>
-		<a href="/file/delete">Delete existing photos</a>
+		<a href="/admin/clear">Delete existing photos</a>
 		<a href="/admin/shutdown">Shutdown</a>
 		<a href="/admin/restart">Restart</a>
 	</body>
