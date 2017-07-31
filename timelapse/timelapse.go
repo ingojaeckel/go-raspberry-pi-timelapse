@@ -44,8 +44,9 @@ func (t Timelapse) CapturePeriodically() {
 			fmt.Printf("captured picture in %s\n", s)
 			timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
 
-			fmt.Printf("capture took %d seconds, will sleep for %d seconds\n", timeToCaptureSeconds, t.SecondsBetweenCapture-timeToCaptureSeconds)
-			time.Sleep((t.SecondsBetweenCapture - timeToCaptureSeconds) * time.Second)
+			sleepTime := t.SecondsBetweenCapture - timeToCaptureSeconds
+			fmt.Printf("capture took %d seconds, will sleep for %d seconds\n", timeToCaptureSeconds, sleepTime)
+			time.Sleep(time.Duration(sleepTime) * time.Second)
 		}
 	}()
 }

@@ -7,7 +7,6 @@ import (
 	"goji.io"
 	"goji.io/pat"
 	"net/http"
-	"time"
 )
 
 func main() {
