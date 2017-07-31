@@ -18,13 +18,10 @@ const HtmlTemplate = `
 	</head>
 	<body>
 		<h1>Photos</h1>
-		<a href="/archive">Download Archive<a/>
-		<a href="/file/delete">Delete All<a/>
+		<a href="/archive">Download Archive ({{ .PhotosTotalSize }})<a/>
 
-		<ul>
-		<li>Last Picture<p><a href="/file/last"><img src="/file/last" alt="last picture" width="300px" /></a></p></li>
-		<li>Total Size: {{ .PhotosTotalSize }}</li>
-		</ul>
+		<h2>Last Picture</h2>
+		<a href="/file/last"><img src="/file/last" alt="last picture" width="300px" /></a>
 
 		{{ .Screenshots }}
 
@@ -37,9 +34,10 @@ const HtmlTemplate = `
 		<tr><td>GPU Temperature</td><td>{{ .GpuTemperature }}</td></tr>
 		</table>
 
-		<h1>Commands</h1>
-		<input id="btnShutdown" type="button" value="Shutdown" />
-		<input id="btnRestart" type="button" value="Restart" />
+		<h1>Administration</h1>
+		<a href="/file/delete">Delete existing photos</a>
+		<a href="/admin/shutdown">Shutdown</a>
+		<a href="/admin/restart">Restart</a>
 	</body>
 </html>`
 
