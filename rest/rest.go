@@ -39,7 +39,7 @@ func GetMostRecentFile(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	mostRecentFile := f[len(f)-1]
-	serveFileContent(w, "timelapse-pictures/" + mostRecentFile.Name)
+	serveFileContent(w, "timelapse-pictures/"+mostRecentFile.Name)
 }
 
 func GetFiles(w http.ResponseWriter, _ *http.Request) {
@@ -56,7 +56,7 @@ func GetArchive(w http.ResponseWriter, _ *http.Request) {
 
 	// Convert []File to []string
 	strFiles := make([]string, len(f))
-	for i, file := range(f) {
+	for i, file := range f {
 		strFiles[i] = "timelapse-pictures/" + file.Name
 	}
 	tarBytes, _ := files.Tar(strFiles)
@@ -79,9 +79,8 @@ func serveFileContent(w http.ResponseWriter, path string) {
 		return
 	}
 
-
 	w.Header().Add("Content-Type", http.DetectContentType(content))
-	w.Header().Set("Content-Disposition", "attachment; filename=" + getBasename(path))
+	w.Header().Set("Content-Disposition", "attachment; filename="+getBasename(path))
 	w.Write(content)
 }
 
