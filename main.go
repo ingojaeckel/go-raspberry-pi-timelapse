@@ -7,11 +7,21 @@ import (
 	"goji.io"
 	"goji.io/pat"
 	"net/http"
+	"os"
+	"strconv"
 )
 
+const ListenAddress = ":8080"
+
 func main() {
-	addr := ":8080"
-	fmt.Printf("Listening on %s...\n", addr)
+	secondsBetweenCaptures := int64(60)
+
+	if len(os.Args) == 2 {
+		secondsBetweenCaptures, _ = strconv.ParseInt(os.Args[1], 10, 32)
+	}
+
+	fmt.Printf("Seconds between captures: %d\n", secondsBetweenCaptures)
+	fmt.Printf("Listening on %s...\n", ListenAddress)
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
@@ -23,7 +33,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
 
-	t, err := timelapse.New("timelapse-pictures", 60)
+	t, err := timelapse.New("timelapse-pictures", secondsBetweenCaptures)
 	if err != nil {
 		fmt.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless
@@ -32,5 +42,5 @@ func main() {
 		t.CapturePeriodically()
 	}
 
-	http.ListenAndServe(addr, mux)
+	http.ListenAndServe(ListenAddress, mux)
 }
