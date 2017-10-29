@@ -6,13 +6,19 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"goji.io/pat"
+	"io"
 	"net/http"
 	"runtime"
 	"strings"
 )
 
-const MaxFileSizeBytes = 100485760 // 100 MB
-const Version = 1
+const (
+	Version                  = 1
+	MaxFileSizeBytes         = 100485760 // 100 MB
+	HeaderContentType        = "Content-Type"
+	HeaderContentDisposition = "Content-Disposition"
+	HeaderContentTypeJSON    = "application/json"
+)
 
 func GetVersion(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprintf(w, "Hello from %s on %s [version:%d]", runtime.GOARCH, runtime.GOOS, Version)
@@ -48,7 +54,7 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 	resp := ListFilesResponse{f}
 
 	b, _ := json.Marshal(resp)
-	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add(HeaderContentType, HeaderContentTypeJSON)
 	w.Write(b)
 }
 
@@ -60,11 +66,40 @@ func GetArchive(w http.ResponseWriter, _ *http.Request) {
 	for i, file := range f {
 		strFiles[i] = "timelapse-pictures/" + file.Name
 	}
-	tarBytes, _ := files.Tar(strFiles)
 
-	w.Header().Add("Content-Type", "application/tar")
-	w.Header().Set("Content-Disposition", "attachment; filename=archive.tar")
-	w.Write(tarBytes)
+	// tarBytes, _ := files.Tar(strFiles)
+	pr, pw := io.Pipe()
+
+	go func() {
+		files.TarWithPipes(strFiles, pw)
+		defer pw.Close()
+	}()
+
+	w.Header().Add(HeaderContentType, "application/tar")
+	w.Header().Set(HeaderContentDisposition, "attachment; filename=archive.tar")
+
+	// read 1MB from pr and call w.Write()
+	buf := make([]byte, 1024*1024)
+	for {
+		fmt.Println("Reading...")
+		n, err := pr.Read(buf)
+		fmt.Printf("Read %d bytes\n", n)
+		if err == io.EOF {
+			fmt.Println("reached EOF")
+			break
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Errorf("Error: %s", err.Error())
+			break
+		}
+		if n == 0 {
+			fmt.Println("no bytes left")
+			return
+		}
+		fmt.Printf("Writing %d bytes..\n", n)
+		w.Write(buf[0:n])
+	}
 }
 
 func Admin(_ http.ResponseWriter, r *http.Request) {
@@ -80,8 +115,8 @@ func serveFileContent(w http.ResponseWriter, path string) {
 		return
 	}
 
-	w.Header().Add("Content-Type", http.DetectContentType(content))
-	w.Header().Set("Content-Disposition", "attachment; filename="+getBasename(path))
+	w.Header().Add(HeaderContentType, http.DetectContentType(content))
+	w.Header().Set(HeaderContentDisposition, "attachment; filename="+getBasename(path))
 	w.Write(content)
 }
 

@@ -9,6 +9,9 @@ import (
 	"net/url"
 )
 
+// TODO downloading a 876MB artifact crashes process
+// TODO process should be auto restarted (e.g. by supervisord)
+// TODO add monitoring for main memory
 const HtmlTemplate = `
 <!DOCTYPE html>
 <html>

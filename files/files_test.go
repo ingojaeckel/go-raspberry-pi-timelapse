@@ -44,7 +44,7 @@ func TestCanServeFile(t *testing.T) {
 	ensure.True(t, os.IsNotExist(e3))
 }
 
-func TestTar(t *testing.T) {
+func TestTarTwoFiles(t *testing.T) {
 	f := []string{"files.go", "files_test.go"}
 	tarBytes, err := Tar(f)
 	ensure.Nil(t, err)
@@ -54,6 +54,37 @@ func TestTar(t *testing.T) {
 	// Open the tar archive for reading.
 	r := bytes.NewReader(tarBytes)
 	tr := tar.NewReader(r)
+
+	count := 0
+	// Iterate through the files in the archive.
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // end of tar archive
+		}
+		ensure.Nil(t, err)
+		ensure.DeepEqual(t, f[count], hdr.Name)
+
+		fileContent, _ := ioutil.ReadFile(f[count])
+		ensure.DeepEqual(t, int64(len(fileContent)), hdr.Size)
+
+		count++
+	}
+	ensure.DeepEqual(t, count, 2)
+}
+
+func TestTarTwoFilesWithPipe(t *testing.T) {
+	f := []string{"files.go", "files_test.go"}
+	pr, pw := io.Pipe()
+
+	go func() {
+		err := TarWithPipes(f, pw)
+		ensure.Nil(t, err)
+		defer pw.Close()
+	}()
+
+	// Open the tar archive for reading.
+	tr := tar.NewReader(pr)
 
 	count := 0
 	// Iterate through the files in the archive.

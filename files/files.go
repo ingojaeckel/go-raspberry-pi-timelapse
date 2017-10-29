@@ -3,6 +3,7 @@ package files
 import (
 	"archive/tar"
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -84,6 +85,32 @@ func Tar(filePaths []string) ([]byte, error) {
 	}
 	// Return in-memory representation of .tar archive containing all files.
 	return buf.Bytes(), nil
+}
+
+func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
+	tw := tar.NewWriter(pw)
+
+	for _, f := range filePaths {
+		info, err := os.Stat(f)
+		if err != nil {
+			return err
+		}
+		// TODO consider using tar.FileInfoHeader(info, link)
+		if err := tw.WriteHeader(&tar.Header{Name: info.Name(), Mode: 0400, Size: info.Size()}); err != nil {
+			return err
+		}
+		content, err := ioutil.ReadFile(f)
+		if err != nil {
+			return err
+		}
+		if _, err := tw.Write(content); err != nil {
+			return err
+		}
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // BySize Implements the sort.Interface to allow sorting files by their age.
