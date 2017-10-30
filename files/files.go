@@ -2,7 +2,6 @@ package files
 
 import (
 	"archive/tar"
-	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
@@ -58,35 +57,9 @@ func CanServeFile(path string, maxFileSizeBytes int64) (bool, error) {
 	return !fileInfo.IsDir() && fileInfo.Size() <= maxFileSizeBytes, nil
 }
 
-// Tar creates a .tar archive containing all files within the filePaths array.
-func Tar(filePaths []string) ([]byte, error) {
-	buf := new(bytes.Buffer)
-	tw := tar.NewWriter(buf)
-
-	for _, f := range filePaths {
-		info, err := os.Stat(f)
-		if err != nil {
-			return []byte{}, err
-		}
-		// TODO consider using tar.FileInfoHeader(info, link)
-		if err := tw.WriteHeader(&tar.Header{Name: info.Name(), Mode: 0400, Size: info.Size()}); err != nil {
-			return []byte{}, err
-		}
-		content, err := ioutil.ReadFile(f)
-		if err != nil {
-			return []byte{}, err
-		}
-		if _, err := tw.Write(content); err != nil {
-			return []byte{}, err
-		}
-	}
-	if err := tw.Close(); err != nil {
-		return []byte{}, err
-	}
-	// Return in-memory representation of .tar archive containing all files.
-	return buf.Bytes(), nil
-}
-
+// TarWithPipes combines all files specified by filePaths.
+// Tries to minimize memory usage by using pipes.
+// As a result this can only write as quickly as the content is being read.
 func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
 	tw := tar.NewWriter(pw)
 
@@ -95,8 +68,8 @@ func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
 		if err != nil {
 			return err
 		}
-		// TODO consider using tar.FileInfoHeader(info, link)
-		if err := tw.WriteHeader(&tar.Header{Name: info.Name(), Mode: 0400, Size: info.Size()}); err != nil {
+		hdr, _ := tar.FileInfoHeader(info, info.Name())
+		if err = tw.WriteHeader(hdr); err != nil {
 			return err
 		}
 		content, err := ioutil.ReadFile(f)
@@ -113,15 +86,15 @@ func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
 	return nil
 }
 
-// BySize Implements the sort.Interface to allow sorting files by their age.
+// ByAge Implements the sort.Interface to allow sorting files by their age.
 type ByAge []File
 
 func (b ByAge) Len() int {
 	return len(b)
 }
-func (a ByAge) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
+func (b ByAge) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
 }
-func (a ByAge) Less(i, j int) bool {
-	return a[i].ModTimeEpoch < a[j].ModTimeEpoch
+func (b ByAge) Less(i, j int) bool {
+	return b[i].ModTimeEpoch < b[j].ModTimeEpoch
 }
