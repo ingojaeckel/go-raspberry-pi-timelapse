@@ -15,13 +15,16 @@ const ListenAddress = ":8080"
 
 func main() {
 	secondsBetweenCaptures := int64(60)
+	offsetWithinHour := int64(0)
 
-	if len(os.Args) == 2 {
+	if len(os.Args) == 3 {
 		secondsBetweenCaptures, _ = strconv.ParseInt(os.Args[1], 10, 32)
+		offsetWithinHour, _ = strconv.ParseInt(os.Args[2], 10, 32)
 	}
 
 	fmt.Printf("Seconds between captures: %d\n", secondsBetweenCaptures)
-	fmt.Printf("Listening on %s...\n", ListenAddress)
+	fmt.Printf("Offset within hour:       %d\n", secondsBetweenCaptures)
+	fmt.Printf("Listening on port:        %s...\n", ListenAddress)
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
@@ -33,7 +36,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
 
-	t, err := timelapse.New("timelapse-pictures", secondsBetweenCaptures)
+	t, err := timelapse.New("timelapse-pictures", secondsBetweenCaptures, offsetWithinHour)
 	if err != nil {
 		fmt.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless

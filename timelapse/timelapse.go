@@ -9,12 +9,13 @@ import (
 )
 
 type Timelapse struct {
-	Camera                camera.Camera
-	Folder                string
-	SecondsBetweenCapture int64
+	Camera                  camera.Camera
+	Folder                  string
+	SecondsBetweenCapture   int64
+	OffsetWithinHourSeconds int64
 }
 
-func New(folder string, secondsBetweenCapture int64) (*Timelapse, error) {
+func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int64) (*Timelapse, error) {
 	_, err := os.Stat(folder)
 	createFolder := err != nil && os.IsNotExist(err)
 
@@ -29,11 +30,18 @@ func New(folder string, secondsBetweenCapture int64) (*Timelapse, error) {
 		return nil, errors.New("Failed to instantiate camera")
 	}
 
-	return &Timelapse{*c, folder, secondsBetweenCapture}, nil
+	return &Timelapse{
+		Camera:                  *c,
+		Folder:                  folder,
+		SecondsBetweenCapture:   secondsBetweenCapture,
+		OffsetWithinHourSeconds: offsetWithinHourSeconds,
+	}, nil
 }
 
 func (t Timelapse) CapturePeriodically() {
 	go func() {
+		t.WaitForFirstCapture()
+
 		for {
 			beforeCapture := time.Now()
 			s, err := t.Camera.Capture()
@@ -49,4 +57,40 @@ func (t Timelapse) CapturePeriodically() {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 		}
 	}()
+}
+
+func (t Timelapse) WaitForFirstCapture() {
+	secondsUntilFirstCapture := t.SecondsToSleepUntilOffset(time.Now())
+	fmt.Printf("Waiting %d seconds before first capture\n", secondsUntilFirstCapture)
+	time.Sleep(time.Duration(secondsUntilFirstCapture) * time.Second)
+}
+
+func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
+	if t.OffsetWithinHourSeconds <= 0 {
+		return 0
+	}
+
+	offsetWithinHourMinutes := int(t.OffsetWithinHourSeconds / 60)
+	offsetWithinHourSeconds := int(t.OffsetWithinHourSeconds % 60)
+
+	nextOffset := time.Date(
+		currentTime.Year(),
+		currentTime.Month(),
+		currentTime.Day(),
+		currentTime.Hour(),
+		offsetWithinHourMinutes,
+		offsetWithinHourSeconds,
+		0,
+		currentTime.Location())
+
+	d := nextOffset.Sub(currentTime)
+	durationInSeconds := int(d.Seconds())
+
+	if durationInSeconds < 0 {
+		// We just missed the window to wait for the offset.
+		// Wait until we reach the next window for: time between captures - the time by which we missed the offset.
+		// (Using + since durationInSeconds is already negative..)
+		return int(t.SecondsBetweenCapture) + durationInSeconds
+	}
+	return durationInSeconds
 }
