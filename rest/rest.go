@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/loranbriggs/go-camera"
 	"goji.io/pat"
 	"io"
 	"net/http"
@@ -19,6 +20,7 @@ const (
 	HeaderContentDisposition = "Content-Disposition"
 	HeaderContentTypeJSON    = "application/json"
 	StorageFolder            = "timelapse-pictures"
+	TempFilesFolder          = "/tmp"
 )
 
 func GetVersion(w http.ResponseWriter, _ *http.Request) {
@@ -57,6 +59,22 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 	b, _ := json.Marshal(resp)
 	w.Header().Add(HeaderContentType, HeaderContentTypeJSON)
 	w.Write(b)
+}
+
+func Capture(w http.ResponseWriter, _ *http.Request) {
+	c := camera.New(TempFilesFolder)
+	path, err := c.Capture()
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Failed to take capture: %s", err.Error())
+		return
+	}
+
+	serveFileContent(w, path)
+
+	// Remove the temporary file
+	// os.Remove(path)
 }
 
 func GetArchive(w http.ResponseWriter, _ *http.Request) {

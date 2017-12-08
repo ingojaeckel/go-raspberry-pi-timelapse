@@ -9,7 +9,6 @@ import (
 	"net/url"
 )
 
-// TODO downloading a 876MB artifact crashes process
 // TODO process should be auto restarted (e.g. by supervisord)
 // TODO add monitoring for main memory
 const HtmlTemplate = `
@@ -38,6 +37,7 @@ const HtmlTemplate = `
 		</table>
 
 		<h1>Administration</h1>
+		<a href="/capture" target="_blank">Capture Test Picture</a>
 		<a href="/admin/clear">Delete existing photos</a>
 		<a href="/admin/shutdown">Shutdown</a>
 		<a href="/admin/restart">Restart</a>

@@ -28,6 +28,7 @@ func main() {
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
+	mux.HandleFunc(pat.Get("/capture"), rest.Capture)
 	mux.HandleFunc(pat.Get("/index.html"), rest.GetIndex)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
