@@ -18,6 +18,7 @@ const (
 	HeaderContentType        = "Content-Type"
 	HeaderContentDisposition = "Content-Disposition"
 	HeaderContentTypeJSON    = "application/json"
+	StorageFolder            = "timelapse-pictures"
 )
 
 func GetVersion(w http.ResponseWriter, _ *http.Request) {
@@ -40,17 +41,17 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetMostRecentFile(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles("timelapse-pictures", true)
+	f, _ := files.ListFiles(StorageFolder, true)
 	if len(f) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	mostRecentFile := f[len(f)-1]
-	serveFileContent(w, "timelapse-pictures/"+mostRecentFile.Name)
+	serveFileContent(w, fmt.Sprintf("%s/%s", StorageFolder, mostRecentFile.Name))
 }
 
 func GetFiles(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles("timelapse-pictures", true)
+	f, _ := files.ListFiles(StorageFolder, true)
 	resp := ListFilesResponse{f}
 
 	b, _ := json.Marshal(resp)
@@ -59,12 +60,12 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 }
 
 func GetArchive(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles("timelapse-pictures", true)
+	f, _ := files.ListFiles(StorageFolder, true)
 
 	// Convert []File to []string
 	strFiles := make([]string, len(f))
 	for i, file := range f {
-		strFiles[i] = "timelapse-pictures/" + file.Name
+		strFiles[i] = fmt.Sprintf("%s/%s", StorageFolder, file.Name)
 	}
 
 	// tarBytes, _ := files.Tar(strFiles)
@@ -116,7 +117,7 @@ func serveFileContent(w http.ResponseWriter, path string) {
 	}
 
 	w.Header().Add(HeaderContentType, http.DetectContentType(content))
-	w.Header().Set(HeaderContentDisposition, "attachment; filename="+getBasename(path))
+	w.Header().Set(HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s", getBasename(path)))
 	w.Write(content)
 }
 
