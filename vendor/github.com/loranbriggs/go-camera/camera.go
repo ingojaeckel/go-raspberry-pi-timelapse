@@ -13,7 +13,7 @@ const (
 	VFLIP      = "-vf"
 	OUTFLAG    = "-o"
 	FILE_TYPE  = ".jpg"
-	TIME_STAMP = "2006-01-02_15:04::05"
+	TIME_STAMP = "2006-01-02_15:04:05"
 )
 
 type Camera struct {
@@ -49,14 +49,14 @@ func (c *Camera) Capture() (string, error) {
 	fileName := time.Now().Format(TIME_STAMP) + FILE_TYPE
 	fullPath := filepath.Join(c.savePath, fileName)
 	args = append(args, fullPath)
-	cmd := exec.Command("raspistill", "-o", fullPath)
+	cmd := exec.Command(STILL, OUTFLAG, fullPath)
 	_, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 	}
 	cmd.Wait()
 	return fullPath, nil
