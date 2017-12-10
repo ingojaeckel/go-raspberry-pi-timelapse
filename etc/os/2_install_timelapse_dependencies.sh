@@ -1,4 +1,6 @@
 #!/bin/sh
+# Echo this is deprecated. Remove this in favor of setup.sh.
+
 TARGET=/home/pi/go-raspberry-pi-timelapse
 
 aptitude update
