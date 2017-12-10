@@ -1,8 +1,6 @@
 #!/bin/sh
 # This is taken from https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md
 
-# Commented out by default. Enable if necessary.
-# sudo apt-get update
 sudo apt-get install -y dnsmasq hostapd
 sudo systemctl stop dnsmasq
 sudo systemctl stop hostapd
