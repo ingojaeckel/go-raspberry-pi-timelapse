@@ -10,9 +10,9 @@ import (
 	"goji.io/pat"
 	"io"
 	"net/http"
+	"os"
 	"runtime"
 	"strings"
-	"os"
 )
 
 func GetVersion(w http.ResponseWriter, _ *http.Request) {

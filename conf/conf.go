@@ -11,11 +11,8 @@ const (
 	HeaderContentTypeJSON    = "application/json"
 	StorageFolder            = "timelapse-pictures"
 	TempFilesFolder          = "/tmp"
-
-	// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
-	///PhotoResolution          =
-//	PreviewResolution        = timelapse.Resolution{640, 480}
 )
 
+// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
 var PhotoResolution = timelapse.Resolution{2186, 1642}
 var PreviewResolution = timelapse.Resolution{640, 480}

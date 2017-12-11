@@ -41,7 +41,7 @@ func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int
 		Folder:                  folder,
 		SecondsBetweenCapture:   secondsBetweenCapture,
 		OffsetWithinHourSeconds: offsetWithinHourSeconds,
-		Res:                     res,
+		Res: res,
 	}, nil
 }
 
