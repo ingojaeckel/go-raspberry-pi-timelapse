@@ -24,10 +24,6 @@
 			"Rev": "8dac2c3c48703541e481feddf22975953d4ff842"
 		},
 		{
-			"ImportPath": "github.com/loranbriggs/go-camera",
-			"Rev": "e4820f9ba9a9ab43e8c82c792c10a0af77941121"
-		},
-		{
 			"ImportPath": "goji.io",
 			"Comment": "v2.0",
 			"Rev": "0d89ff54b2c18c9c4ba530e32496aef902d3c6cd"

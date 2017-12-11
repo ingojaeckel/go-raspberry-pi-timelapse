@@ -28,7 +28,8 @@ func main() {
 	}
 
 	fmt.Printf("Seconds between captures: %d\n", secondsBetweenCaptures)
-	fmt.Printf("Offset within hour:       %d\n", secondsBetweenCaptures)
+	fmt.Printf("Offset within hour:       %d\n", offsetWithinHour)
+	fmt.Printf("Resolution:               %d x %d\n", width, height)
 	fmt.Printf("Listening on port:        %s...\n", conf.ListenAddress)
 
 	mux := goji.NewMux()

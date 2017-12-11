@@ -6,7 +6,7 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
-	"github.com/loranbriggs/go-camera"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io/pat"
 	"io"
 	"net/http"
@@ -54,7 +54,8 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 }
 
 func Capture(w http.ResponseWriter, _ *http.Request) {
-	c := camera.New(conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
+	fmt.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
+	c := timelapse.NewCamera(conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
 	path, err := c.Capture()
 
 	if err != nil {

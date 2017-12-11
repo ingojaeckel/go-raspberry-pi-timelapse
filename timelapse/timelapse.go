@@ -3,13 +3,12 @@ package timelapse
 import (
 	"errors"
 	"fmt"
-	"github.com/loranbriggs/go-camera"
 	"os"
 	"time"
 )
 
 type Timelapse struct {
-	Camera                  camera.Camera
+	Camera                  Camera
 	Folder                  string
 	SecondsBetweenCapture   int64
 	OffsetWithinHourSeconds int64
@@ -31,7 +30,7 @@ func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int
 		}
 	}
 	// Assume folder exists
-	c := camera.New(folder, res.Width, res.Height)
+	c := NewCamera(folder, res.Width, res.Height)
 	if c == nil {
 		return nil, errors.New("Failed to instantiate camera")
 	}
