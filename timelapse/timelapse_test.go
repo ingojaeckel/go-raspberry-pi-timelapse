@@ -6,6 +6,35 @@ import (
 	"time"
 )
 
+func TestSecondsToSleepUntilOffset(t *testing.T) {
+	tl := Timelapse{SecondsBetweenCapture:   60 * 30, OffsetWithinHourSeconds: 15 * 60}
+	s := tl.SecondsToSleepUntilOffset(time.Now())
+	ensure.True(t, 0 <= s)
+	ensure.True(t, s <= int(tl.SecondsBetweenCapture))
+}
+
+func TestSecondsToSleepUntilOffset2(t *testing.T) {
+	tl := Timelapse{SecondsBetweenCapture:   60 * 30, OffsetWithinHourSeconds: 15 * 60}
+
+	l := time.Now().Location()
+	hour := 8
+	min := 46
+	sec := 1
+	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min, sec, 0, l)), 29*60-1)
+
+	min2 := 32
+	sec2 := 1
+	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min2, sec2, 0, l)), 13*60-1)
+
+	min3 := 16
+	sec3 := 1
+	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min3, sec3, 0, l)), 29*60-1)
+
+	min4 := 8
+	sec4 := 1
+	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min4, sec4, 0, l)), 7*60-1)
+}
+
 func TestNoSleepTillBrooklyn(t *testing.T) {
 	tl := createTimelapseForTesting(0)
 
