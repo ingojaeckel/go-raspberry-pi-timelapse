@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/loranbriggs/go-camera"
 	"goji.io/pat"
@@ -11,26 +12,17 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
-)
-
-const (
-	Version                  = 1
-	MaxFileSizeBytes         = 100485760 // 100 MB
-	HeaderContentType        = "Content-Type"
-	HeaderContentDisposition = "Content-Disposition"
-	HeaderContentTypeJSON    = "application/json"
-	StorageFolder            = "timelapse-pictures"
-	TempFilesFolder          = "/tmp"
+	"os"
 )
 
 func GetVersion(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintf(w, "Hello from %s on %s [version:%d]", runtime.GOARCH, runtime.GOOS, Version)
+	fmt.Fprintf(w, "Hello from %s on %s [version:%d]", runtime.GOARCH, runtime.GOOS, conf.Version)
 }
 
 func GetFile(w http.ResponseWriter, r *http.Request) {
 	name := pat.Param(r, "fileName")
 
-	canServe, e := files.CanServeFile(name, MaxFileSizeBytes)
+	canServe, e := files.CanServeFile(name, conf.MaxFileSizeBytes)
 	if !canServe {
 		w.WriteHeader(http.StatusNotFound)
 		if e != nil {
@@ -43,26 +35,26 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetMostRecentFile(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles(StorageFolder, true)
+	f, _ := files.ListFiles(conf.StorageFolder, true)
 	if len(f) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	mostRecentFile := f[len(f)-1]
-	serveFileContent(w, fmt.Sprintf("%s/%s", StorageFolder, mostRecentFile.Name))
+	serveFileContent(w, fmt.Sprintf("%s/%s", conf.StorageFolder, mostRecentFile.Name))
 }
 
 func GetFiles(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles(StorageFolder, true)
+	f, _ := files.ListFiles(conf.StorageFolder, true)
 	resp := ListFilesResponse{f}
 
 	b, _ := json.Marshal(resp)
-	w.Header().Add(HeaderContentType, HeaderContentTypeJSON)
+	w.Header().Add(conf.HeaderContentType, conf.HeaderContentTypeJSON)
 	w.Write(b)
 }
 
 func Capture(w http.ResponseWriter, _ *http.Request) {
-	c := camera.New(TempFilesFolder)
+	c := camera.New(conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
 	path, err := c.Capture()
 
 	if err != nil {
@@ -74,16 +66,16 @@ func Capture(w http.ResponseWriter, _ *http.Request) {
 	serveFileContent(w, path)
 
 	// Remove the temporary file
-	// os.Remove(path)
+	os.Remove(path)
 }
 
 func GetArchive(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles(StorageFolder, true)
+	f, _ := files.ListFiles(conf.StorageFolder, true)
 
 	// Convert []File to []string
 	strFiles := make([]string, len(f))
 	for i, file := range f {
-		strFiles[i] = fmt.Sprintf("%s/%s", StorageFolder, file.Name)
+		strFiles[i] = fmt.Sprintf("%s/%s", conf.StorageFolder, file.Name)
 	}
 
 	// tarBytes, _ := files.Tar(strFiles)
@@ -94,8 +86,8 @@ func GetArchive(w http.ResponseWriter, _ *http.Request) {
 		defer pw.Close()
 	}()
 
-	w.Header().Add(HeaderContentType, "application/tar")
-	w.Header().Set(HeaderContentDisposition, "attachment; filename=archive.tar")
+	w.Header().Add(conf.HeaderContentType, "application/tar")
+	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.tar")
 
 	// read 1MB from pr and call w.Write()
 	buf := make([]byte, 1024*1024)
@@ -134,8 +126,8 @@ func serveFileContent(w http.ResponseWriter, path string) {
 		return
 	}
 
-	w.Header().Add(HeaderContentType, http.DetectContentType(content))
-	w.Header().Set(HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s", getBasename(path)))
+	w.Header().Add(conf.HeaderContentType, http.DetectContentType(content))
+	w.Header().Set(conf.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s", getBasename(path)))
 	w.Write(content)
 }
 

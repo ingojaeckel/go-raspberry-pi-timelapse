@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io"
@@ -11,20 +12,24 @@ import (
 	"strconv"
 )
 
-const ListenAddress = ":8080"
-
 func main() {
 	secondsBetweenCaptures := int64(60)
 	offsetWithinHour := int64(0)
+	width := int64(conf.PhotoResolution.Width)
+	height := int64(conf.PhotoResolution.Height)
 
-	if len(os.Args) == 3 {
+	if len(os.Args) >= 3 {
 		secondsBetweenCaptures, _ = strconv.ParseInt(os.Args[1], 10, 32)
 		offsetWithinHour, _ = strconv.ParseInt(os.Args[2], 10, 32)
+	}
+	if len(os.Args) == 5 {
+		width, _ = strconv.ParseInt(os.Args[3], 10, 32)
+		height, _ = strconv.ParseInt(os.Args[4], 10, 32)
 	}
 
 	fmt.Printf("Seconds between captures: %d\n", secondsBetweenCaptures)
 	fmt.Printf("Offset within hour:       %d\n", secondsBetweenCaptures)
-	fmt.Printf("Listening on port:        %s...\n", ListenAddress)
+	fmt.Printf("Listening on port:        %s...\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
@@ -37,7 +42,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
 
-	t, err := timelapse.New("timelapse-pictures", secondsBetweenCaptures, offsetWithinHour)
+	t, err := timelapse.New("timelapse-pictures", secondsBetweenCaptures, offsetWithinHour, timelapse.Resolution{width, height})
 	if err != nil {
 		fmt.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless
@@ -46,5 +51,5 @@ func main() {
 		t.CapturePeriodically()
 	}
 
-	http.ListenAndServe(ListenAddress, mux)
+	http.ListenAndServe(conf.ListenAddress, mux)
 }

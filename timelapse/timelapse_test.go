@@ -30,6 +30,7 @@ func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTim
 }
 
 func createTimelapseForTesting(offsetWithinHourSeconds int64) Timelapse {
-	c := camera.New("timelapse-pictures")
-	return Timelapse{*c, "timelapse-pictures", 1800, offsetWithinHourSeconds}
+	res := Resolution{800, 600}
+	c := camera.New("timelapse-pictures", res.Width, res.Height)
+	return Timelapse{*c, "timelapse-pictures", 1800, offsetWithinHourSeconds, res}
 }

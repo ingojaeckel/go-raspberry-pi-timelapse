@@ -13,9 +13,15 @@ type Timelapse struct {
 	Folder                  string
 	SecondsBetweenCapture   int64
 	OffsetWithinHourSeconds int64
+	Res                     Resolution
 }
 
-func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int64) (*Timelapse, error) {
+type Resolution struct {
+	Width  int64
+	Height int64
+}
+
+func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int64, res Resolution) (*Timelapse, error) {
 	_, err := os.Stat(folder)
 	createFolder := err != nil && os.IsNotExist(err)
 
@@ -25,7 +31,7 @@ func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int
 		}
 	}
 	// Assume folder exists
-	c := camera.New(folder)
+	c := camera.New(folder, res.Width, res.Height)
 	if c == nil {
 		return nil, errors.New("Failed to instantiate camera")
 	}
@@ -35,6 +41,7 @@ func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int
 		Folder:                  folder,
 		SecondsBetweenCapture:   secondsBetweenCapture,
 		OffsetWithinHourSeconds: offsetWithinHourSeconds,
+		Res:                     res,
 	}, nil
 }
 
