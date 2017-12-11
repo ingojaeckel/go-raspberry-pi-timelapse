@@ -36,11 +36,16 @@ const HtmlTemplate = `
 		<tr><td>GPU Temperature</td><td>{{ .GpuTemperature }}</td></tr>
 		</table>
 
+		<h1>Preview</h1>
+		<p><img src="/capture" alt="Preview" /></p>
+
 		<h1>Administration</h1>
-		<a href="/capture" target="_blank">Capture Test Picture</a>
-		<a href="/admin/clear">Delete existing photos</a>
-		<a href="/admin/shutdown">Shutdown</a>
-		<a href="/admin/restart">Restart</a>
+		<ul>
+			<li><a href="/admin/clear">Delete existing photos</a></li>
+			<li><a href="/admin/shutdown">Shutdown</a></li>
+			<li><a href="/admin/restart">Restart</a></li>
+			<li>More information: <a href="https://github.com/ingojaeckel/go-raspberry-pi-timelapse">github.com/ingojaeckel/go-raspberry-pi-timelapse</a></li>
+		</ul>
 	</body>
 </html>`
 
