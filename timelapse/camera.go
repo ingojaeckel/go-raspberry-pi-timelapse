@@ -1,5 +1,7 @@
 package timelapse
 
+// This has been adapted from https://github.com/loranbriggs/go-camera
+
 import (
 	"fmt"
 	"os/exec"
