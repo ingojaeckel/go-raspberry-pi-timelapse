@@ -20,23 +20,24 @@ func TestSecondsToSleepUntilOffset2(t *testing.T) {
 	hour := 8
 	min := 46
 	sec := 1
-	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min, sec, 0, l)), 29*60-1)
+	ensure.DeepEqual(t, 29*60-1, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min, sec, 0, l)))
 
 	min2 := 32
 	sec2 := 1
-	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min2, sec2, 0, l)), 13*60-1)
+	ensure.DeepEqual(t, 13*60-1, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min2, sec2, 0, l)))
 
 	min3 := 16
 	sec3 := 1
-	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min3, sec3, 0, l)), 29*60-1)
+	ensure.DeepEqual(t, 29*60-1, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min3, sec3, 0, l)))
 
 	min4 := 8
 	sec4 := 1
-	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min4, sec4, 0, l)), 7*60-1)
+	ensure.DeepEqual(t, 7*60-1, tl.SecondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min4, sec4, 0, l)))
 }
 
 func TestNoSleepTillBrooklyn(t *testing.T) {
 	tl := createTimelapseForTesting(0)
+	tl.SecondsBetweenCapture = 1
 
 	before := time.Now().Unix()
 	tl.WaitForFirstCapture()

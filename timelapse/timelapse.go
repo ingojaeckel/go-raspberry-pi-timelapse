@@ -72,40 +72,27 @@ func (t Timelapse) WaitForFirstCapture() {
 }
 
 func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
-	if t.OffsetWithinHourSeconds <= 0 {
-		return 0
+	picturesPerHour := 3600 / t.SecondsBetweenCapture
+
+	boundaries := make([]int64, 2 + picturesPerHour)
+	boundaries[0] = 0
+	boundaries[picturesPerHour + 1] = 3600
+
+	b := t.OffsetWithinHourSeconds
+	needle := int64(currentTime.Minute() * 60 + currentTime.Second())
+	fmt.Println("needle ", needle)
+
+	for i := 0; i<int(picturesPerHour); i++ {
+		boundaries[i+1] = b
+		b += t.SecondsBetweenCapture
+
+		if boundaries[i] <= needle && needle <= boundaries[i+1] {
+			fmt.Printf("for time=%v -> sleep time: %v\n", currentTime, boundaries[i+1] - needle)
+			return int(boundaries[i+1] - needle)
+		}
 	}
+	fmt.Printf("boundaries=%v\n", boundaries)
+	fmt.Printf("2nd: for time=%v -> sleep time: %v\n", currentTime, 3600 - needle + t.OffsetWithinHourSeconds)
 
-	offsetWithinHourMinutes := int(t.OffsetWithinHourSeconds / 60) // 15
-	offsetWithinHourSeconds := int(t.OffsetWithinHourSeconds % 60) //  0
-
-	fudgeFactor := 0
-
-	// TODO this is a hack, clean this up...
-	if currentTime.Minute() > 15 && currentTime.Minute() < 45 {
-		fudgeFactor = int(t.SecondsBetweenCapture)/60
-	}
-
-	nextOffset := time.Date(
-		currentTime.Year(),
-		currentTime.Month(),
-		currentTime.Day(),
-		currentTime.Hour(),
-		offsetWithinHourMinutes + fudgeFactor,
-		offsetWithinHourSeconds,
-		0,
-		currentTime.Location())
-	fmt.Printf("next offset: %v\n", nextOffset)
-
-	d := nextOffset.Sub(currentTime)
-	fmt.Printf("duration: %v\n", d)
-	durationInSeconds := int(d.Seconds())
-
-	if durationInSeconds < 0 {
-		// We just missed the window to wait for the offset.
-		// Wait until we reach the next window for: time between captures - the time by which we missed the offset.
-		// (Using + since durationInSeconds is already negative..)
-		return 3600 + durationInSeconds
-	}
-	return durationInSeconds
+	return int(3600 - needle + t.OffsetWithinHourSeconds)
 }
