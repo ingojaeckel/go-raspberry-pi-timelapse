@@ -74,25 +74,24 @@ func (t Timelapse) WaitForFirstCapture() {
 func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
 	picturesPerHour := 3600 / t.SecondsBetweenCapture
 
-	boundaries := make([]int64, 2 + picturesPerHour)
-	boundaries[0] = 0
-	boundaries[picturesPerHour + 1] = 3600
-
-	b := t.OffsetWithinHourSeconds
-	needle := int64(currentTime.Minute() * 60 + currentTime.Second())
-	fmt.Println("needle ", needle)
+	secondsIntoCurrentHour := int64(currentTime.Minute() * 60 + currentTime.Second())
 
 	for i := 0; i<int(picturesPerHour); i++ {
-		boundaries[i+1] = b
-		b += t.SecondsBetweenCapture
+		if i == 0 {
+			if 0 <= secondsIntoCurrentHour && secondsIntoCurrentHour <= t.OffsetWithinHourSeconds {
+				return int(t.OffsetWithinHourSeconds - secondsIntoCurrentHour)
+			}
+		}
 
-		if boundaries[i] <= needle && needle <= boundaries[i+1] {
-			fmt.Printf("for time=%v -> sleep time: %v\n", currentTime, boundaries[i+1] - needle)
-			return int(boundaries[i+1] - needle)
+		lowerBoundary := t.OffsetWithinHourSeconds + int64(i-1) * t.SecondsBetweenCapture
+		upperBoundary := int64(t.OffsetWithinHourSeconds + int64(i) * t.SecondsBetweenCapture)
+
+		if lowerBoundary <= secondsIntoCurrentHour && secondsIntoCurrentHour <= upperBoundary {
+			return int(upperBoundary - secondsIntoCurrentHour)
 		}
 	}
-	fmt.Printf("boundaries=%v\n", boundaries)
-	fmt.Printf("2nd: for time=%v -> sleep time: %v\n", currentTime, 3600 - needle + t.OffsetWithinHourSeconds)
 
-	return int(3600 - needle + t.OffsetWithinHourSeconds)
+	return int(3600 - secondsIntoCurrentHour + t.OffsetWithinHourSeconds)
 }
+
+
