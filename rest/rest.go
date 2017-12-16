@@ -79,9 +79,7 @@ func GetArchive(w http.ResponseWriter, _ *http.Request) {
 		strFiles[i] = fmt.Sprintf("%s/%s", conf.StorageFolder, file.Name)
 	}
 
-	// tarBytes, _ := files.Tar(strFiles)
 	pr, pw := io.Pipe()
-
 	go func() {
 		files.TarWithPipes(strFiles, pw)
 		defer pw.Close()
@@ -89,6 +87,48 @@ func GetArchive(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Add(conf.HeaderContentType, "application/tar")
 	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.tar")
+
+	// read 1MB from pr and call w.Write()
+	buf := make([]byte, 1024*1024)
+	for {
+		fmt.Println("Reading...")
+		n, err := pr.Read(buf)
+		fmt.Printf("Read %d bytes\n", n)
+		if err == io.EOF {
+			fmt.Println("reached EOF")
+			break
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Errorf("Error: %s", err.Error())
+			break
+		}
+		if n == 0 {
+			fmt.Println("no bytes left")
+			return
+		}
+		fmt.Printf("Writing %d bytes..\n", n)
+		w.Write(buf[0:n])
+	}
+}
+
+func GetArchiveZip(w http.ResponseWriter, _ *http.Request) {
+	f, _ := files.ListFiles(conf.StorageFolder, true)
+
+	// Convert []File to []string
+	strFiles := make([]string, len(f))
+	for i, file := range f {
+		strFiles[i] = fmt.Sprintf("%s/%s", conf.StorageFolder, file.Name)
+	}
+
+	pr, pw := io.Pipe()
+	go func() {
+		files.ZipWithPipes(strFiles, pw)
+		defer pw.Close()
+	}()
+
+	w.Header().Add(conf.HeaderContentType, "application/zip")
+	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.zip")
 
 	// read 1MB from pr and call w.Write()
 	buf := make([]byte, 1024*1024)

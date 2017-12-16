@@ -20,7 +20,10 @@ const HtmlTemplate = `
 	</head>
 	<body>
 		<h1>Photos</h1>
-		<a href="/archive">Download Archive ({{ .PhotosTotalSize }})<a/>
+		<ul>
+			<li><a href="/archive/tar">Download .tar archive ({{ .PhotosTotalSize }})<a/></li>
+			<li><a href="/archive/zip">Download .zip archive<a/></li>
+		</ul>
 
 		<h2>Last Picture</h2>
 		<a href="/file/last"><img src="/file/last" alt="last picture" width="300px" /></a>

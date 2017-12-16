@@ -40,7 +40,7 @@ func TestNoSleepTillBrooklyn(t *testing.T) {
 	tl.SecondsBetweenCapture = 1
 
 	before := time.Now().Unix()
-	tl.WaitForFirstCapture()
+	tl.WaitForCapture()
 	ensure.DeepEqual(t, time.Now().Unix()-before, int64(0))
 }
 

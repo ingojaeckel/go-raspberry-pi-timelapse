@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"archive/zip"
 )
 
 type File struct {
@@ -81,6 +82,36 @@ func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
 		}
 	}
 	if err := tw.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ZipWithPipes combines all files specified by filePaths.
+// Tries to minimize memory usage by using pipes.
+// As a result this can only write as quickly as the content is being read.
+func ZipWithPipes(filePaths []string, pw *io.PipeWriter) error {
+	w := zip.NewWriter(pw)
+
+	for _, f := range filePaths {
+		info, err := os.Stat(f)
+		if err != nil {
+			return err
+		}
+		zipFile, err := w.Create(info.Name())
+		if err != nil {
+			return err
+		}
+		content, err := ioutil.ReadFile(f)
+		if err != nil {
+			return err
+		}
+		_, err = zipFile.Write(content)
+		if err != nil {
+			return err
+		}
+	}
+	if err := w.Close(); err != nil {
 		return err
 	}
 	return nil

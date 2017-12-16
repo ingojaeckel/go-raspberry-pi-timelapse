@@ -46,29 +46,28 @@ func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int
 
 func (t Timelapse) CapturePeriodically() {
 	go func() {
-		t.WaitForFirstCapture()
-
 		for {
+			t.WaitForCapture()
+
 			beforeCapture := time.Now()
 			s, err := t.Camera.Capture()
 			if err != nil {
 				fmt.Errorf("Error during capture: %s\n", err.Error())
 			}
 
-			fmt.Printf("captured picture in %s\n", s)
 			timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
-
-			sleepTime := t.SecondsBetweenCapture - timeToCaptureSeconds
-			fmt.Printf("capture took %d seconds, will sleep for %d seconds\n", timeToCaptureSeconds, sleepTime)
-			time.Sleep(time.Duration(sleepTime) * time.Second)
+			fmt.Printf("Photo stored in '%s'. Capturing took %d seconds\n", s, timeToCaptureSeconds)
 		}
 	}()
 }
 
-func (t Timelapse) WaitForFirstCapture() {
+func (t Timelapse) WaitForCapture() {
 	secondsUntilFirstCapture := t.SecondsToSleepUntilOffset(time.Now())
-	fmt.Printf("Waiting %d seconds before first capture\n", secondsUntilFirstCapture)
-	time.Sleep(time.Duration(secondsUntilFirstCapture) * time.Second)
+	sleepDuration := time.Duration(secondsUntilFirstCapture) * time.Second
+	nextCaptureAt := time.Now().Add(sleepDuration )
+
+	fmt.Printf("Will take the next picture in %d seconds at %v.\n", secondsUntilFirstCapture, nextCaptureAt)
+	time.Sleep(sleepDuration)
 }
 
 func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {

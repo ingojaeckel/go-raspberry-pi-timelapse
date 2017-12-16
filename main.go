@@ -39,7 +39,8 @@ func main() {
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
-	mux.HandleFunc(pat.Get("/archive"), rest.GetArchive)
+	mux.HandleFunc(pat.Get("/archive/tar"), rest.GetArchive)
+	mux.HandleFunc(pat.Get("/archive/zip"), rest.GetArchiveZip)
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
 
