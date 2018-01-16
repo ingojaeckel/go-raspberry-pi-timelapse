@@ -2,7 +2,7 @@ package timelapse
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"os"
 	"time"
 )
@@ -52,11 +52,11 @@ func (t Timelapse) CapturePeriodically() {
 			beforeCapture := time.Now()
 			s, err := t.Camera.Capture()
 			if err != nil {
-				fmt.Errorf("Error during capture: %s\n", err.Error())
+				log.Printf("Error during capture: %s\n", err.Error())
 			}
 
 			timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
-			fmt.Printf("Photo stored in '%s'. Capturing took %d seconds\n", s, timeToCaptureSeconds)
+			log.Printf("Photo stored in '%s'. Capturing took %d seconds\n", s, timeToCaptureSeconds)
 		}
 	}()
 }
@@ -64,26 +64,36 @@ func (t Timelapse) CapturePeriodically() {
 func (t Timelapse) WaitForCapture() {
 	secondsUntilFirstCapture := t.SecondsToSleepUntilOffset(time.Now())
 	sleepDuration := time.Duration(secondsUntilFirstCapture) * time.Second
-	nextCaptureAt := time.Now().Add(sleepDuration )
+	nextCaptureAt := time.Now().Add(sleepDuration)
 
-	fmt.Printf("Will take the next picture in %d seconds at %v.\n", secondsUntilFirstCapture, nextCaptureAt)
-	time.Sleep(sleepDuration)
+	log.Printf("Will take the next picture in %d seconds at %v.\n", secondsUntilFirstCapture, nextCaptureAt)
+
+	for {
+		secondsUntilFirstCapture := t.SecondsToSleepUntilOffset(time.Now())
+		if secondsUntilFirstCapture == 0 {
+			// Game time!
+			break
+		}
+
+		log.Printf("Sleeping for 1 second. Seconds left: %d. Time: %s.\n", secondsUntilFirstCapture, time.Now())
+		time.Sleep(time.Duration(1 * time.Second))
+	}
 }
 
 func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
 	picturesPerHour := 3600 / t.SecondsBetweenCapture
 
-	secondsIntoCurrentHour := int64(currentTime.Minute() * 60 + currentTime.Second())
+	secondsIntoCurrentHour := int64(currentTime.Minute()*60 + currentTime.Second())
 
-	for i := 0; i<int(picturesPerHour); i++ {
+	for i := 0; i < int(picturesPerHour); i++ {
 		if i == 0 {
 			if 0 <= secondsIntoCurrentHour && secondsIntoCurrentHour <= t.OffsetWithinHourSeconds {
 				return int(t.OffsetWithinHourSeconds - secondsIntoCurrentHour)
 			}
 		}
 
-		lowerBoundary := t.OffsetWithinHourSeconds + int64(i-1) * t.SecondsBetweenCapture
-		upperBoundary := int64(t.OffsetWithinHourSeconds + int64(i) * t.SecondsBetweenCapture)
+		lowerBoundary := t.OffsetWithinHourSeconds + int64(i-1)*t.SecondsBetweenCapture
+		upperBoundary := int64(t.OffsetWithinHourSeconds + int64(i)*t.SecondsBetweenCapture)
 
 		if lowerBoundary <= secondsIntoCurrentHour && secondsIntoCurrentHour <= upperBoundary {
 			return int(upperBoundary - secondsIntoCurrentHour)
@@ -92,5 +102,3 @@ func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
 
 	return int(3600 - secondsIntoCurrentHour + t.OffsetWithinHourSeconds)
 }
-
-

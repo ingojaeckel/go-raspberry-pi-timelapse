@@ -3,11 +3,11 @@ package timelapse
 // This has been adapted from https://github.com/loranbriggs/go-camera
 
 import (
-	"fmt"
+	"log"
 	"os/exec"
 	"path/filepath"
-	"time"
 	"strconv"
+	"time"
 )
 
 const (
@@ -39,11 +39,11 @@ func (c *Camera) Capture() (string, error) {
 
 	_, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	cmd.Wait()
 	return fullPath, nil

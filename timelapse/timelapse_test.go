@@ -7,14 +7,14 @@ import (
 )
 
 func TestSecondsToSleepUntilOffset(t *testing.T) {
-	tl := Timelapse{SecondsBetweenCapture:   60 * 30, OffsetWithinHourSeconds: 15 * 60}
+	tl := Timelapse{SecondsBetweenCapture: 60 * 30, OffsetWithinHourSeconds: 15 * 60}
 	s := tl.SecondsToSleepUntilOffset(time.Now())
 	ensure.True(t, 0 <= s)
 	ensure.True(t, s <= int(tl.SecondsBetweenCapture))
 }
 
 func TestSecondsToSleepUntilOffset2(t *testing.T) {
-	tl := Timelapse{SecondsBetweenCapture:   60 * 30, OffsetWithinHourSeconds: 15 * 60}
+	tl := Timelapse{SecondsBetweenCapture: 60 * 30, OffsetWithinHourSeconds: 15 * 60}
 
 	l := time.Now().Location()
 	hour := 8

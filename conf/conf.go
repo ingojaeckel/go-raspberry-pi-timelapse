@@ -11,6 +11,7 @@ const (
 	HeaderContentTypeJSON    = "application/json"
 	StorageFolder            = "timelapse-pictures"
 	TempFilesFolder          = "/tmp"
+	LogFile                  = "timelapse.log"
 )
 
 // Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)

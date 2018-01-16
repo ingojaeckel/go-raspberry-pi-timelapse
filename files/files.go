@@ -2,11 +2,11 @@ package files
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"io"
 	"io/ioutil"
 	"os"
 	"sort"
-	"archive/zip"
 )
 
 type File struct {

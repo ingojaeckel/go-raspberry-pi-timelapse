@@ -21,8 +21,7 @@ const HtmlTemplate = `
 	<body>
 		<h1>Photos</h1>
 		<ul>
-			<li><a href="/archive/tar">Download .tar archive ({{ .PhotosTotalSize }})<a/></li>
-			<li><a href="/archive/zip">Download .zip archive<a/></li>
+			<li><a href="/archive/zip">Download .zip archive ({{ .PhotosTotalSize }})<a/></li>
 		</ul>
 
 		<h2>Last Picture</h2>

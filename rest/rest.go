@@ -9,6 +9,7 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io/pat"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -54,7 +55,7 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 }
 
 func Capture(w http.ResponseWriter, _ *http.Request) {
-	fmt.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
+	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
 	c := timelapse.NewCamera(conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
 	path, err := c.Capture()
 
@@ -68,48 +69,6 @@ func Capture(w http.ResponseWriter, _ *http.Request) {
 
 	// Remove the temporary file
 	os.Remove(path)
-}
-
-func GetArchive(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles(conf.StorageFolder, true)
-
-	// Convert []File to []string
-	strFiles := make([]string, len(f))
-	for i, file := range f {
-		strFiles[i] = fmt.Sprintf("%s/%s", conf.StorageFolder, file.Name)
-	}
-
-	pr, pw := io.Pipe()
-	go func() {
-		files.TarWithPipes(strFiles, pw)
-		defer pw.Close()
-	}()
-
-	w.Header().Add(conf.HeaderContentType, "application/tar")
-	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.tar")
-
-	// read 1MB from pr and call w.Write()
-	buf := make([]byte, 1024*1024)
-	for {
-		fmt.Println("Reading...")
-		n, err := pr.Read(buf)
-		fmt.Printf("Read %d bytes\n", n)
-		if err == io.EOF {
-			fmt.Println("reached EOF")
-			break
-		}
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Errorf("Error: %s", err.Error())
-			break
-		}
-		if n == 0 {
-			fmt.Println("no bytes left")
-			return
-		}
-		fmt.Printf("Writing %d bytes..\n", n)
-		w.Write(buf[0:n])
-	}
 }
 
 func GetArchiveZip(w http.ResponseWriter, _ *http.Request) {
@@ -133,23 +92,23 @@ func GetArchiveZip(w http.ResponseWriter, _ *http.Request) {
 	// read 1MB from pr and call w.Write()
 	buf := make([]byte, 1024*1024)
 	for {
-		fmt.Println("Reading...")
+		log.Println("Reading...")
 		n, err := pr.Read(buf)
-		fmt.Printf("Read %d bytes\n", n)
+		log.Printf("Read %d bytes\n", n)
 		if err == io.EOF {
-			fmt.Println("reached EOF")
+			log.Println("reached EOF")
 			break
 		}
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Errorf("Error: %s", err.Error())
+			log.Println("Error: %s", err.Error())
 			break
 		}
 		if n == 0 {
-			fmt.Println("no bytes left")
+			log.Println("no bytes left")
 			return
 		}
-		fmt.Printf("Writing %d bytes..\n", n)
+		log.Printf("Writing %d bytes..\n", n)
 		w.Write(buf[0:n])
 	}
 }
