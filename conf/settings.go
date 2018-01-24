@@ -1,20 +1,17 @@
 package conf
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/boltdb/bolt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 )
 
 const (
-	settingsFile                  = "timelapse-settings.db"
-	bucket                        = "settings"
-	settingSecondsBetweenCaptures = "secondsBetweenCaptures"
-	settingOffsetWithinHour       = "offsetWithinHour"
-	settingPhotoResolutionWidth   = "photoResolutionWidth"
-	settingPhotoResolutionHeight  = "photoResolutionHeight"
+	settingsFile = "timelapse-settings.db"
+	bucket       = "settings"
 )
 
 type Settings struct {
@@ -29,54 +26,55 @@ type setting struct {
 	value int
 }
 
-func LoadConfiguration() error {
+func LoadConfiguration() (*Settings, error) {
 
 	if _, err := os.Stat(settingsFile); os.IsNotExist(err) {
 		// create initial settings file
 
 		db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
+		defer db.Close()
+
 		if err != nil {
 			log.Fatalf("Failed to create initial settings file: %s", err.Error())
-			return err
+			return nil, err
 		}
 
-		settings := []setting{
-			{settingSecondsBetweenCaptures, 1800},
-			{settingOffsetWithinHour, 1800},
-			{settingPhotoResolutionWidth, 1800},
-			{settingPhotoResolutionHeight, 1800},
+		s := Settings{
+			SecondsBetweenCaptures: 1800,
+			OffsetWithinHour:       1800,
+			PhotoResolutionWidth:   1800,
+			PhotoResolutionHeight:  1800,
 		}
-		if err := setInts(db, settings); err != nil {
-			log.Fatalf("Failed to initialize settings file with initial settings: %s", err.Error())
-			return err
+
+		marshalled, err := json.Marshal(s)
+		if err != nil {
+			log.Fatalf("Failed to marshal initial config: %s", err.Error())
+			return nil, err
 		}
+		// TODO write as []byte instead
+		if err := set(db, "settings", string(marshalled)); err != nil {
+			log.Fatalf("Failed to write settings: %s", err.Error())
+			return nil, err
+		}
+
+		return &s, nil
 	}
 
 	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
-
-	getInt(db, settingSecondsBetweenCaptures)
-
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
 	defer db.Close()
 
-	return nil
-}
-
-func setInts(db *bolt.DB, settings []setting) error {
-	for _, s := range settings {
-		if err := setInt(db, s.key, s.value); err != nil {
-			return err
-		}
+	val, exists, err := get(db, "settings")
+	if err != nil {
+		log.Fatalf("Error loading settings: %s", err.Error())
+		return nil, err
 	}
-	return nil
-}
+	if !exists {
+		return nil, errors.New("Settings not found")
+	}
 
-func setInt(db *bolt.DB, key string, value int) error {
-	strVal := strconv.Itoa(value)
-	return set(db, key, strVal)
+	var existingSettings Settings
+	err = json.Unmarshal([]byte(val), &existingSettings)
+	return &existingSettings, err
 }
 
 func set(db *bolt.DB, key, value string) error {
@@ -85,18 +83,6 @@ func set(db *bolt.DB, key, value string) error {
 		err := b.Put([]byte(key), []byte(value))
 		return err
 	})
-}
-
-func getInt(db *bolt.DB, key string) (int, bool, error) {
-	v, exists, err := get(db, key)
-
-	if exists && err == nil {
-		intVal, err := strconv.Atoi(v)
-		return intVal, exists, err
-	}
-	// Either the key does not exist, or there was an error. In either case there is nothing to convert to int.
-	// Return -1 to indicate that this is the case..
-	return -1, exists, err
 }
 
 func get(db *bolt.DB, key string) (value string, exists bool, err error) {
