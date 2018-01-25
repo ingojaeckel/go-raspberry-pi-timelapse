@@ -48,20 +48,37 @@ func New(folder string, s *conf.Settings) (*Timelapse, error) {
 }
 
 func (t Timelapse) CapturePeriodically() {
-	go func() {
-		for {
-			t.WaitForCapture()
+	offsetDisabled := t.OffsetWithinHourSeconds == -1
 
-			beforeCapture := time.Now()
-			s, err := t.Camera.Capture()
-			if err != nil {
-				log.Printf("Error during capture: %s\n", err.Error())
+	if offsetDisabled {
+		log.Println("Offset is disabled. Will start taking pictures immediately.")
+		go func() {
+			for {
+				s, err := t.Camera.Capture()
+				if err != nil {
+					log.Printf("Error during capture: %s\n", err.Error())
+				}
+				log.Printf("Photo stored in '%s'. Will sleep for %d seconds.\n", s, t.SecondsBetweenCapture)
+				time.Sleep(time.Duration(t.SecondsBetweenCapture) * time.Second)
 			}
+		}()
+	} else {
+		log.Println("Offset is enabled. Will wait before taking first picture.")
+		go func() {
+			for {
+				t.WaitForCapture()
 
-			timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
-			log.Printf("Photo stored in '%s'. Capturing took %d seconds\n", s, timeToCaptureSeconds)
-		}
-	}()
+				beforeCapture := time.Now()
+				s, err := t.Camera.Capture()
+				if err != nil {
+					log.Printf("Error during capture: %s\n", err.Error())
+				}
+
+				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
+				log.Printf("Photo stored in '%s'. Capturing took %d seconds\n", s, timeToCaptureSeconds)
+			}
+		}()
+	}
 }
 
 func (t Timelapse) WaitForCapture() {
@@ -92,7 +109,7 @@ func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
 	for i := 0; i < int(picturesPerHour); i++ {
 		if i == 0 {
 			if 0 <= secondsIntoCurrentHour && secondsIntoCurrentHour <= t.OffsetWithinHourSeconds {
-				return int(t.OffsetWithinHourSeconds - secondsIntoCurrentHour)
+				return t.OffsetWithinHourSeconds - secondsIntoCurrentHour
 			}
 		}
 
@@ -104,5 +121,5 @@ func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
 		}
 	}
 
-	return int(3600 - secondsIntoCurrentHour + t.OffsetWithinHourSeconds)
+	return 3600 - secondsIntoCurrentHour + t.OffsetWithinHourSeconds
 }

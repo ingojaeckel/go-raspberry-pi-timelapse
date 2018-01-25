@@ -32,12 +32,13 @@ const HtmlTemplate = `
 
 		<h1>Administration</h1>
 		<ul>
-			<li>Configuration:
+			<li>Configuration
 				<table>
 					<tr>
 						<td>Time between capturing (minutes):</td>
 						<td>
 							<select id="frequency">
+									<option>1</option>
 									<option>5</option>
 									<option>10</option>
 									<option>15</option>
@@ -56,6 +57,8 @@ const HtmlTemplate = `
 						<td>Time offset before capturing first picture (minutes):</td>
 						<td>
 							<select id="offset">
+								<option value="-1">immediate</option>
+								<option>0</option>
 								<option>5</option>
 								<option>10</option>
 								<option selected="true">15</option>
@@ -68,11 +71,16 @@ const HtmlTemplate = `
 								<option>50</option>
 								<option>55</option>
 							</select>
+
 						</td>
 					</tr>
 					<tr>
+						<td colspan="2"><em>immediate</em> starts taking pictures right after turning on. This disables waiting for any offset.</td>
+					</tr>
+					<tr>
 						<td colspan="2">
-							<input type="button" id="saveConfigBtn" value="Save Changes" />
+							<input type="button" id="saveConfigBtn" value="Save" />
+							<span id="changesSaved" style="display:none;">Changes applied. Restart at your convenience.</span>
 						</td>
 					</tr>
 				</table>
@@ -10448,16 +10456,27 @@ return jQuery;
 
 
 $(function() {
-	// Retrieve current configuration
+	console.log("Retrieving current configuration..");
 	$.get("/configuration", function(data, textStatus) {
-		console.log("current config:");
+		console.log("received:");
 		console.log(data);
+
+		var config = JSON.parse(data);
+		var currentTimeBetween = config.SecondsBetweenCaptures / 60;
+		var currentInitialOffset = config.OffsetWithinHour == -1 ? -1 : config.OffsetWithinHour / 60
+
+		$("#frequency").val(currentTimeBetween);
+		$("#offset").val(currentInitialOffset);
 	});
 
-	// Handle configuration updates
 	$("#saveConfigBtn").click(function() {
-		var timeBetween = 60 * parseInt($("#frequency").val());
-		var initialOffset = 60 * parseInt($("#offset").val());
+		console.log("Updating current configuration..");
+
+		var timeBetweenRaw = parseInt($("#frequency").val());
+		var initialOffsetRaw = parseInt($("#offset").val());
+
+		var timeBetween = 60 * timeBetweenRaw;
+		var initialOffset = initialOffsetRaw == -1 ? -1 : 60 * initialOffsetRaw;
 
 		$.ajax({
 		  type: "POST",
@@ -10466,6 +10485,7 @@ $(function() {
 		  success: function(data, textStatus) {
 			console.log("received:");
 		 	console.log(data);
+		 	$("#changesSaved").show();
 		  }
 		});
 	});
