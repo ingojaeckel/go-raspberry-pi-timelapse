@@ -9,8 +9,8 @@ import (
 	"goji.io/pat"
 	"log"
 	"net/http"
-//	"os"
-//	"time"
+	"os"
+	"time"
 )
 
 func main() {
@@ -53,15 +53,17 @@ func main() {
 		t.CapturePeriodically()
 	}
 
-	http.ListenAndServe(conf.ListenAddress, mux)
+	if err := http.ListenAndServe(conf.ListenAddress, mux); err != nil {
+		fmt.Errorf("Failed start: %s\n", err.Error())
+	}
 }
 
 func initLogging() error {
-	/*f, err := os.OpenFile(conf.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(conf.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
 	log.SetOutput(f)
-	log.Printf("Started at %s\n", time.Now())*/
+	log.Printf("Started at %s\n", time.Now())
 	return nil
 }
