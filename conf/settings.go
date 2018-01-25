@@ -31,41 +31,8 @@ type setting struct {
 }
 
 func LoadConfiguration() (*Settings, error) {
-	if _, err := os.Stat(settingsFile); os.IsNotExist(err) {
-		log.Printf("Creating initial settings file..")
-
-		db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
-		defer db.Close()
-
-		if err != nil {
-			log.Fatalf("Failed to create initial settings file: %s", err.Error())
-			return nil, err
-		}
-
-		s := Settings{
-			DebugEnabled:           false,
-			SecondsBetweenCaptures: 1800, // 30 min
-			OffsetWithinHour:       900,  // 15 min
-			// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
-			PhotoResolutionWidth:    2186,
-			PhotoResolutionHeight:   1642,
-			PreviewResolutionWidth:  640,
-			PreviewResolutionHeight: 480,
-		}
-
-		marshalled, err := json.Marshal(s)
-		if err != nil {
-			log.Fatalf("Failed to marshal initial config: %s", err.Error())
-			return nil, err
-		}
-		// TODO write as []byte instead
-		val := string(marshalled)
-		if err := set(db, settingsKey, val); err != nil {
-			log.Fatalf("Failed to write settings: %s", err.Error())
-			return nil, err
-		}
-
-		return &s, nil
+	if areSettingsMissing() {
+		return initConfiguration()
 	}
 	log.Println("Settings file exists.")
 
@@ -84,6 +51,47 @@ func LoadConfiguration() (*Settings, error) {
 	var existingSettings Settings
 	err = json.Unmarshal([]byte(val), &existingSettings)
 	return &existingSettings, err
+}
+
+func initConfiguration() (*Settings, error) {
+	log.Printf("Creating initial settings file..")
+	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
+
+	if err != nil {
+		log.Fatalf("Failed to create initial settings file: %s", err.Error())
+		return nil, err
+	}
+
+	s := Settings{
+		DebugEnabled:           false,
+		SecondsBetweenCaptures: 1800, // 30 min
+		OffsetWithinHour:       900,  // 15 min
+		// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
+		PhotoResolutionWidth:    2186,
+		PhotoResolutionHeight:   1642,
+		PreviewResolutionWidth:  640,
+		PreviewResolutionHeight: 480,
+	}
+
+	marshalled, err := json.Marshal(s)
+	if err != nil {
+		log.Fatalf("Failed to marshal initial config: %s", err.Error())
+		return nil, err
+	}
+	// TODO write as []byte instead
+	val := string(marshalled)
+	if err := set(db, settingsKey, val); err != nil {
+		log.Fatalf("Failed to write settings: %s", err.Error())
+		return nil, err
+	}
+
+	return &s, nil
+}
+
+func areSettingsMissing() bool {
+	_, err := os.Stat(settingsFile)
+	return os.IsNotExist(err)
 }
 
 func set(db *bolt.DB, key, value string) error {
