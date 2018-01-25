@@ -15,6 +15,17 @@ const (
 	settingsKey  = "s"
 )
 
+var initialConfiguration = Settings{
+	DebugEnabled:           false,
+	SecondsBetweenCaptures: 1800, // 30 min
+	OffsetWithinHour:       900,  // 15 min
+	// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
+	PhotoResolutionWidth:    2186,
+	PhotoResolutionHeight:   1642,
+	PreviewResolutionWidth:  640,
+	PreviewResolutionHeight: 480,
+}
+
 type Settings struct {
 	SecondsBetweenCaptures  int
 	OffsetWithinHour        int
@@ -32,7 +43,8 @@ type setting struct {
 
 func LoadConfiguration() (*Settings, error) {
 	if areSettingsMissing() {
-		return initConfiguration()
+		log.Printf("Creating initial settings file..")
+		return writeConfiguration(initialConfiguration)
 	}
 	log.Println("Settings file exists.")
 
@@ -53,30 +65,33 @@ func LoadConfiguration() (*Settings, error) {
 	return &existingSettings, err
 }
 
-func initConfiguration() (*Settings, error) {
-	log.Printf("Creating initial settings file..")
+func UpdatePartialConfiguration(initialOffset int, timeBetween int) (*Settings, error) {
+	s, err := LoadConfiguration()
+	log.Printf("Old configuration: %v\n", s)
+
+	if err != nil {
+		return nil, err
+	}
+	s.OffsetWithinHour = initialOffset
+	s.SecondsBetweenCaptures = timeBetween
+
+	log.Printf("New configuration: %v\n", s)
+	return writeConfiguration(*s)
+}
+
+func writeConfiguration(s Settings) (*Settings, error) {
+	log.Printf("Write configuration: %v\n", s)
 	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	defer db.Close()
 
 	if err != nil {
-		log.Fatalf("Failed to create initial settings file: %s", err.Error())
+		log.Fatalf("Failed to create settings file: %s", err.Error())
 		return nil, err
-	}
-
-	s := Settings{
-		DebugEnabled:           false,
-		SecondsBetweenCaptures: 1800, // 30 min
-		OffsetWithinHour:       900,  // 15 min
-		// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
-		PhotoResolutionWidth:    2186,
-		PhotoResolutionHeight:   1642,
-		PreviewResolutionWidth:  640,
-		PreviewResolutionHeight: 480,
 	}
 
 	marshalled, err := json.Marshal(s)
 	if err != nil {
-		log.Fatalf("Failed to marshal initial config: %s", err.Error())
+		log.Fatalf("Failed to marshal config: %s", err.Error())
 		return nil, err
 	}
 	// TODO write as []byte instead
@@ -128,6 +143,7 @@ func get(db *bolt.DB, key string) (value string, exists bool, err error) {
 		}
 		value = string(v)
 		exists = true
+		log.Printf("Found value '%s': '%s' -> '%s'\n", bucket, key, value)
 		return nil
 	})
 	return value, exists, err

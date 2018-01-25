@@ -7,3 +7,8 @@ import (
 type ListFilesResponse struct {
 	Files []files.File `json:"files"`
 }
+
+type UpdateConfigurationRequest struct {
+	TimeBetween   int `json:"timeBetween"`
+	InitialOffset int `json:"initialOffset"`
+}

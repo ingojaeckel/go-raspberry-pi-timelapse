@@ -9,8 +9,8 @@ import (
 	"goji.io/pat"
 	"log"
 	"net/http"
-	"os"
-	"time"
+//	"os"
+//	"time"
 )
 
 func main() {
@@ -57,11 +57,11 @@ func main() {
 }
 
 func initLogging() error {
-	f, err := os.OpenFile(conf.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	/*f, err := os.OpenFile(conf.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
 	log.SetOutput(f)
-	log.Printf("Started at %s\n", time.Now())
+	log.Printf("Started at %s\n", time.Now())*/
 	return nil
 }

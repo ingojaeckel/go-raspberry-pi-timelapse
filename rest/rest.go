@@ -22,15 +22,21 @@ func GetVersion(w http.ResponseWriter, _ *http.Request) {
 
 func GetConfiguration(w http.ResponseWriter, _ *http.Request) {
 	c, _ := conf.LoadConfiguration()
-	configStr, _ := json.Marshal(c)
-
-	w.Header().Add(conf.HeaderContentType, "application/json")
-	fmt.Fprintf(w, string(configStr))
+	writeJSON(w, 200, c)
 }
 
-func UpdateConfiguration(w http.ResponseWriter, _ *http.Request) {
-
-	fmt.Fprintf(w, "Update")
+func UpdateConfiguration(w http.ResponseWriter, r *http.Request) {
+	var request UpdateConfigurationRequest
+	if err := parseJSON(r.Body, &request); err != nil {
+		writeJSON(w, 400, err.Error())
+		return
+	}
+	updatedSettings, err := conf.UpdatePartialConfiguration(request.InitialOffset, request.TimeBetween)
+	if err != nil {
+		writeJSON(w, 400, err.Error())
+		return
+	}
+	writeJSON(w, 200, updatedSettings)
 }
 
 func GetFile(w http.ResponseWriter, r *http.Request) {

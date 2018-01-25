@@ -10456,13 +10456,13 @@ $(function() {
 
 	// Handle configuration updates
 	$("#saveConfigBtn").click(function() {
-		var timeBetween = $("#frequency").val();
-		var initialOffset = $("#offset").val();
+		var timeBetween = 60 * parseInt($("#frequency").val());
+		var initialOffset = 60 * parseInt($("#offset").val());
 
 		$.ajax({
 		  type: "POST",
 		  url: "/configuration",
-		  data: { "timeBetween": initialOffset, "initialOffset": initialOffset },
+		  data: JSON.stringify({timeBetween:timeBetween,initialOffset:initialOffset}),
 		  success: function(data, textStatus) {
 			console.log("received:");
 		 	console.log(data);
