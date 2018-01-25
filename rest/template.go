@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/static"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -11,48 +12,9 @@ import (
 
 // TODO process should be auto restarted (e.g. by supervisord)
 // TODO add monitoring for main memory
-const HtmlTemplate = `
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="UTF-8">
-		<title>Raspberry Pi Timelapse</title>
-	</head>
-	<body>
-		<h1>Photos</h1>
-		<ul>
-			<li><a href="/archive/zip">Download .zip archive ({{ .PhotosTotalSize }})<a/></li>
-		</ul>
-
-		<h2>Last Picture</h2>
-		<a href="/file/last"><img src="/file/last" alt="last picture" width="300px" /></a>
-
-		{{ .Screenshots }}
-
-		<h1>Monitoring</h1>
-		<table>
-		<tr><td>Local Time</td><td>{{ .Time }}</td></tr>
-		<tr><td>Free Disk Space</td><td>{{ .FreeDiskSpace }}</td></tr>
-		<tr><td>Uptime</td><td>{{ .Uptime }}</td></tr>
-		<tr><td>CPU Temperature</td><td>{{ .CpuTemperature }}</td></tr>
-		<tr><td>GPU Temperature</td><td>{{ .GpuTemperature }}</td></tr>
-		</table>
-
-		<h1>Preview</h1>
-		<p><img src="/capture" alt="Preview" /></p>
-
-		<h1>Administration</h1>
-		<ul>
-			<li><a href="/admin/clear">Delete existing photos</a></li>
-			<li><a href="/admin/shutdown">Shutdown</a></li>
-			<li><a href="/admin/restart">Restart</a></li>
-			<li>More information: <a href="https://github.com/ingojaeckel/go-raspberry-pi-timelapse">github.com/ingojaeckel/go-raspberry-pi-timelapse</a></li>
-		</ul>
-	</body>
-</html>`
 
 func GetIndex(w http.ResponseWriter, _ *http.Request) {
-	t, _ := template.New("index").Parse(HtmlTemplate)
+	t, _ := template.New("index").Parse(static.HtmlTemplate)
 	p := Page{
 		Time:            getCommandHtml("/bin/date"),
 		GpuTemperature:  getCommandHtml("/opt/vc/bin/vcgencmd", "measure_temp"),

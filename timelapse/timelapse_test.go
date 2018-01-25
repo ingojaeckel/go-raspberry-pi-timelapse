@@ -58,8 +58,8 @@ func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTim
 	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(theTime), expectedSleepTime)
 }
 
-func createTimelapseForTesting(offsetWithinHourSeconds int64) Timelapse {
+func createTimelapseForTesting(offsetWithinHourSeconds int) Timelapse {
 	res := Resolution{800, 600}
 	c := NewCamera("timelapse-pictures", res.Width, res.Height)
-	return Timelapse{*c, "timelapse-pictures", 1800, offsetWithinHourSeconds, res}
+	return Timelapse{*c, "timelapse-pictures", 1800, offsetWithinHourSeconds, res, true}
 }

@@ -12,13 +12,17 @@ import (
 const (
 	settingsFile = "timelapse-settings.db"
 	bucket       = "settings"
+	settingsKey  = "s"
 )
 
 type Settings struct {
-	SecondsBetweenCaptures int
-	OffsetWithinHour       int
-	PhotoResolutionWidth   int
-	PhotoResolutionHeight  int
+	SecondsBetweenCaptures  int
+	OffsetWithinHour        int
+	PhotoResolutionWidth    int
+	PhotoResolutionHeight   int
+	PreviewResolutionWidth  int
+	PreviewResolutionHeight int
+	DebugEnabled            bool
 }
 
 type setting struct {
@@ -27,9 +31,8 @@ type setting struct {
 }
 
 func LoadConfiguration() (*Settings, error) {
-
 	if _, err := os.Stat(settingsFile); os.IsNotExist(err) {
-		// create initial settings file
+		log.Printf("Creating initial settings file..")
 
 		db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
 		defer db.Close()
@@ -40,10 +43,14 @@ func LoadConfiguration() (*Settings, error) {
 		}
 
 		s := Settings{
-			SecondsBetweenCaptures: 1800,
-			OffsetWithinHour:       1800,
-			PhotoResolutionWidth:   1800,
-			PhotoResolutionHeight:  1800,
+			DebugEnabled:           false,
+			SecondsBetweenCaptures: 1800, // 30 min
+			OffsetWithinHour:       900,  // 15 min
+			// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
+			PhotoResolutionWidth:    2186,
+			PhotoResolutionHeight:   1642,
+			PreviewResolutionWidth:  640,
+			PreviewResolutionHeight: 480,
 		}
 
 		marshalled, err := json.Marshal(s)
@@ -52,18 +59,20 @@ func LoadConfiguration() (*Settings, error) {
 			return nil, err
 		}
 		// TODO write as []byte instead
-		if err := set(db, "settings", string(marshalled)); err != nil {
+		val := string(marshalled)
+		if err := set(db, settingsKey, val); err != nil {
 			log.Fatalf("Failed to write settings: %s", err.Error())
 			return nil, err
 		}
 
 		return &s, nil
 	}
+	log.Println("Settings file exists.")
 
 	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	defer db.Close()
 
-	val, exists, err := get(db, "settings")
+	val, exists, err := get(db, settingsKey)
 	if err != nil {
 		log.Fatalf("Error loading settings: %s", err.Error())
 		return nil, err
@@ -78,16 +87,31 @@ func LoadConfiguration() (*Settings, error) {
 }
 
 func set(db *bolt.DB, key, value string) error {
+	log.Printf("setting '%s': '%s' -> '%s'\n", bucket, key, value)
 	return db.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(bucket)); err != nil {
+			return err
+		}
+
 		b := tx.Bucket([]byte(bucket))
-		err := b.Put([]byte(key), []byte(value))
-		return err
+		if b == nil {
+			log.Fatalf("Bucket %s does not exist", bucket)
+			return errors.New("Missing bucket")
+		}
+		return b.Put([]byte(key), []byte(value))
 	})
 }
 
 func get(db *bolt.DB, key string) (value string, exists bool, err error) {
+	log.Printf("getting '%s': '%s'\n", bucket, key)
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
+
+		if b == nil {
+			log.Fatalf("Bucket %s does not exist", bucket)
+			return errors.New("Missing bucket")
+		}
+
 		v := b.Get([]byte(key))
 		if v == nil {
 			value = ""

@@ -10,47 +10,41 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
 func main() {
 	if err := initLogging(); err != nil {
-		fmt.Errorf("Failed to initialize logging. Unable to start.")
+		fmt.Errorf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
+		return
+	}
+	s, err := conf.LoadConfiguration()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
 
-	secondsBetweenCaptures := int64(60)
-	offsetWithinHour := int64(0)
-	width := int64(conf.PhotoResolution.Width)
-	height := int64(conf.PhotoResolution.Height)
-
-	if len(os.Args) >= 3 {
-		secondsBetweenCaptures, _ = strconv.ParseInt(os.Args[1], 10, 32)
-		offsetWithinHour, _ = strconv.ParseInt(os.Args[2], 10, 32)
-	}
-	if len(os.Args) == 5 {
-		width, _ = strconv.ParseInt(os.Args[3], 10, 32)
-		height, _ = strconv.ParseInt(os.Args[4], 10, 32)
-	}
-
-	log.Printf("Seconds between captures: %d\n", secondsBetweenCaptures)
-	log.Printf("Offset within hour:       %d\n", offsetWithinHour)
-	log.Printf("Resolution:               %d x %d\n", width, height)
+	log.Printf("Seconds between captures: %d\n", s.SecondsBetweenCaptures)
+	log.Printf("Offset within hour:       %d\n", s.OffsetWithinHour)
+	log.Printf("Resolution:               %d x %d\n", s.PhotoResolutionWidth, s.PhotoResolutionHeight)
 	log.Printf("Listening on port:        %s...\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
-	mux.HandleFunc(pat.Get("/capture"), rest.Capture)
+	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
+		rest.Capture(w, s)
+	})
 	mux.HandleFunc(pat.Get("/index.html"), rest.GetIndex)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
 	mux.HandleFunc(pat.Get("/archive/zip"), rest.GetArchiveZip)
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
+	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
+	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
 	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
 
-	t, err := timelapse.New("timelapse-pictures", secondsBetweenCaptures, offsetWithinHour, timelapse.Resolution{width, height})
+	t, err := timelapse.New("timelapse-pictures", s)
 	if err != nil {
 		log.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless

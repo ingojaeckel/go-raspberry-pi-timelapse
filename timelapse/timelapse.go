@@ -2,6 +2,7 @@ package timelapse
 
 import (
 	"errors"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"log"
 	"os"
 	"time"
@@ -10,17 +11,18 @@ import (
 type Timelapse struct {
 	Camera                  Camera
 	Folder                  string
-	SecondsBetweenCapture   int64
-	OffsetWithinHourSeconds int64
+	SecondsBetweenCapture   int
+	OffsetWithinHourSeconds int
 	Res                     Resolution
+	DebugEnabled            bool
 }
 
 type Resolution struct {
-	Width  int64
-	Height int64
+	Width  int
+	Height int
 }
 
-func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int64, res Resolution) (*Timelapse, error) {
+func New(folder string, s *conf.Settings) (*Timelapse, error) {
 	_, err := os.Stat(folder)
 	createFolder := err != nil && os.IsNotExist(err)
 
@@ -30,7 +32,7 @@ func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int
 		}
 	}
 	// Assume folder exists
-	c := NewCamera(folder, res.Width, res.Height)
+	c := NewCamera(folder, s.PhotoResolutionWidth, s.PhotoResolutionHeight)
 	if c == nil {
 		return nil, errors.New("Failed to instantiate camera")
 	}
@@ -38,9 +40,10 @@ func New(folder string, secondsBetweenCapture int64, offsetWithinHourSeconds int
 	return &Timelapse{
 		Camera:                  *c,
 		Folder:                  folder,
-		SecondsBetweenCapture:   secondsBetweenCapture,
-		OffsetWithinHourSeconds: offsetWithinHourSeconds,
-		Res: res,
+		SecondsBetweenCapture:   s.SecondsBetweenCaptures,
+		OffsetWithinHourSeconds: s.OffsetWithinHour,
+		Res:          Resolution{Width: s.PhotoResolutionWidth, Height: s.PhotoResolutionHeight},
+		DebugEnabled: s.DebugEnabled,
 	}, nil
 }
 
@@ -74,8 +77,9 @@ func (t Timelapse) WaitForCapture() {
 			// Game time!
 			break
 		}
-
-		log.Printf("Sleeping for 1 second. Seconds left: %d. Time: %s.\n", secondsUntilFirstCapture, time.Now())
+		if t.DebugEnabled {
+			log.Printf("Sleeping for 1 second. Seconds left: %d. Time: %s.\n", secondsUntilFirstCapture, time.Now())
+		}
 		time.Sleep(time.Duration(1 * time.Second))
 	}
 }
@@ -83,7 +87,7 @@ func (t Timelapse) WaitForCapture() {
 func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
 	picturesPerHour := 3600 / t.SecondsBetweenCapture
 
-	secondsIntoCurrentHour := int64(currentTime.Minute()*60 + currentTime.Second())
+	secondsIntoCurrentHour := currentTime.Minute()*60 + currentTime.Second()
 
 	for i := 0; i < int(picturesPerHour); i++ {
 		if i == 0 {
@@ -92,11 +96,11 @@ func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
 			}
 		}
 
-		lowerBoundary := t.OffsetWithinHourSeconds + int64(i-1)*t.SecondsBetweenCapture
-		upperBoundary := int64(t.OffsetWithinHourSeconds + int64(i)*t.SecondsBetweenCapture)
+		lowerBoundary := t.OffsetWithinHourSeconds + (i-1)*t.SecondsBetweenCapture
+		upperBoundary := t.OffsetWithinHourSeconds + (i)*t.SecondsBetweenCapture
 
 		if lowerBoundary <= secondsIntoCurrentHour && secondsIntoCurrentHour <= upperBoundary {
-			return int(upperBoundary - secondsIntoCurrentHour)
+			return upperBoundary - secondsIntoCurrentHour
 		}
 	}
 

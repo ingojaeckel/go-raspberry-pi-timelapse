@@ -20,6 +20,19 @@ func GetVersion(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprintf(w, "Hello from %s on %s [version:%d]", runtime.GOARCH, runtime.GOOS, conf.Version)
 }
 
+func GetConfiguration(w http.ResponseWriter, _ *http.Request) {
+	c, _ := conf.LoadConfiguration()
+	configStr, _ := json.Marshal(c)
+
+	w.Header().Add(conf.HeaderContentType, "application/json")
+	fmt.Fprintf(w, string(configStr))
+}
+
+func UpdateConfiguration(w http.ResponseWriter, _ *http.Request) {
+
+	fmt.Fprintf(w, "Update")
+}
+
 func GetFile(w http.ResponseWriter, r *http.Request) {
 	name := pat.Param(r, "fileName")
 
@@ -54,9 +67,9 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 	w.Write(b)
 }
 
-func Capture(w http.ResponseWriter, _ *http.Request) {
-	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
-	c := timelapse.NewCamera(conf.TempFilesFolder, conf.PreviewResolution.Width, conf.PreviewResolution.Height)
+func Capture(w http.ResponseWriter, s *conf.Settings) {
+	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight)
+	c := timelapse.NewCamera(conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight)
 	path, err := c.Capture()
 
 	if err != nil {

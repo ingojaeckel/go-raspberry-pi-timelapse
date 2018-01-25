@@ -21,11 +21,11 @@ const (
 
 type Camera struct {
 	savePath string
-	width    int64
-	height   int64
+	width    int
+	height   int
 }
 
-func NewCamera(path string, width int64, height int64) *Camera {
+func NewCamera(path string, width int, height int) *Camera {
 	if path == "" {
 		return nil
 	}
@@ -54,12 +54,12 @@ func getAbsoluteFilepath(savePath string) string {
 	return filepath.Join(savePath, fileName)
 }
 
-func getRaspistillArgs(width int64, height int64, fullPath string) []string {
+func getRaspistillArgs(width int, height int, fullPath string) []string {
 	args := make([]string, 0)
 	args = append(args, WIDTH)
-	args = append(args, strconv.Itoa(int(width)))
+	args = append(args, strconv.Itoa(width))
 	args = append(args, HEIGHT)
-	args = append(args, strconv.Itoa(int(height)))
+	args = append(args, strconv.Itoa(height))
 	args = append(args, OUTFLAG)
 	args = append(args, fullPath)
 	return args
