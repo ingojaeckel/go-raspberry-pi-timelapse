@@ -120,7 +120,7 @@ func GetArchiveZip(w http.ResponseWriter, _ *http.Request) {
 		}
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Println("Error: %s", err.Error())
+			log.Println("Error: ", err.Error())
 			break
 		}
 		if n == 0 {

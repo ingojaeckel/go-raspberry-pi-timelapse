@@ -42,8 +42,8 @@ func New(folder string, s *conf.Settings) (*Timelapse, error) {
 		Folder:                  folder,
 		SecondsBetweenCapture:   s.SecondsBetweenCaptures,
 		OffsetWithinHourSeconds: s.OffsetWithinHour,
-		Res:          Resolution{Width: s.PhotoResolutionWidth, Height: s.PhotoResolutionHeight},
-		DebugEnabled: s.DebugEnabled,
+		Res:                     Resolution{Width: s.PhotoResolutionWidth, Height: s.PhotoResolutionHeight},
+		DebugEnabled:            s.DebugEnabled,
 	}, nil
 }
 

@@ -15,6 +15,9 @@ const (
 	settingsKey  = "s"
 )
 
+var missingBucketError = errors.New("Missing bucket")
+var settingsNotFound = errors.New("Settings not found")
+
 var initialConfiguration = Settings{
 	DebugEnabled:           false,
 	SecondsBetweenCaptures: 1800, // 30 min
@@ -42,8 +45,8 @@ type setting struct {
 }
 
 func LoadConfiguration() (*Settings, error) {
-	if areSettingsMissing() {
-		log.Printf("Creating initial settings file..")
+	if areSettingsMissing(settingsFile) {
+		log.Println("Creating initial settings file..")
 		return writeConfiguration(initialConfiguration)
 	}
 	log.Println("Settings file exists.")
@@ -53,11 +56,11 @@ func LoadConfiguration() (*Settings, error) {
 
 	val, exists, err := get(db, settingsKey)
 	if err != nil {
-		log.Fatalf("Error loading settings: %s", err.Error())
+		log.Fatal("Error loading settings: ", err.Error())
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.New("Settings not found")
+		return nil, settingsNotFound
 	}
 
 	var existingSettings Settings
@@ -94,34 +97,29 @@ func writeConfiguration(s Settings) (*Settings, error) {
 		log.Fatalf("Failed to marshal config: %s", err.Error())
 		return nil, err
 	}
-	// TODO write as []byte instead
-	val := string(marshalled)
-	if err := set(db, settingsKey, val); err != nil {
-		log.Fatalf("Failed to write settings: %s", err.Error())
+	if err := set(db, settingsKey, marshalled); err != nil {
+		log.Fatal("Failed to write settings: ", err.Error())
 		return nil, err
 	}
-
 	return &s, nil
 }
 
-func areSettingsMissing() bool {
-	_, err := os.Stat(settingsFile)
+func areSettingsMissing(path string) bool {
+	_, err := os.Stat(path)
 	return os.IsNotExist(err)
 }
 
-func set(db *bolt.DB, key, value string) error {
-	log.Printf("setting '%s': '%s' -> '%s'\n", bucket, key, value)
+func set(db *bolt.DB, key string, value []byte) error {
+	log.Printf("setting '%s': '%s' -> '%v'\n", bucket, key, value)
 	return db.Update(func(tx *bolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists([]byte(bucket)); err != nil {
 			return err
 		}
-
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			log.Fatalf("Bucket %s does not exist", bucket)
-			return errors.New("Missing bucket")
+			return missingBucketError
 		}
-		return b.Put([]byte(key), []byte(value))
+		return b.Put([]byte(key), value)
 	})
 }
 
@@ -131,8 +129,7 @@ func get(db *bolt.DB, key string) (value string, exists bool, err error) {
 		b := tx.Bucket([]byte(bucket))
 
 		if b == nil {
-			log.Fatalf("Bucket %s does not exist", bucket)
-			return errors.New("Missing bucket")
+			return missingBucketError
 		}
 
 		v := b.Get([]byte(key))
