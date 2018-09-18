@@ -15,8 +15,8 @@ const (
 	settingsKey  = "s"
 )
 
-var missingBucketError = errors.New("Missing bucket")
-var settingsNotFound = errors.New("Settings not found")
+var missingBucketError = errors.New("missing bucket")
+var settingsNotFound = errors.New("settings not found")
 
 var initialConfiguration = Settings{
 	DebugEnabled:           false,
@@ -27,6 +27,8 @@ var initialConfiguration = Settings{
 	PhotoResolutionHeight:   1642,
 	PreviewResolutionWidth:  640,
 	PreviewResolutionHeight: 480,
+	RotateBy:                0,
+	ResolutionSetting:       0,
 }
 
 type Settings struct {
@@ -36,18 +38,15 @@ type Settings struct {
 	PhotoResolutionHeight   int
 	PreviewResolutionWidth  int
 	PreviewResolutionHeight int
+	RotateBy                int
+	ResolutionSetting       int
 	DebugEnabled            bool
-}
-
-type setting struct {
-	key   string
-	value int
 }
 
 func LoadConfiguration() (*Settings, error) {
 	if areSettingsMissing(settingsFile) {
 		log.Println("Creating initial settings file..")
-		return writeConfiguration(initialConfiguration)
+		return WriteConfiguration(initialConfiguration)
 	}
 	log.Println("Settings file exists.")
 
@@ -68,21 +67,7 @@ func LoadConfiguration() (*Settings, error) {
 	return &existingSettings, err
 }
 
-func UpdatePartialConfiguration(initialOffset int, timeBetween int) (*Settings, error) {
-	s, err := LoadConfiguration()
-	log.Printf("Old configuration: %v\n", s)
-
-	if err != nil {
-		return nil, err
-	}
-	s.OffsetWithinHour = initialOffset
-	s.SecondsBetweenCaptures = timeBetween
-
-	log.Printf("New configuration: %v\n", s)
-	return writeConfiguration(*s)
-}
-
-func writeConfiguration(s Settings) (*Settings, error) {
+func WriteConfiguration(s Settings) (*Settings, error) {
 	log.Printf("Write configuration: %v\n", s)
 	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	defer db.Close()

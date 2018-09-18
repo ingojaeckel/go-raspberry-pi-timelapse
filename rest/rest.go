@@ -31,7 +31,7 @@ func UpdateConfiguration(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, err.Error())
 		return
 	}
-	updatedSettings, err := conf.UpdatePartialConfiguration(request.InitialOffset, request.TimeBetween)
+	updatedSettings, err := UpdatePartialConfiguration(request)
 	if err != nil {
 		writeJSON(w, 400, err.Error())
 		return
@@ -156,4 +156,20 @@ func getBasename(path string) string {
 		return path
 	}
 	return path[i+1:]
+}
+
+func UpdatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
+	s, err := conf.LoadConfiguration()
+	log.Printf("Old configuration: %v\n", s)
+
+	if err != nil {
+		return nil, err
+	}
+	s.OffsetWithinHour = updateRequest.InitialOffset
+	s.SecondsBetweenCaptures = updateRequest.TimeBetween
+	s.ResolutionSetting = updateRequest.Resolution
+	s.RotateBy = updateRequest.RotateBy
+
+	log.Printf("New configuration: %v\n", s)
+	return conf.WriteConfiguration(*s)
 }

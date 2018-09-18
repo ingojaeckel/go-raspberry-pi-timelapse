@@ -14,7 +14,7 @@ import (
 // TODO add monitoring for main memory
 
 func GetIndex(w http.ResponseWriter, _ *http.Request) {
-	t, _ := template.New("index").Parse(static.HtmlTemplate)
+	t, _ := template.New("index").Parse(static.Html)
 	p := Page{
 		Time:            getCommandHtml("/bin/date"),
 		GpuTemperature:  getCommandHtml("/opt/vc/bin/vcgencmd", "measure_temp"),
@@ -23,6 +23,9 @@ func GetIndex(w http.ResponseWriter, _ *http.Request) {
 		FreeDiskSpace:   getCommandHtml("/bin/df", "-h"),
 		Screenshots:     getScreenshotsHtml("timelapse-pictures"), // TODO pass in the folder name via the Timelapse type
 		PhotosTotalSize: getTotalSizeHtml("timelapse-pictures"),
+		// Static Dependencies
+		CustomJS:     template.JS(static.CustomJS),
+		JQuerySource: template.JS(static.Jquery),
 	}
 
 	t.Execute(w, p)
@@ -70,11 +73,12 @@ func getCommandHtml(cmd string, args ...string) template.HTML {
 }
 
 type Page struct {
-	Time            template.HTML
-	FreeDiskSpace   template.HTML
-	CpuTemperature  template.HTML
-	GpuTemperature  template.HTML
-	Uptime          template.HTML
-	Screenshots     template.HTML
-	PhotosTotalSize template.HTML
+	Time                   template.HTML
+	FreeDiskSpace          template.HTML
+	CpuTemperature         template.HTML
+	GpuTemperature         template.HTML
+	Uptime                 template.HTML
+	Screenshots            template.HTML
+	PhotosTotalSize        template.HTML
+	JQuerySource, CustomJS template.JS
 }

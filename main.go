@@ -15,7 +15,7 @@ import (
 
 func main() {
 	if err := initLogging(); err != nil {
-		fmt.Errorf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
+		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
 	}
 	s, err := conf.LoadConfiguration()
@@ -59,11 +59,13 @@ func main() {
 }
 
 func initLogging() error {
-	f, err := os.OpenFile(conf.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		return err
+	if conf.LogToFile {
+		f, err := os.OpenFile(conf.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+		log.SetOutput(f)
 	}
-	log.SetOutput(f)
 	log.Printf("Started at %s\n", time.Now())
 	return nil
 }

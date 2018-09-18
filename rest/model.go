@@ -11,4 +11,6 @@ type ListFilesResponse struct {
 type UpdateConfigurationRequest struct {
 	TimeBetween   int `json:"timeBetween"`
 	InitialOffset int `json:"initialOffset"`
+	Resolution    int `json:"resolution"`
+	RotateBy      int `json:"rotateBy"`
 }
