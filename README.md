@@ -6,7 +6,7 @@ This repository contains documentation and source code to help running a [Raspbe
 
 ## How does it work?
 
-![The build](https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/master/docs/go-raspberry-pi-timelapse.png "How does it work?")
+![The build](https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/master/docs/go-raspberry-pi-timelapse.jpg "How does it work?")
 
 ## Parts List
 
