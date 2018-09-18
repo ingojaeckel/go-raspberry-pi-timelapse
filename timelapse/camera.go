@@ -51,20 +51,17 @@ func (c *Camera) Capture() (string, error) {
 }
 
 func (c *Camera) getRaspistillArgs(fullPath string) []string {
-	args := make([]string, 0)
-	args = append(args, "-w")
-	args = append(args, strconv.Itoa(c.width))
-	args = append(args, "-h")
-	args = append(args, strconv.Itoa(c.height))
+	args := []string{
+		"-w", strconv.Itoa(c.width),
+		"-h", strconv.Itoa(c.height),
+	}
 	if c.flipVertically {
 		args = append(args, "-vf")
 	}
 	if c.flipHorizontally {
 		args = append(args, "-hf")
 	}
-	args = append(args, "-o")
-	args = append(args, fullPath)
-	return args
+	return append(args, "-o", fullPath)
 }
 
 func (c *Camera) getAbsoluteFilepath() string {
