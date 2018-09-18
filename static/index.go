@@ -71,9 +71,9 @@ const Html = `
 						<td>Resolution:</td>
 						<td>
 							<select id="resolution">
-								<option value="0" selected="true">3280x2464 (8 MP)</option>
-								<option value="1">2186x1642 (3 MP)</option>
-								<option value="2">1640x1232 (2 MP)</option>
+								<option value="0" selected="true">3280x2464</option>
+								<option value="1">2186x1642</option>
+								<option value="2">1640x1232</option>
 							</select>
 						</td>
 					</tr>

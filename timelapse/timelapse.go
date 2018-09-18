@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var failedToInitCamera = errors.New("failed to instantiate camera")
+
 type Timelapse struct {
 	Camera                  Camera
 	Folder                  string
@@ -34,7 +36,7 @@ func New(folder string, s *conf.Settings) (*Timelapse, error) {
 	// Assume folder exists
 	c := NewCamera(folder, s.PhotoResolutionWidth, s.PhotoResolutionHeight)
 	if c == nil {
-		return nil, errors.New("Failed to instantiate camera")
+		return nil, failedToInitCamera
 	}
 
 	return &Timelapse{

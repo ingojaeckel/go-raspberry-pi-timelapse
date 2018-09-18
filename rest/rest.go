@@ -167,8 +167,17 @@ func UpdatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 	}
 	s.OffsetWithinHour = updateRequest.InitialOffset
 	s.SecondsBetweenCaptures = updateRequest.TimeBetween
-	s.ResolutionSetting = updateRequest.Resolution
 	s.RotateBy = updateRequest.RotateBy
+	s.ResolutionSetting = updateRequest.Resolution
+	switch s.ResolutionSetting {
+	case 2:
+		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232
+	case 1:
+		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 2186, 1642
+	case 0:
+	default:
+		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 3280, 2464
+	}
 
 	log.Printf("New configuration: %v\n", s)
 	return conf.WriteConfiguration(*s)
