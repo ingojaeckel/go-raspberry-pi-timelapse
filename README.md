@@ -4,6 +4,10 @@
 
 This repository contains documentation and source code to help running a [Raspberry Pi Zero](https://www.raspberrypi.org/products/raspberry-pi-zero-w/) based timelapse camera.
 
+## How does it work?
+
+![The build](https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/master/docs/go-raspberry-pi-timelapse.png "How does it work?")
+
 ## Parts List
 
 This project was created for a timelapse system consisting of the following core components: a Pi Zero W with a camera board, a case, and an SD card. The following sections describe the components in more detail.
