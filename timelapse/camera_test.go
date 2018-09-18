@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func TestCreateCameraWithoutPath(t *testing.T) {
+	_, err := NewCamera("", 200, 100, false)
+	// Should have failed since path must not be empty.
+	ensure.NotNil(t, err)
+}
+
 func TestBuildingArguments(t *testing.T) {
 	unrotatedCamera, err := NewCamera("foo", 200, 100, false)
 	ensure.Nil(t, err)
