@@ -3,6 +3,7 @@ package timelapse
 // This has been adapted from https://github.com/loranbriggs/go-camera
 
 import (
+	"errors"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -10,32 +11,32 @@ import (
 	"time"
 )
 
-const (
-	STILL      = "raspistill"
-	OUTFLAG    = "-o"
-	WIDTH      = "-w"
-	HEIGHT     = "-h"
-	FILE_TYPE  = ".jpg"
-	TIME_STAMP = "2006-01-02_15:04:05"
-)
+const timeStampFormat = "2006-01-02_15:04:05"
 
 type Camera struct {
-	savePath string
-	width    int
-	height   int
+	savePath                         string
+	width, height                    int
+	flipHorizontally, flipVertically bool
 }
 
-func NewCamera(path string, width int, height int) *Camera {
+// NewCamera Setting "rotate" to true will create a camera instance which will flip all pictures by 180 degrees. Each captured image will be flipped horizontally and vertically.
+func NewCamera(path string, width, height int, rotate bool) (Camera, error) {
 	if path == "" {
-		return nil
+		return Camera{}, errors.New("invalid config: path must not be empty")
 	}
-	return &Camera{path, width, height}
+	return Camera{
+		savePath:         path,
+		width:            width,
+		height:           height,
+		flipHorizontally: rotate,
+		flipVertically:   rotate,
+	}, nil
 }
 
 func (c *Camera) Capture() (string, error) {
-	fullPath := getAbsoluteFilepath(c.savePath)
-	args := getRaspistillArgs(c.width, c.height, fullPath)
-	cmd := exec.Command(STILL, args...)
+	fullPath := c.getAbsoluteFilepath()
+	args := c.getRaspistillArgs(fullPath)
+	cmd := exec.Command("raspistill", args...)
 
 	_, err := cmd.StdoutPipe()
 	if err != nil {
@@ -49,18 +50,24 @@ func (c *Camera) Capture() (string, error) {
 	return fullPath, nil
 }
 
-func getAbsoluteFilepath(savePath string) string {
-	fileName := time.Now().Format(TIME_STAMP) + FILE_TYPE
-	return filepath.Join(savePath, fileName)
-}
-
-func getRaspistillArgs(width int, height int, fullPath string) []string {
+func (c *Camera) getRaspistillArgs(fullPath string) []string {
 	args := make([]string, 0)
-	args = append(args, WIDTH)
-	args = append(args, strconv.Itoa(width))
-	args = append(args, HEIGHT)
-	args = append(args, strconv.Itoa(height))
-	args = append(args, OUTFLAG)
+	args = append(args, "-w")
+	args = append(args, strconv.Itoa(c.width))
+	args = append(args, "-h")
+	args = append(args, strconv.Itoa(c.height))
+	if c.flipVertically {
+		args = append(args, "-vf")
+	}
+	if c.flipHorizontally {
+		args = append(args, "-hf")
+	}
+	args = append(args, "-o")
 	args = append(args, fullPath)
 	return args
+}
+
+func (c *Camera) getAbsoluteFilepath() string {
+	fileName := time.Now().Format(timeStampFormat) + ".jpg"
+	return filepath.Join(c.savePath, fileName)
 }

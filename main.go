@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
@@ -54,7 +53,7 @@ func main() {
 	}
 
 	if err := http.ListenAndServe(conf.ListenAddress, mux); err != nil {
-		fmt.Errorf("Failed start: %s\n", err.Error())
+		log.Fatal("Failed start: ", err.Error())
 	}
 }
 

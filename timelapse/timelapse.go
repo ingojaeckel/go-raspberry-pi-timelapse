@@ -34,13 +34,14 @@ func New(folder string, s *conf.Settings) (*Timelapse, error) {
 		}
 	}
 	// Assume folder exists
-	c := NewCamera(folder, s.PhotoResolutionWidth, s.PhotoResolutionHeight)
-	if c == nil {
+
+	c, err := NewCamera(folder, s.PhotoResolutionWidth, s.PhotoResolutionHeight, s.RotateBy == 180)
+	if err != nil {
 		return nil, failedToInitCamera
 	}
 
 	return &Timelapse{
-		Camera:                  *c,
+		Camera:                  c,
 		Folder:                  folder,
 		SecondsBetweenCapture:   s.SecondsBetweenCaptures,
 		OffsetWithinHourSeconds: s.OffsetWithinHour,

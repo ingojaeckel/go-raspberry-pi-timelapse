@@ -36,7 +36,7 @@ func TestSecondsToSleepUntilOffset2(t *testing.T) {
 }
 
 func TestNoSleepTillBrooklyn(t *testing.T) {
-	tl := createTimelapseForTesting(0)
+	tl := createTimelapseForTesting(t, 0)
 	tl.SecondsBetweenCapture = 1
 
 	before := time.Now().Unix()
@@ -52,14 +52,15 @@ func TestGetInitialSleepTime(t *testing.T) {
 }
 
 func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTime int) {
-	tl := createTimelapseForTesting(900)
+	tl := createTimelapseForTesting(t, 900)
 	theTime := time.Date(2017, time.January, 1, 1, minute, second, 0, time.UTC)
 
 	ensure.DeepEqual(t, tl.SecondsToSleepUntilOffset(theTime), expectedSleepTime)
 }
 
-func createTimelapseForTesting(offsetWithinHourSeconds int) Timelapse {
+func createTimelapseForTesting(t *testing.T, offsetWithinHourSeconds int) Timelapse {
 	res := Resolution{800, 600}
-	c := NewCamera("timelapse-pictures", res.Width, res.Height)
-	return Timelapse{*c, "timelapse-pictures", 1800, offsetWithinHourSeconds, res, true}
+	c, err := NewCamera("timelapse-pictures", res.Width, res.Height, false)
+	ensure.Nil(t, err)
+	return Timelapse{c, "timelapse-pictures", 1800, offsetWithinHourSeconds, res, true}
 }
