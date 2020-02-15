@@ -1,4 +1,4 @@
-[![Build Status](https://img.shields.io/travis/ingojaeckel/go-raspberry-pi-timelapse.svg)](https://travis-ci.org/ingojaeckel/go-raspberry-pi-timelapse)
+![](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/go/badge.svg)
 
 # Go Raspberry Pi Timelapse
 
