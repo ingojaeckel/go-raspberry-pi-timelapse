@@ -15,42 +15,42 @@ function App() {
     <Router history={customHistory}>
       <React.Fragment>
         <CssBaseline />
-      <Container fixed>
-        <Grid container>
-          <Grid item xs={2}>
-            <List>
-              <ListItem to="/" component={NavLink}>
-                <ListItemAvatar>
-                  <Avatar>
-                    <HomeIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText primary="Photos" />
-              </ListItem>
-              <ListItem to="/monitoring" component={NavLink}>
-                <ListItemAvatar>
-                  <Avatar>
-                    <TimelineIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText primary="Monitoring" />
-              </ListItem>
-              <Divider />
-              <ListItem to="/settings" component={NavLink}>
-                <ListItemAvatar>
-                  <Avatar>
-                    <SettingsIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText primary="Settings" />
-              </ListItem>
-            </List>
+        <Container fixed>
+          <Grid container spacing={2}>
+            <Grid item xs={2}>
+              <List>
+                <ListItem to="/" component={NavLink}>
+                  <ListItemAvatar>
+                    <Avatar>
+                      <HomeIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText primary="Photos" />
+                </ListItem>
+                <ListItem to="/monitoring" component={NavLink}>
+                  <ListItemAvatar>
+                    <Avatar>
+                      <TimelineIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText primary="Monitoring" />
+                </ListItem>
+                <Divider />
+                <ListItem to="/settings" component={NavLink}>
+                  <ListItemAvatar>
+                    <Avatar>
+                      <SettingsIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText primary="Settings" />
+                </ListItem>
+              </List>
+            </Grid>
+            <Grid item xs={10}>
+              <Switcher />
+            </Grid>
           </Grid>
-          <Grid item xs={10}>
-            <Switcher />
-          </Grid>
-        </Grid>
-      </Container>
+        </Container>
       </React.Fragment>
     </Router>
   );
