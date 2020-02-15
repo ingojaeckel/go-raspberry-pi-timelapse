@@ -1,25 +1,53 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { createBrowserHistory } from "history";
+import { NavLink, Router } from 'react-router-dom';
+import Grid from '@material-ui/core/Grid';
+import HomeIcon from '@material-ui/icons/Home';
+import SettingsIcon from '@material-ui/icons/Settings';
+import TimelineIcon from '@material-ui/icons/Timeline';
+import { List, Avatar, ListItemAvatar, ListItem, ListItemText, Divider } from '@material-ui/core';
+import Switcher from './Switch';
+
+const customHistory = createBrowserHistory();
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router history={customHistory}>
+      <Grid container>
+        <Grid item xs={1}>
+          <List>
+            <ListItem to="/" component={NavLink}>
+              <ListItemAvatar>
+                <Avatar>
+                  <HomeIcon />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText primary="Photos" />
+            </ListItem>
+            <ListItem to="/monitoring" component={NavLink}>
+              <ListItemAvatar>
+                <Avatar>
+                  <TimelineIcon />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText primary="Monitoring" />
+            </ListItem>
+            <Divider />
+            <ListItem to="/settings" component={NavLink}>
+              <ListItemAvatar>
+                <Avatar>
+                  <SettingsIcon />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText primary="Settings" />
+            </ListItem>
+          </List>
+        </Grid>
+        <Grid item xs={11}>
+          <Switcher />
+        </Grid>
+      </Grid>
+    </Router>
   );
 }
 
