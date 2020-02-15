@@ -1,4 +1,4 @@
-![](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/go/badge.svg)
+![](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/Go/badge.svg)
 
 # Go Raspberry Pi Timelapse
 
