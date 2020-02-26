@@ -1,13 +1,15 @@
 package rest
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/static"
 	"html/template"
 	"net/http"
 	"net/url"
+
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/static"
 )
 
 // TODO process should be auto restarted (e.g. by supervisord)
@@ -29,6 +31,39 @@ func GetIndex(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	t.Execute(w, p)
+}
+
+func GetMonitoring(w http.ResponseWriter, _ *http.Request) {
+	resp := &MonitoringResponse{
+		Time:           admin.RunCommandOrPanic("/bin/date"),
+		GpuTemperature: admin.RunCommandOrPanic("/opt/vc/bin/vcgencmd", "measure_temp"),
+		CpuTemperature: admin.RunCommandOrPanic("/bin/cat", "/sys/class/thermal/thermal_zone0/temp"),
+		Uptime:         admin.RunCommandOrPanic("/usr/bin/uptime"),
+		FreeDiskSpace:  admin.RunCommandOrPanic("/bin/df", "-h"),
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func GetPhotos(w http.ResponseWriter, _ *http.Request) {
+	resp := getScreenshotsResponse("timelapse-pictures")
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func getScreenshotsResponse(folder string) GetPhotosResponse {
+	files, _ := files.ListFiles(folder, true) // TODO handle error
+	photos := make([]Photo, len(files))
+	for i, f := range files {
+		photos[i] = Photo{
+			Name:    f.Name,
+			ModTime: f.ModTime,
+			Size:    getHumanReadableSize(f.Bytes),
+		}
+	}
+	return GetPhotosResponse{Photos: photos}
 }
 
 func getScreenshotsHtml(folder string) template.HTML {

@@ -1,15 +1,16 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io"
 	"goji.io/pat"
-	"log"
-	"net/http"
-	"os"
-	"time"
 )
 
 func main() {
@@ -33,6 +34,10 @@ func main() {
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
 		rest.Capture(w, s)
 	})
+
+	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
+	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
+
 	mux.HandleFunc(pat.Get("/index.html"), rest.GetIndex)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)

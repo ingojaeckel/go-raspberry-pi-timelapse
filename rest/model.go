@@ -14,3 +14,22 @@ type UpdateConfigurationRequest struct {
 	Resolution    int `json:"resolution"`
 	RotateBy      int `json:"rotateBy"`
 }
+
+type MonitoringResponse struct {
+	Time           string
+	Uptime         string
+	CpuTemperature string
+	GpuTemperature string
+	FreeDiskSpace  string
+	// TODO add FreeMemory
+}
+
+type GetPhotosResponse struct {
+	Photos []Photo
+}
+
+type Photo struct {
+	Name    string
+	ModTime string
+	Size    string
+}

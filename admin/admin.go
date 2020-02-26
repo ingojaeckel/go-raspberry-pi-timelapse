@@ -2,10 +2,11 @@ package admin
 
 import (
 	"fmt"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"os"
 	"os/exec"
+
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 )
 
 func HandleCommand(command string) error {
@@ -35,4 +36,13 @@ func HandleCommand(command string) error {
 func RunCommand(command string, args ...string) (string, error) {
 	bytes, err := exec.Command(command, args...).CombinedOutput()
 	return string(bytes), err
+}
+
+// RunCommandOrPanic Same as RunCommand but panics in case of errors
+func RunCommandOrPanic(command string, args ...string) string {
+	resp, err := RunCommand(command, args...)
+	if err != nil {
+		return err.Error()
+	}
+	return resp
 }
