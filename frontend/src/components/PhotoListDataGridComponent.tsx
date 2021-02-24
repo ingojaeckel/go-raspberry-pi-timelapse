@@ -1,20 +1,20 @@
 import React from 'react';
-import { DataGrid, RowsProp, ColDef } from '@material-ui/data-grid';
+import { DataGrid, RowsProp, ColDef, RowData } from '@material-ui/data-grid';
 
-const rows: RowsProp = [
-  { id: 1, col1: 'Hello', col2: 'World' },
-  { id: 2, col1: 'XGrid', col2: 'is Awesome' },
-  { id: 3, col1: 'Material-UI', col2: 'is Amazing' },
-];
+let rows: RowData[] = [];
 
 const columns: ColDef[] = [
-  { field: 'col1', headerName: 'Column 1', width: 150 },
-  { field: 'col2', headerName: 'Column 2', width: 150 },
+  { field: 'fileName', headerName: 'Name', width: 300 },
+  { field: 'fileCreateTime', headerName: 'Created At', width: 200 },
+  { field: 'fileSizeBytes', headerName: 'Size', width: 100 },
 ];
 
 export default function PhotoListDataGridComponent() {
+    for (var i=0; i<100; i++) {
+        rows.push({ id: (i+1), fileName: 'CIMG'+(i+1)+'.jpg', fileCreateTime: 1, fileSizeBytes: 1024 })
+    }
     return (
-    <div style={{ height: 300, width: '100%' }}>
+    <div style={{ height: 500, width: '100%' }}>
       <DataGrid rows={rows} columns={columns} />
     </div>
   );
