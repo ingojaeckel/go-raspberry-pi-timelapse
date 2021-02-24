@@ -7,6 +7,18 @@ export interface MonitoringResponse {
     FreeDiskSpace: string
 }
 
+export interface SettingsResponse {
+	SecondsBetweenCaptures:  number
+	OffsetWithinHour:        number
+	PhotoResolutionWidth:    number
+	PhotoResolutionHeight:   number
+	PreviewResolutionWidth:  number
+	PreviewResolutionHeight: number
+	RotateBy:                number
+	ResolutionSetting:       number
+    DebugEnabled:            boolean
+}
+
 export interface PhotosResponse {
     Photos: Photo[]
 }

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { BaseUrl } from '../conf/config'
+import { SettingsResponse } from '../models/response'
 import { createStyles, makeStyles, Theme } from '@material-ui/core/styles';
-
 import { ButtonGroup, Button, FormControl, InputLabel, Select, MenuItem, FormHelperText } from '@material-ui/core';
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -17,6 +19,27 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export default function SetupComponent() {
   const classes = useStyles();
+  const [state, setState] = useState<SettingsResponse>({
+    SecondsBetweenCaptures:  0,
+    OffsetWithinHour:        0,
+    PhotoResolutionWidth:    1000,
+    PhotoResolutionHeight:   2000,
+    PreviewResolutionWidth:  640,
+    PreviewResolutionHeight: 0,
+    RotateBy:                0,
+    ResolutionSetting:       0,
+    DebugEnabled:            false,
+  });
+
+  useEffect(() => {
+    axios
+      .get<SettingsResponse>(BaseUrl + "/configuration")
+      .then(resp => {
+        if (resp.data) {
+          setState(resp.data);
+        }
+      });
+  }, []);
 
   return (
     <React.Fragment>
