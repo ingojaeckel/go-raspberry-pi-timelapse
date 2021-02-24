@@ -30,8 +30,9 @@ func writeJSON(w http.ResponseWriter, status int, r interface{}) error {
 		return err
 	}
 
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(status)
-	w.Header().Add("Content-Type", "application/json")
 	io.WriteString(w, string(val))
 	return nil
 }
