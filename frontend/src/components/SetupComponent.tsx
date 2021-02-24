@@ -23,7 +23,7 @@ export default function SetupComponent() {
       <div>
         <FormControl className={classes.formControl} fullWidth>
           <InputLabel id="demo-simple-select-helper-label">Time between captures (minutes)</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper">
+          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={1}>
             <MenuItem value={1}>1</MenuItem>
             <MenuItem value={10}>10</MenuItem>
             <MenuItem value={20}>20</MenuItem>
@@ -33,7 +33,7 @@ export default function SetupComponent() {
         </FormControl><br />
         <FormControl className={classes.formControl} fullWidth>
           <InputLabel id="demo-simple-select-helper-label">Offset before first capture (minutes)</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper">
+          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
             <MenuItem value={0}>0</MenuItem>
             <MenuItem value={5}>5</MenuItem>
             <MenuItem value={10}>10</MenuItem>
@@ -46,16 +46,16 @@ export default function SetupComponent() {
         </FormControl><br />
         <FormControl className={classes.formControl} fullWidth>
           <InputLabel id="demo-simple-select-helper-label">Resolution</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper">
-            <MenuItem>3280x2464</MenuItem>
+          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
+            <MenuItem value={0}>3280x2464</MenuItem>
           </Select>
           <FormHelperText></FormHelperText>
         </FormControl><br />
         <FormControl className={classes.formControl} fullWidth>
           <InputLabel id="demo-simple-select-helper-label">Rotation (degrees)</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper">
-            <MenuItem>0</MenuItem>
-            <MenuItem>180</MenuItem>
+          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
+            <MenuItem value={0}>0</MenuItem>
+            <MenuItem value={180}>180</MenuItem>
           </Select>
           <FormHelperText></FormHelperText>
         </FormControl>
