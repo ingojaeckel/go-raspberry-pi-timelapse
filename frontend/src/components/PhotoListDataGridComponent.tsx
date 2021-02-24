@@ -1,5 +1,5 @@
 import React from 'react';
-import { DataGrid, RowsProp, ColDef, RowData } from '@material-ui/data-grid';
+import { DataGrid, ColDef, RowData, SelectionModelChangeParams } from '@material-ui/data-grid';
 
 let rows: RowData[] = [];
 
@@ -13,9 +13,19 @@ export default function PhotoListDataGridComponent() {
     for (var i=0; i<100; i++) {
         rows.push({ id: (i+1), fileName: 'CIMG'+(i+1)+'.jpg', fileCreateTime: 1, fileSizeBytes: 1024 })
     }
+
+    const handleSelectionModelChanged = (selectionModel: SelectionModelChangeParams) => {
+        console.log("selection changed: ", selectionModel);
+    };
+
     return (
     <div style={{ height: 500, width: '100%' }}>
-      <DataGrid rows={rows} columns={columns} />
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        checkboxSelection={true}
+        disableSelectionOnClick={true}
+        onSelectionModelChange={handleSelectionModelChanged} />
     </div>
   );
 }
