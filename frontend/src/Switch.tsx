@@ -7,13 +7,13 @@ import SetupComponent from './components/SetupComponent';
 export default function Switcher() {
     return (
         <Switch>
-            <Route exact path="/">
+            <Route exact path={`${process.env.PUBLIC_URL}/`}>
                 <PhotoComponent />
             </Route>
-            <Route exact path="/monitoring">
+            <Route exact path={`${process.env.PUBLIC_URL}/monitoring`}>
                 <MonitoringComponent />
             </Route>
-            <Route exact path="/settings">
+            <Route exact path={`${process.env.PUBLIC_URL}/settings`}>
                 <SetupComponent />
             </Route>
         </Switch>

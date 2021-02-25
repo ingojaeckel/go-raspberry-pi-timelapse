@@ -19,7 +19,7 @@ function App() {
           <Grid container spacing={2}>
             <Grid item xs={2}>
               <List>
-                <ListItem to="/" component={NavLink}>
+                <ListItem to={`${process.env.PUBLIC_URL}/`} component={NavLink}>
                   <ListItemAvatar>
                     <Avatar>
                       <HomeIcon />
@@ -27,7 +27,7 @@ function App() {
                   </ListItemAvatar>
                   <ListItemText primary="Photos" />
                 </ListItem>
-                <ListItem to="/monitoring" component={NavLink}>
+                <ListItem to={`${process.env.PUBLIC_URL}/monitoring`} component={NavLink}>
                   <ListItemAvatar>
                     <Avatar>
                       <TimelineIcon />
@@ -36,7 +36,7 @@ function App() {
                   <ListItemText primary="Monitoring" />
                 </ListItem>
                 <Divider />
-                <ListItem to="/settings" component={NavLink}>
+                <ListItem to={`${process.env.PUBLIC_URL}/settings`} component={NavLink}>
                   <ListItemAvatar>
                     <Avatar>
                       <SettingsIcon />
