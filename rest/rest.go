@@ -3,21 +3,24 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
-	"goji.io/pat"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
+	"goji.io/pat"
 )
 
-func GetVersion(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintf(w, "Hello from %s on %s [version:%d]", runtime.GOARCH, runtime.GOOS, conf.Version)
+func MakeGetVersionFn(version string) func(w http.ResponseWriter, _ *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, "Hello from %s on %s [version:%s]", runtime.GOARCH, runtime.GOOS, version)
+	}
 }
 
 func GetConfiguration(w http.ResponseWriter, _ *http.Request) {

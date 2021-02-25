@@ -13,7 +13,11 @@ import (
 	"goji.io/pat"
 )
 
+var GitCommit string
+
 func main() {
+	log.Println("version: ", GitCommit)
+
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
@@ -46,7 +50,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
-	mux.HandleFunc(pat.Get("/version"), rest.GetVersion)
+	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(GitCommit))
 
 	t, err := timelapse.New("timelapse-pictures", s)
 	if err != nil {

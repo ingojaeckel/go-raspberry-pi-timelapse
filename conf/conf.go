@@ -1,7 +1,9 @@
 package conf
 
+// Version of the tool. At build time this may be changed to the latest Git commit.
+var Version string
+
 const (
-	Version                  = 1
 	ListenAddress            = ":8080"
 	MaxFileSizeBytes         = 100485760 // 100 MB
 	HeaderContentType        = "Content-Type"
