@@ -19,7 +19,7 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export default function SetupComponent() {
   const classes = useStyles();
-  const [_, setState] = useState<SettingsResponse>({
+  const [state, setState] = useState<SettingsResponse>({
     SecondsBetweenCaptures:  0,
     OffsetWithinHour:        0,
     PhotoResolutionWidth:    1000,
@@ -40,6 +40,8 @@ export default function SetupComponent() {
         }
       });
   }, []);
+
+  console.log("SecondsBetweenCaptures: ", state.SecondsBetweenCaptures)
 
   return (
     <React.Fragment>
