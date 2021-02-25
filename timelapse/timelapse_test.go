@@ -1,9 +1,11 @@
 package timelapse
 
 import (
-	"github.com/facebookgo/ensure"
 	"testing"
 	"time"
+
+	"github.com/facebookgo/ensure"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 )
 
 func TestSecondsToSleepUntilOffset(t *testing.T) {
@@ -60,7 +62,7 @@ func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTim
 
 func createTimelapseForTesting(t *testing.T, offsetWithinHourSeconds int) Timelapse {
 	res := Resolution{800, 600}
-	c, err := NewCamera("timelapse-pictures", res.Width, res.Height, false)
+	c, err := NewCamera(conf.StorageFolder, res.Width, res.Height, false)
 	ensure.Nil(t, err)
-	return Timelapse{c, "timelapse-pictures", 1800, offsetWithinHourSeconds, res, true}
+	return Timelapse{c, conf.StorageFolder, 1800, offsetWithinHourSeconds, res, true}
 }

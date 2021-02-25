@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/static"
 )
@@ -23,8 +24,8 @@ func GetIndex(w http.ResponseWriter, _ *http.Request) {
 		CpuTemperature:  getCommandHtml("/bin/cat", "/sys/class/thermal/thermal_zone0/temp"),
 		Uptime:          getCommandHtml("/usr/bin/uptime"),
 		FreeDiskSpace:   getCommandHtml("/bin/df", "-h"),
-		Screenshots:     getScreenshotsHtml("timelapse-pictures"), // TODO pass in the folder name via the Timelapse type
-		PhotosTotalSize: getTotalSizeHtml("timelapse-pictures"),
+		Screenshots:     getScreenshotsHtml(conf.StorageFolder), // TODO pass in the folder name via the Timelapse type
+		PhotosTotalSize: getTotalSizeHtml(conf.StorageFolder),
 		// Static Dependencies
 		CustomJS:     template.JS(static.CustomJS),
 		JQuerySource: template.JS(static.Jquery),
@@ -47,12 +48,13 @@ func GetMonitoring(w http.ResponseWriter, _ *http.Request) {
 }
 
 func GetPhotos(w http.ResponseWriter, _ *http.Request) {
-	resp := getScreenshotsResponse("timelapse-pictures")
+	resp := getScreenshotsResponse(conf.StorageFolder)
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(resp)
 }
 
+// TODO rename screenshots to photos/pictures
 func getScreenshotsResponse(folder string) GetPhotosResponse {
 	files, _ := files.ListFiles(folder, true) // TODO handle error
 	photos := make([]Photo, len(files))
@@ -70,7 +72,7 @@ func getScreenshotsHtml(folder string) template.HTML {
 	files, _ := files.ListFiles(folder, true)
 	screenshotsHtml := "<tr><td>Name</td><td>Date</td><td>Size</td><td></td></tr>"
 	for _, f := range files {
-		linkToName := fmt.Sprintf(`<a href="/file/%s">%s</a>`, url.PathEscape("timelapse-pictures/"+f.Name), f.Name)
+		linkToName := fmt.Sprintf(`<a href="/file/%s">%s</a>`, url.PathEscape(conf.StorageFolder+"/"+f.Name), f.Name)
 		deleteLink := fmt.Sprintf(`<a href="foo">Delete</a>`)
 		screenshotsHtml = screenshotsHtml + fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", linkToName, f.ModTime, getHumanReadableSize(f.Bytes), deleteLink)
 	}
