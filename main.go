@@ -14,14 +14,12 @@ import (
 	"goji.io/pat"
 )
 
-var GitCommit string
-var BuiltAt string
+var gitCommit string
+var builtAt string
+var version string
 
 func main() {
-
-	version := fmt.Sprintf("%s built at %s", GitCommit, BuiltAt)
-	log.Println("version: ", version)
-
+	initVersion()
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
@@ -32,6 +30,7 @@ func main() {
 		return
 	}
 
+	log.Println("Version: ", version)
 	log.Printf("Seconds between captures: %d\n", s.SecondsBetweenCaptures)
 	log.Printf("Offset within hour:       %d\n", s.OffsetWithinHour)
 	log.Printf("Resolution:               %d x %d\n", s.PhotoResolutionWidth, s.PhotoResolutionHeight)
@@ -80,4 +79,13 @@ func initLogging() error {
 	}
 	log.Printf("Started at %s\n", time.Now())
 	return nil
+}
+
+func initVersion() {
+	if len(gitCommit) == 0 || len(builtAt) == 0 {
+		// Fallback to v1 if either the commit or build timestamp is not set
+		version = "1"
+	} else {
+		version = fmt.Sprintf("%s built at %s", gitCommit, builtAt)
+	}
 }
