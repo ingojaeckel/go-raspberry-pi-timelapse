@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,9 +15,12 @@ import (
 )
 
 var GitCommit string
+var BuiltAt string
 
 func main() {
-	log.Println("version: ", GitCommit)
+
+	version := fmt.Sprintf("%s built at %s", GitCommit, BuiltAt)
+	log.Println("version: ", version)
 
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
@@ -50,7 +54,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
-	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(GitCommit))
+	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
 
 	t, err := timelapse.New("timelapse-pictures", s)
 	if err != nil {
