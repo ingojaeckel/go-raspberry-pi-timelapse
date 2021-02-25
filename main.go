@@ -56,7 +56,7 @@ func main() {
 	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
 
-	t, err := timelapse.New("timelapse-pictures", s)
+	t, err := timelapse.New(conf.StorageFolder, s)
 	if err != nil {
 		log.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless
