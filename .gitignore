@@ -1,0 +1,7 @@
+.idea/
+*.iml
+*.log
+
+go-raspberry-pi-timelapse
+timelapse-pictures/
+timelapse-settings.db
