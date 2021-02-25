@@ -63,7 +63,6 @@ const getPhotos = () => {
     console.log("refresh clicked");
     getPhotos();
   };
-  const handleDownloadClicked = () => { console.log("download clicked: ", state.Selected) };
   const handleDeleteClicked = () => { console.log("delete clicked: ", state.Selected) };
 
   return (
