@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +18,9 @@ import (
 var gitCommit string
 var builtAt string
 var version string
+
+//go:embed frontend/build
+var content embed.FS
 
 func main() {
 	initVersion()
@@ -54,6 +58,8 @@ func main() {
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
+
+	mux.Handle(pat.Get("/static/*"), http.StripPrefix("/static/", http.FileServer(http.FS(content))))
 
 	t, err := timelapse.New(conf.StorageFolder, s)
 	if err != nil {
