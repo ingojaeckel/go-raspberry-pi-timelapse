@@ -99,8 +99,10 @@ func Capture(w http.ResponseWriter, s *conf.Settings) {
 	os.Remove(path)
 }
 
+// GetArchiveZip Reply with ZIP file containing all timelapse pictures
+// TODO Support downloading only selected pictures. Let caller specific images by name.
 func GetArchiveZip(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles(conf.StorageFolder, true)
+	f, _ := files.ListFiles(conf.StorageFolder, true) // TODO handle error
 
 	// Convert []File to []string
 	strFiles := make([]string, len(f))

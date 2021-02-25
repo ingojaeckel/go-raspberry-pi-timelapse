@@ -73,10 +73,10 @@ const getPhotos = () => {
         <img src={BaseUrl+"/capture"} alt="preview" />
       </Typography>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
-        <Button onClick={handleRefreshClicked}>Refresh</Button>
-        <Button onClick={handleDownloadClicked}>Download</Button>
-        <Button onClick={handleDeleteClicked}>Delete</Button>  
+        <Button onClick={handleRefreshClicked}>Refresh list of pictures</Button>
+        <Button onClick={handleDeleteClicked}>Delete selected pictures</Button>
       </ButtonGroup>
+      <a href={BaseUrl + "/archive/zip?" + state.Selected.length}>Download selected pictures</a>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid
           rows={state.Photos}
