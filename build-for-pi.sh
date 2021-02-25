@@ -1,4 +1,8 @@
 #!/bin/sh
+set -e -x
+go vet ./...
+go test -v -cover ./...
+
 GIT_COMMIT=`git rev-parse --short HEAD`
 BUILT_AT=`date`
 GOOS=linux
