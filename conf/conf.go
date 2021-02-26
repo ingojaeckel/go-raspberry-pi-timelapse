@@ -9,5 +9,5 @@ const (
 	StorageFolder            = "timelapse-pictures"
 	TempFilesFolder          = "/tmp"
 	LogFile                  = "timelapse.log"
-	LogToFile                = false
+	LogToFile                = true
 )
