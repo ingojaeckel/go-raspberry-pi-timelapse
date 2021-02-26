@@ -50,7 +50,7 @@ function App() {
               <Switcher />
             </Grid>
             <Grid item xs={10}>
-              <div className="footer">version: {process.env.VERSION}</div>
+              <div className="footer">version: {process.env.REACT_APP_GIT_SHA}</div>
             </Grid>
           </Grid>
         </Container>
