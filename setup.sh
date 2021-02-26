@@ -3,10 +3,13 @@
 # You might want to download & execute this to start the installation via:
 # wget -O - https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/master/setup.sh | bash
 #
-# Or use this shorter URL:
-#
-# wget -O - http://bit.ly/2BRqNFZ | bash
-#
+set -e -x
+
+# Try to free up some space now before installing/updating may need it
+sudo apt-get autoclean
+sudo apt-get autoremove
+sudo apt-get clean
+
 sudo apt-get update -y
 sudo apt-get upgrade -y
 sudo apt-get install -y htop screen git python-smbus i2c-tools
