@@ -3,36 +3,15 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
-	"net/url"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/static"
 )
 
 // TODO process should be auto restarted (e.g. by supervisord)
 // TODO add monitoring for main memory
-
-func GetIndex(w http.ResponseWriter, _ *http.Request) {
-	t, _ := template.New("index").Parse(static.Html)
-	p := Page{
-		Time:            getCommandHtml("/bin/date"),
-		GpuTemperature:  getCommandHtml("/opt/vc/bin/vcgencmd", "measure_temp"),
-		CpuTemperature:  getCommandHtml("/bin/cat", "/sys/class/thermal/thermal_zone0/temp"),
-		Uptime:          getCommandHtml("/usr/bin/uptime"),
-		FreeDiskSpace:   getCommandHtml("/bin/df", "-h"),
-		Screenshots:     getScreenshotsHtml(conf.StorageFolder), // TODO pass in the folder name via the Timelapse type
-		PhotosTotalSize: getTotalSizeHtml(conf.StorageFolder),
-		// Static Dependencies
-		CustomJS:     template.JS(static.CustomJS),
-		JQuerySource: template.JS(static.Jquery),
-	}
-
-	t.Execute(w, p)
-}
 
 func GetMonitoring(w http.ResponseWriter, _ *http.Request) {
 	resp := &MonitoringResponse{
@@ -43,14 +22,14 @@ func GetMonitoring(w http.ResponseWriter, _ *http.Request) {
 		FreeDiskSpace:  admin.RunCommandOrPanic("/bin/df", "-h"),
 	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
 	json.NewEncoder(w).Encode(resp)
 }
 
 func GetPhotos(w http.ResponseWriter, _ *http.Request) {
 	resp := getScreenshotsResponse(conf.StorageFolder)
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
 	json.NewEncoder(w).Encode(resp)
 }
 
@@ -68,26 +47,6 @@ func getScreenshotsResponse(folder string) GetPhotosResponse {
 	return GetPhotosResponse{Photos: photos}
 }
 
-func getScreenshotsHtml(folder string) template.HTML {
-	files, _ := files.ListFiles(folder, true)
-	screenshotsHtml := "<tr><td>Name</td><td>Date</td><td>Size</td><td></td></tr>"
-	for _, f := range files {
-		linkToName := fmt.Sprintf(`<a href="/file/%s">%s</a>`, url.PathEscape(conf.StorageFolder+"/"+f.Name), f.Name)
-		deleteLink := fmt.Sprintf(`<a href="foo">Delete</a>`)
-		screenshotsHtml = screenshotsHtml + fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", linkToName, f.ModTime, getHumanReadableSize(f.Bytes), deleteLink)
-	}
-	return template.HTML("<table>" + screenshotsHtml + "</table>")
-}
-
-func getTotalSizeHtml(folder string) template.HTML {
-	files, _ := files.ListFiles(folder, true)
-	sizeBytes := int64(0)
-	for _, f := range files {
-		sizeBytes = sizeBytes + f.Bytes
-	}
-	return template.HTML(getHumanReadableSize(sizeBytes))
-}
-
 func getHumanReadableSize(sizeInBytes int64) string {
 	if sizeInBytes >= 1024*1024 {
 		// At least 1MB of files
@@ -99,23 +58,4 @@ func getHumanReadableSize(sizeInBytes int64) string {
 	}
 	// Size is between 0 - 1KB
 	return fmt.Sprintf("%d bytes", sizeInBytes)
-}
-
-func getCommandHtml(cmd string, args ...string) template.HTML {
-	output, err := admin.RunCommand(cmd, args...)
-	if err != nil {
-		return template.HTML(err.Error())
-	}
-	return template.HTML("<pre>" + output + "</pre>")
-}
-
-type Page struct {
-	Time                   template.HTML
-	FreeDiskSpace          template.HTML
-	CpuTemperature         template.HTML
-	GpuTemperature         template.HTML
-	Uptime                 template.HTML
-	Screenshots            template.HTML
-	PhotosTotalSize        template.HTML
-	JQuerySource, CustomJS template.JS
 }

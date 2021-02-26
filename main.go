@@ -41,7 +41,8 @@ func main() {
 	log.Printf("Listening on port:        %s...\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
-	mux.HandleFunc(pat.Get("/"), rest.GetIndex)
+	// TODO redirect to new frontend
+	// mux.HandleFunc(pat.Get("/"), rest.GetIndex)
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
 		rest.Capture(w, s)
 	})
@@ -49,7 +50,6 @@ func main() {
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
 	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
 
-	mux.HandleFunc(pat.Get("/index.html"), rest.GetIndex)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
