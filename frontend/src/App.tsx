@@ -49,6 +49,9 @@ function App() {
             <Grid item xs={10}>
               <Switcher />
             </Grid>
+            <Grid item xs={10}>
+              <div className="footer">version: {process.env.VERSION}</div>
+            </Grid>
           </Grid>
         </Container>
       </React.Fragment>
