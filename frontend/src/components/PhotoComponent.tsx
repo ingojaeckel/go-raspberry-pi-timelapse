@@ -23,6 +23,7 @@ export default function PhotosComponent() {
   });
 
 const getPhotos = () => {
+  console.log("BaseUrl: ", BaseUrl)
   axios
     .get<PhotosResponse>(BaseUrl + "/photos")
     .then(resp => {
