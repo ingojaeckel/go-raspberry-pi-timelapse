@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -24,10 +25,33 @@ var content embed.FS
 
 func main() {
 	initVersion()
+
+	versionFlag := flag.Bool("version", false, "Print version and exit.")
+	listenAddress := flag.String("port", conf.DefaultListenAddress, "HTTP port to listen on.")
+	logToFile := flag.Bool("logToFile", conf.DefaultLogToFile, "Toggle to enable logging to a file on disk instead of stdout. Logging to a file is recommended for long term operation.")
+	storageAddress := flag.String("storageFolder", conf.DefaultStorageFolder, "Folder for storage of timelapse pictures.")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version)
+		return
+	}
+
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
 	}
+
+	if listenAddress != nil {
+		conf.ListenAddress = *listenAddress
+	}
+	if storageAddress != nil {
+		conf.StorageFolder = *storageAddress
+	}
+	if logToFile != nil {
+		conf.LogToFile = *logToFile
+	}
+
 	s, err := conf.LoadConfiguration()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
