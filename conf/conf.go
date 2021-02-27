@@ -13,20 +13,20 @@ const (
 )
 
 var (
-	ListenAddress = DefaultListenAddress
 	LogToFile     = DefaultLogToFile
+	ListenAddress = DefaultListenAddress
 	StorageFolder = DefaultStorageFolder
 )
 
 // Update Updates configuration depending on the state of CLI flags provided.
 func Update(listenAddress *string, storageAddress *string, logToFile *bool) {
+	if logToFile != nil {
+		LogToFile = *logToFile
+	}
 	if listenAddress != nil {
 		ListenAddress = *listenAddress
 	}
 	if storageAddress != nil {
 		StorageFolder = *storageAddress
-	}
-	if logToFile != nil {
-		LogToFile = *logToFile
 	}
 }

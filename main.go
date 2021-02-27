@@ -37,7 +37,6 @@ func main() {
 		return
 	}
 	conf.Update(listenAddress, storageAddress, logToFile)
-
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
@@ -48,11 +47,10 @@ func main() {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
-
 	log.Printf("Seconds between captures: %d\n", s.SecondsBetweenCaptures)
 	log.Printf("Offset within hour:       %d\n", s.OffsetWithinHour)
 	log.Printf("Resolution:               %d x %d\n", s.PhotoResolutionWidth, s.PhotoResolutionHeight)
-	log.Printf("Listening address:        %s\n", conf.ListenAddress)
+	log.Printf("Listen address:           %s\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
 
