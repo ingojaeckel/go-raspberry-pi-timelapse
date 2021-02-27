@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -24,21 +25,32 @@ var content embed.FS
 
 func main() {
 	initVersion()
+
+	versionFlag := flag.Bool("version", false, "Print version and exit.")
+	listenAddress := flag.String("port", conf.DefaultListenAddress, "HTTP port to listen on.")
+	logToFile := flag.Bool("logToFile", conf.DefaultLogToFile, "Toggle to enable logging to a file on disk instead of stdout. Logging to a file is recommended for long term operation.")
+	storageAddress := flag.String("storageFolder", conf.DefaultStorageFolder, "Folder for storage of timelapse pictures.")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version)
+		return
+	}
+	conf.Update(listenAddress, storageAddress, logToFile)
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
 	}
+
 	s, err := conf.LoadConfiguration()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
-
-	log.Println("Version: ", version)
 	log.Printf("Seconds between captures: %d\n", s.SecondsBetweenCaptures)
 	log.Printf("Offset within hour:       %d\n", s.OffsetWithinHour)
 	log.Printf("Resolution:               %d x %d\n", s.PhotoResolutionWidth, s.PhotoResolutionHeight)
-	log.Printf("Listening on port:        %s...\n", conf.ListenAddress)
+	log.Printf("Listen address:           %s\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
 
@@ -72,6 +84,7 @@ func main() {
 		t.CapturePeriodically()
 	}
 
+	log.Println("Listening...")
 	if err := http.ListenAndServe(conf.ListenAddress, mux); err != nil {
 		log.Fatal("Failed start: ", err.Error())
 	}
@@ -85,7 +98,7 @@ func initLogging() error {
 		}
 		log.SetOutput(f)
 	}
-	log.Printf("Started at %s\n", time.Now())
+	log.Printf("Version %s started at %s\n", version, time.Now())
 	return nil
 }
 
