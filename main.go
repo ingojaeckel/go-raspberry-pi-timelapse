@@ -41,15 +41,19 @@ func main() {
 	log.Printf("Listening on port:        %s...\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
-	// TODO redirect to new frontend
-	// mux.HandleFunc(pat.Get("/"), rest.GetIndex)
+
+	// Frontend APIs
+	mux.Handle(pat.Get("/static/*"), http.StripPrefix("/static/", http.FileServer(http.FS(content))))
+	// Redirect to frontend. Ideally this could be built in a way it can be hosted on or closer to /.
+	mux.Handle(pat.Get("/"), http.RedirectHandler("/static/frontend/build/index.html", http.StatusMovedPermanently))
+
+	// Backend APIs (should only be called by frontend code)
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
 		rest.Capture(w, s)
 	})
 
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
 	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
-
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
@@ -58,8 +62,6 @@ func main() {
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
-
-	mux.Handle(pat.Get("/static/*"), http.StripPrefix("/static/", http.FileServer(http.FS(content))))
 
 	t, err := timelapse.New(conf.StorageFolder, s)
 	if err != nil {
