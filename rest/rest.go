@@ -101,8 +101,31 @@ func Capture(w http.ResponseWriter, s *conf.Settings) {
 
 // GetArchiveZip Reply with ZIP file containing all timelapse pictures
 // TODO Support downloading only selected pictures. Let caller specific images by name.
-func GetArchiveZip(w http.ResponseWriter, _ *http.Request) {
+func GetArchiveZip(w http.ResponseWriter, r *http.Request) {
+	filter := r.URL.Query()["filter"]
+	filterProvided := len(filter) > 0 && len(filter[0]) > 0
+	fileNamesIncluded := make(map[string]bool)
+
+	if filterProvided {
+		fileNames := strings.Split(filter[0], ";")
+		log.Printf("Limit archive to files: %v\n", fileNames)
+
+		for _, name := range fileNames {
+			fileNamesIncluded[name] = true
+		}
+	}
+
 	f, _ := files.ListFiles(conf.StorageFolder, true) // TODO handle error
+	if filterProvided {
+		filteredFileList := make([]files.File, len(fileNamesIncluded))
+		i := 0
+		for _, file := range f {
+			if fileNamesIncluded[file.Name] {
+				filteredFileList[i] = file
+				i++
+			}
+		}
+	}
 
 	// Convert []File to []string
 	strFiles := make([]string, len(f))
