@@ -56,21 +56,21 @@ const getPhotos = () => {
     getPhotos()
   }, []);
 
-  const handleSelectionModelChanged = (selectionModel: SelectionModelChangeParams) => {
-    console.log("selection changed: ", selectionModel);
+  const handleSelectionModelChanged = (params: SelectionModelChangeParams) => {
+    console.log("selection changed: ", params);
 
     var link = "";
-    for (var i=0; i<selectionModel.selectionModel.length; i++) {
-      let selectedPhoto = state.Photos.find(e => e.id == selectionModel.selectionModel[i]);
+    params.selectionModel.forEach(selected => {
+      let selectedPhoto = state.Photos.find(e => e.id === selected);
       if (selectedPhoto) {
         let selectedPhotoFilename = selectedPhoto.fileName;
         link += "f=" + selectedPhotoFilename + "&";
       }
-    }
+    });
 
     setState({
       Photos: state.Photos,
-      Selected: selectionModel.selectionModel,
+      Selected: params.selectionModel,
       ArchiveFilterParameter: link,
     });
   };
