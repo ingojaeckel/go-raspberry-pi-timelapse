@@ -8,6 +8,7 @@ import { BaseUrl } from '../conf/config'
 export interface PhotosRowData {
   Photos: RowData[],
   Selected: RowId[],
+  ArchiveFilterParameter: string,
 }
 
 const columns: ColDef[] = [
@@ -20,6 +21,7 @@ export default function PhotosComponent() {
   const [state, setState] = useState<PhotosRowData>({
     Photos: [],
     Selected: [],
+    ArchiveFilterParameter: "",
   });
 
 const getPhotos = () => {
@@ -43,7 +45,9 @@ const getPhotos = () => {
 
         setState({
           Photos: rows,
-          Selected: []});
+          Selected: [],
+          ArchiveFilterParameter: "",
+        });
       }
     });
   }
@@ -55,9 +59,20 @@ const getPhotos = () => {
   const handleSelectionModelChanged = (selectionModel: SelectionModelChangeParams) => {
     console.log("selection changed: ", selectionModel);
 
+    var link = "";
+    for (var i=0; i<selectionModel.selectionModel.length; i++) {
+      let selectedPhoto = state.Photos.find(e => e.id == selectionModel.selectionModel[i]);
+      if (selectedPhoto) {
+        let selectedPhotoFilename = selectedPhoto.fileName;
+        link += "f=" + selectedPhotoFilename + "&";
+      }
+    }
+
     setState({
       Photos: state.Photos,
-      Selected: selectionModel.selectionModel});
+      Selected: selectionModel.selectionModel,
+      ArchiveFilterParameter: link,
+    });
   };
 
   const handleRefreshClicked = () => {
@@ -76,7 +91,7 @@ const getPhotos = () => {
         <Button onClick={handleRefreshClicked}>Refresh list of pictures</Button>
         <Button onClick={handleDeleteClicked}>Delete selected pictures</Button>
       </ButtonGroup>
-      <a href={BaseUrl + "/archive/zip?" + state.Selected.length}>Download selected pictures</a>
+      <a href={BaseUrl + "/archive/zip?" + state.ArchiveFilterParameter}>Download selected pictures</a>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid
           rows={state.Photos}
