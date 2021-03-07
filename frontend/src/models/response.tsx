@@ -16,7 +16,8 @@ export interface SettingsResponse {
 	PreviewResolutionHeight: number
 	RotateBy:                number
 	ResolutionSetting:       number
-    DebugEnabled:            boolean
+	Quality:                 number
+	DebugEnabled:            boolean
 }
 
 export interface PhotosResponse {

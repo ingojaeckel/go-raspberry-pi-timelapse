@@ -22,12 +22,13 @@ export default function SetupComponent() {
   const [state, setState] = useState<SettingsResponse>({
     SecondsBetweenCaptures:  0,
     OffsetWithinHour:        0,
-    PhotoResolutionWidth:    1000,
-    PhotoResolutionHeight:   2000,
+    PhotoResolutionWidth:    3280,
+    PhotoResolutionHeight:   2464,
     PreviewResolutionWidth:  640,
-    PreviewResolutionHeight: 0,
+    PreviewResolutionHeight: 480,
     RotateBy:                0,
     ResolutionSetting:       0,
+    Quality:                 100,
     DebugEnabled:            false,
   });
 
@@ -81,6 +82,14 @@ export default function SetupComponent() {
           <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
             <MenuItem value={0}>0</MenuItem>
             <MenuItem value={180}>180</MenuItem>
+          </Select>
+          <FormHelperText></FormHelperText>
+        </FormControl><br />
+        <FormControl className={classes.formControl} fullWidth>
+          <InputLabel id="demo-simple-select-helper-label">Quality (1..100%)</InputLabel>
+          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
+            <MenuItem value={100}>100</MenuItem>
+            <MenuItem value={0}>0</MenuItem>
           </Select>
           <FormHelperText></FormHelperText>
         </FormControl>
