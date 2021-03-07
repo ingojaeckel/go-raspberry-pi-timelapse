@@ -10,4 +10,5 @@ github.com/facebookgo/subset v0.0.0-20200203212716-c811ad88dec4 h1:7HZCaLC5+BZpm
 github.com/facebookgo/subset v0.0.0-20200203212716-c811ad88dec4/go.mod h1:5tD+neXqOorC30/tWg0LCSkrqj/AR6gu8yY8/fpw1q0=
 goji.io v2.0.0+incompatible h1:QY6NuzeDeRk+8Iby4IfuN/k0d82K+fDFslQF2I2f6AM=
 goji.io v2.0.0+incompatible/go.mod h1:sbqFwrtqZACxLBTQcdgVjFh54yGVCvwq8+w49MVMMIk=
+golang.org/x/sys v0.0.0-20180122081959-af50095a40f9 h1:ne3QBDn7ziARHn26Dk8yZ5TB4yf7growSFMsxd8BrGQ=
 golang.org/x/sys v0.0.0-20180122081959-af50095a40f9/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
