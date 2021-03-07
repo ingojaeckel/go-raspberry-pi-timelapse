@@ -17,6 +17,7 @@ type Camera struct {
 	savePath                         string
 	width, height                    int
 	flipHorizontally, flipVertically bool
+	quality                          int
 }
 
 // NewCamera Setting "rotate" to true will create a camera instance which will flip all pictures by 180 degrees. Each captured image will be flipped horizontally and vertically.
@@ -30,6 +31,7 @@ func NewCamera(path string, width, height int, rotate bool) (Camera, error) {
 		height:           height,
 		flipHorizontally: rotate,
 		flipVertically:   rotate,
+		quality:          100, // TODO pass in
 	}, nil
 }
 
@@ -54,6 +56,7 @@ func (c *Camera) getRaspistillArgs(fullPath string) []string {
 	args := []string{
 		"-w", strconv.Itoa(c.width),
 		"-h", strconv.Itoa(c.height),
+		"-q", strconv.Itoa(c.quality),
 	}
 	if c.flipVertically {
 		args = append(args, "-vf")

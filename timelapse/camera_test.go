@@ -1,9 +1,10 @@
 package timelapse
 
 import (
-	"github.com/facebookgo/ensure"
 	"strings"
 	"testing"
+
+	"github.com/facebookgo/ensure"
 )
 
 func TestCreateCameraWithoutPath(t *testing.T) {
@@ -27,7 +28,7 @@ func TestBuildingArguments(t *testing.T) {
 func TestRaspistillArgs(t *testing.T) {
 	unrotatedCamera, _ := NewCamera("foo", 200, 100, false)
 	args := unrotatedCamera.getRaspistillArgs("foo/someFile.jpg")
-	ensure.DeepEqual(t, []string{"-w", "200", "-h", "100", "-o", "foo/someFile.jpg"}, args)
+	ensure.DeepEqual(t, []string{"-w", "200", "-h", "100", "-q", "100", "-o", "foo/someFile.jpg"}, args)
 }
 
 func TestCreateRotatedCamera(t *testing.T) {
