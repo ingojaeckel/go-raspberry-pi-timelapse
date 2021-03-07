@@ -78,7 +78,7 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 
 func Capture(w http.ResponseWriter, s *conf.Settings) {
 	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight)
-	c, err := timelapse.NewCamera(conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight, s.RotateBy == 180)
+	c, err := timelapse.NewCamera(conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight, s.RotateBy == 180, s.Quality)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Failed to instantiate camera: %s", err.Error())
@@ -201,6 +201,7 @@ func UpdatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 	s.SecondsBetweenCaptures = updateRequest.TimeBetween
 	s.RotateBy = updateRequest.RotateBy
 	s.ResolutionSetting = updateRequest.Resolution
+	s.Quality = updateRequest.Quality
 	switch s.ResolutionSetting {
 	case 2:
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232

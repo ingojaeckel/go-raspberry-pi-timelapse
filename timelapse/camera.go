@@ -21,7 +21,7 @@ type Camera struct {
 }
 
 // NewCamera Setting "rotate" to true will create a camera instance which will flip all pictures by 180 degrees. Each captured image will be flipped horizontally and vertically.
-func NewCamera(path string, width, height int, rotate bool) (Camera, error) {
+func NewCamera(path string, width, height int, rotate bool, quality int) (Camera, error) {
 	if path == "" {
 		return Camera{}, errors.New("invalid config: path must not be empty")
 	}
@@ -31,7 +31,7 @@ func NewCamera(path string, width, height int, rotate bool) (Camera, error) {
 		height:           height,
 		flipHorizontally: rotate,
 		flipVertically:   rotate,
-		quality:          100, // TODO pass in
+		quality:          quality,
 	}, nil
 }
 

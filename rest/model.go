@@ -13,6 +13,7 @@ type UpdateConfigurationRequest struct {
 	InitialOffset int `json:"initialOffset"`
 	Resolution    int `json:"resolution"`
 	RotateBy      int `json:"rotateBy"`
+	Quality       int `json:"quality"`
 }
 
 type MonitoringResponse struct {

@@ -3,10 +3,11 @@ package conf
 import (
 	"encoding/json"
 	"errors"
-	"github.com/boltdb/bolt"
 	"log"
 	"os"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 const (
@@ -29,6 +30,7 @@ var initialConfiguration = Settings{
 	PreviewResolutionHeight: 480,
 	RotateBy:                0,
 	ResolutionSetting:       0,
+	Quality:                 100,
 }
 
 type Settings struct {
@@ -40,6 +42,7 @@ type Settings struct {
 	PreviewResolutionHeight int
 	RotateBy                int
 	ResolutionSetting       int
+	Quality                 int
 	DebugEnabled            bool
 }
 
