@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { SettingsResponse } from '../models/response'
 import { createStyles, makeStyles, Theme } from '@material-ui/core/styles';
-import { ButtonGroup, Button, FormControl, InputLabel, Select, MenuItem, FormHelperText } from '@material-ui/core';
+import { ButtonGroup, Button, FormControl, InputLabel, Select, MenuItem, FormHelperText, Slider, Typography } from '@material-ui/core';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -41,6 +41,43 @@ export default function SetupComponent() {
         }
       });
   }, []);
+
+  const handleRestartClicked = () => {
+    console.log("restart clicked");
+
+    axios
+      .get(BaseUrl + "/admin/restart")
+      .then(() => console.log("restart initiated"));
+  };
+
+  const handleShutdownClicked = () => {
+    console.log("shutdown clicked");
+
+    axios
+      .get(BaseUrl + "/admin/shutdown")
+      .then(() => console.log("shutdown initiated"));
+  };
+
+  const handleSaveSettingsClicked = () => {
+    console.log("save settings clicked");
+
+    axios
+      .post<SettingsResponse>(BaseUrl + "/configuration", state)
+      .then(resp => {
+        console.log("settings updated to ", resp.data);
+      });
+  };
+
+  const handleSettingsChange = (event: ChangeEvent<{}>, value: number | number[]) => {
+    console.log("quality changed ", event);
+    console.log("value ", value);
+
+    setState({
+      ...state,
+      Quality: value as number,
+    })
+    
+  };
 
   console.log("SecondsBetweenCaptures: ", state.SecondsBetweenCaptures)
 
@@ -86,18 +123,16 @@ export default function SetupComponent() {
           <FormHelperText></FormHelperText>
         </FormControl><br />
         <FormControl className={classes.formControl} fullWidth>
-          <InputLabel id="demo-simple-select-helper-label">Quality (1..100%)</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
-            <MenuItem value={100}>100</MenuItem>
-            <MenuItem value={0}>0</MenuItem>
-          </Select>
-          <FormHelperText></FormHelperText>
+          <Typography gutterBottom>
+            Photo Quality (0..100%)
+          </Typography>
+          <Slider valueLabelDisplay="on" defaultValue={100} step={5} marks min={0} max={100} onChange={handleSettingsChange} />
         </FormControl>
       </div>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
-        <Button>Restart</Button>
-        <Button>Shutdown</Button>
-        <Button>Delete Photos</Button>
+        <Button onClick={handleSaveSettingsClicked}>Save</Button>
+        <Button onClick={handleRestartClicked}>Restart</Button>
+        <Button onClick={handleShutdownClicked}>Shutdown</Button>
       </ButtonGroup>
     </React.Fragment>
   );

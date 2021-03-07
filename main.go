@@ -72,6 +72,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/archive/zip"), rest.GetArchiveZip)
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
+	mux.HandleFunc(pat.Options("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
 
