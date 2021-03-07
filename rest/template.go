@@ -14,27 +14,24 @@ import (
 // TODO add monitoring for main memory
 
 func GetMonitoring(w http.ResponseWriter, _ *http.Request) {
-	resp := &MonitoringResponse{
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
+	json.NewEncoder(w).Encode(&MonitoringResponse{
 		Time:           admin.RunCommandOrPanic("/bin/date"),
 		GpuTemperature: admin.RunCommandOrPanic("/opt/vc/bin/vcgencmd", "measure_temp"),
 		CpuTemperature: admin.RunCommandOrPanic("/bin/cat", "/sys/class/thermal/thermal_zone0/temp"),
 		Uptime:         admin.RunCommandOrPanic("/usr/bin/uptime"),
 		FreeDiskSpace:  admin.RunCommandOrPanic("/bin/df", "-h"),
-	}
-	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
-	json.NewEncoder(w).Encode(resp)
+	})
 }
 
 func GetPhotos(w http.ResponseWriter, _ *http.Request) {
-	resp := getScreenshotsResponse(conf.StorageFolder)
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(getPhotosFrom(conf.StorageFolder))
 }
 
-// TODO rename screenshots to photos/pictures
-func getScreenshotsResponse(folder string) GetPhotosResponse {
+func getPhotosFrom(folder string) GetPhotosResponse {
 	files, _ := files.ListFiles(folder, true) // TODO handle error
 	photos := make([]Photo, len(files))
 	for i, f := range files {

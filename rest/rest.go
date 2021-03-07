@@ -170,10 +170,10 @@ func Admin(_ http.ResponseWriter, r *http.Request) {
 }
 
 func serveFileContent(w http.ResponseWriter, path string) {
-	content, e := files.GetFile(path)
-	if e != nil {
+	content, err := files.GetFile(path)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Print(e.Error())
+		fmt.Print(err.Error())
 		return
 	}
 
