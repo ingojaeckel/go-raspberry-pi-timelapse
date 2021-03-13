@@ -62,7 +62,7 @@ func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTim
 
 func createTimelapseForTesting(t *testing.T, offsetWithinHourSeconds int) Timelapse {
 	res := Resolution{800, 600}
-	c, err := NewCamera(conf.StorageFolder, res.Width, res.Height, false)
+	c, err := NewCamera(conf.StorageFolder, res.Width, res.Height, false, 100)
 	ensure.Nil(t, err)
 	return Timelapse{c, conf.StorageFolder, 1800, offsetWithinHourSeconds, res, true}
 }

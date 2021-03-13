@@ -2,10 +2,11 @@ package timelapse
 
 import (
 	"errors"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"log"
 	"os"
 	"time"
+
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 )
 
 var failedToInitCamera = errors.New("failed to instantiate camera")
@@ -35,7 +36,7 @@ func New(folder string, s *conf.Settings) (*Timelapse, error) {
 	}
 	// Assume folder exists
 
-	c, err := NewCamera(folder, s.PhotoResolutionWidth, s.PhotoResolutionHeight, s.RotateBy == 180)
+	c, err := NewCamera(folder, s.PhotoResolutionWidth, s.PhotoResolutionHeight, s.RotateBy == 180, s.Quality)
 	if err != nil {
 		return nil, failedToInitCamera
 	}
@@ -75,6 +76,10 @@ func (t Timelapse) CapturePeriodically() {
 				s, err := t.Camera.Capture()
 				if err != nil {
 					log.Printf("Error during capture: %s\n", err.Error())
+
+					// Sleep for 1s after an error to ensure time changed sufficiently before next invocation of WaitForCapture
+					time.Sleep(time.Duration(1 * time.Second))
+					continue
 				}
 
 				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()

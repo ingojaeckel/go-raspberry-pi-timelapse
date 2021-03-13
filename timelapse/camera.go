@@ -11,16 +11,20 @@ import (
 	"time"
 )
 
-const timeStampFormat = "2006-01-02_15:04:05"
+const (
+	timeStampFormat   = "2006-01-02_15:04:05"
+	commandRaspistill = "raspistill"
+)
 
 type Camera struct {
 	savePath                         string
 	width, height                    int
 	flipHorizontally, flipVertically bool
+	quality                          int
 }
 
 // NewCamera Setting "rotate" to true will create a camera instance which will flip all pictures by 180 degrees. Each captured image will be flipped horizontally and vertically.
-func NewCamera(path string, width, height int, rotate bool) (Camera, error) {
+func NewCamera(path string, width, height int, rotate bool, quality int) (Camera, error) {
 	if path == "" {
 		return Camera{}, errors.New("invalid config: path must not be empty")
 	}
@@ -30,21 +34,25 @@ func NewCamera(path string, width, height int, rotate bool) (Camera, error) {
 		height:           height,
 		flipHorizontally: rotate,
 		flipVertically:   rotate,
+		quality:          quality,
 	}, nil
 }
 
 func (c *Camera) Capture() (string, error) {
 	fullPath := c.getAbsoluteFilepath()
 	args := c.getRaspistillArgs(fullPath)
-	cmd := exec.Command("raspistill", args...)
+	log.Printf("Running command: %s %v", commandRaspistill, args)
+	cmd := exec.Command(commandRaspistill, args...)
 
 	_, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Println(err)
+		return "", err
 	}
 	err = cmd.Start()
 	if err != nil {
 		log.Println(err)
+		return "", err
 	}
 	cmd.Wait()
 	return fullPath, nil
@@ -54,6 +62,7 @@ func (c *Camera) getRaspistillArgs(fullPath string) []string {
 	args := []string{
 		"-w", strconv.Itoa(c.width),
 		"-h", strconv.Itoa(c.height),
+		"-q", strconv.Itoa(c.quality),
 	}
 	if c.flipVertically {
 		args = append(args, "-vf")

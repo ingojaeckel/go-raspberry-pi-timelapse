@@ -3,10 +3,11 @@ package conf
 import (
 	"encoding/json"
 	"errors"
-	"github.com/boltdb/bolt"
 	"log"
 	"os"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 const (
@@ -20,8 +21,8 @@ var settingsNotFound = errors.New("settings not found")
 
 var initialConfiguration = Settings{
 	DebugEnabled:           false,
-	SecondsBetweenCaptures: 1800, // 30 min
-	OffsetWithinHour:       900,  // 15 min
+	SecondsBetweenCaptures: DefaultSecondsBetweenCaptures,
+	OffsetWithinHour:       DefaultOffsetWithinHour,
 	// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
 	PhotoResolutionWidth:    2186,
 	PhotoResolutionHeight:   1642,
@@ -29,6 +30,7 @@ var initialConfiguration = Settings{
 	PreviewResolutionHeight: 480,
 	RotateBy:                0,
 	ResolutionSetting:       0,
+	Quality:                 100,
 }
 
 type Settings struct {
@@ -40,7 +42,13 @@ type Settings struct {
 	PreviewResolutionHeight int
 	RotateBy                int
 	ResolutionSetting       int
+	Quality                 int
 	DebugEnabled            bool
+}
+
+func (s Settings) String() string {
+	jsonStr, _ := json.Marshal(s)
+	return string(jsonStr)
 }
 
 func LoadConfiguration() (*Settings, error) {
@@ -64,11 +72,17 @@ func LoadConfiguration() (*Settings, error) {
 
 	var existingSettings Settings
 	err = json.Unmarshal([]byte(val), &existingSettings)
+
+	if existingSettings.SecondsBetweenCaptures < 60 {
+		// Enforce min time between captures. this also protects for errors as a result of this being 0.
+		existingSettings.SecondsBetweenCaptures = 60
+	}
+
 	return &existingSettings, err
 }
 
 func WriteConfiguration(s Settings) (*Settings, error) {
-	log.Printf("Write configuration: %v\n", s)
+	log.Printf("Write configuration: %s\n", s.String())
 	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	defer db.Close()
 
@@ -95,7 +109,7 @@ func areSettingsMissing(path string) bool {
 }
 
 func set(db *bolt.DB, key string, value []byte) error {
-	log.Printf("setting '%s': '%s' -> '%v'\n", bucket, key, value)
+	log.Printf("setting '%s': '%s' -> '%s'\n", bucket, key, string(value))
 	return db.Update(func(tx *bolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists([]byte(bucket)); err != nil {
 			return err

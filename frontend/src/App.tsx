@@ -7,6 +7,13 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import TimelineIcon from '@material-ui/icons/Timeline';
 import { Container, List, Avatar, ListItemAvatar, ListItem, ListItemText, Divider, CssBaseline } from '@material-ui/core';
 import Switcher from './Switch';
+import axios from 'axios';
+
+// Register default request interceptors
+axios.interceptors.request.use(request => {
+  console.log('Starting Request', JSON.stringify(request, null, 2))
+  return request
+})
 
 const customHistory = createBrowserHistory();
 
