@@ -3,7 +3,7 @@ import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { SettingsResponse } from '../models/response'
 import { createStyles, makeStyles, Theme } from '@material-ui/core/styles';
-import { ButtonGroup, Button, FormControl, InputLabel, Select, MenuItem, FormHelperText, Slider, Typography } from '@material-ui/core';
+import { ButtonGroup, Button, FormControl, Select, MenuItem, Slider, Typography } from '@material-ui/core';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -20,7 +20,7 @@ const useStyles = makeStyles((theme: Theme) =>
 export default function SetupComponent() {
   const classes = useStyles();
   const [state, setState] = useState<SettingsResponse>({
-    SecondsBetweenCaptures:  0,
+    SecondsBetweenCaptures:  60,
     OffsetWithinHour:        0,
     PhotoResolutionWidth:    3280,
     PhotoResolutionHeight:   2464,
@@ -33,6 +33,7 @@ export default function SetupComponent() {
   });
 
   useEffect(() => {
+    console.log("Getting previous configuration...");
     axios
       .get<SettingsResponse>(BaseUrl + "/configuration")
       .then(resp => {
@@ -58,75 +59,46 @@ export default function SetupComponent() {
       .then(() => console.log("shutdown initiated"));
   };
 
-  const handleSaveSettingsClicked = () => {
-    console.log("save settings clicked");
-
+  function handleSaveSettingsClicked() {
     axios
       .post<SettingsResponse>(BaseUrl + "/configuration", state)
       .then(resp => {
-        console.log("settings updated to ", resp.data);
+        console.log("Settings updated to ", resp.data);
+        setState(resp.data);
       });
   };
 
-  const handleSettingsChange = (event: ChangeEvent<{}>, value: number | number[]) => {
-    console.log("quality changed ", event);
-    console.log("value ", value);
-
-    setState({
-      ...state,
-      Quality: value as number,
-    })
-    
-  };
-
-  console.log("SecondsBetweenCaptures: ", state.SecondsBetweenCaptures)
+  function handleOffsetChanged(_event: ChangeEvent<{}>, value: number | number[]) {
+    setState(Object.assign(state, { OffsetWithinHour: value as number }))
+  }
+  function handleQualityChanged(_event: ChangeEvent<{}>, value: number | number[]) {
+    setState(Object.assign(state, { Quality: value as number }));
+  }
+  function handleRotationChanged(_event: ChangeEvent<{}>, value: number | number[]) {
+    setState(Object.assign(state, { RotateBy: value as number }));
+  }
+  function handleTimeBetweenCapturesChanged(event: ChangeEvent<{}>, value: number | number[]) {
+    const newVal = (value as number) * 60;
+    const newState = Object.assign(state, { SecondsBetweenCaptures: newVal })
+    setState(newState);
+  }
 
   return (
     <React.Fragment>
       <div>
         <FormControl className={classes.formControl} fullWidth>
-          <InputLabel id="demo-simple-select-helper-label">Time between captures (minutes)</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={1}>
-            <MenuItem value={1}>1</MenuItem>
-            <MenuItem value={10}>10</MenuItem>
-            <MenuItem value={20}>20</MenuItem>
-            <MenuItem value={30}>30</MenuItem>
-          </Select>
-          <FormHelperText></FormHelperText>
-        </FormControl><br />
-        <FormControl className={classes.formControl} fullWidth>
-          <InputLabel id="demo-simple-select-helper-label">Offset before first capture (minutes)</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
-            <MenuItem value={0}>0</MenuItem>
-            <MenuItem value={5}>5</MenuItem>
-            <MenuItem value={10}>10</MenuItem>
-            <MenuItem value={15}>15</MenuItem>
-            <MenuItem value={20}>20</MenuItem>
-            <MenuItem value={25}>25</MenuItem>
-            <MenuItem value={30}>30</MenuItem>
-          </Select>
-          <FormHelperText></FormHelperText>
-        </FormControl><br />
-        <FormControl className={classes.formControl} fullWidth>
-          <InputLabel id="demo-simple-select-helper-label">Resolution</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
+          <Typography gutterBottom>Time between captures (minutes): {state.SecondsBetweenCaptures/60}</Typography>
+          <Slider valueLabelDisplay="auto" defaultValue={1} step={1} marks min={1} max={30} onChange={handleTimeBetweenCapturesChanged} />
+          <Typography gutterBottom>Delay within value hour before first capture (minutes): {state.OffsetWithinHour}</Typography>
+          <Slider valueLabelDisplay="auto" defaultValue={0} step={5} marks min={0} max={30} onChange={handleOffsetChanged} />
+          <Typography gutterBottom>Photo Resolution (pixels)</Typography>
+          <Select defaultValue={0}>
             <MenuItem value={0}>3280x2464</MenuItem>
           </Select>
-          <FormHelperText></FormHelperText>
-        </FormControl><br />
-        <FormControl className={classes.formControl} fullWidth>
-          <InputLabel id="demo-simple-select-helper-label">Rotation (degrees)</InputLabel>
-          <Select labelId="demo-simple-select-helper-label" id="demo-simple-select-helper" defaultValue={0}>
-            <MenuItem value={0}>0</MenuItem>
-            <MenuItem value={180}>180</MenuItem>
-          </Select>
-          <FormHelperText></FormHelperText>
-        </FormControl><br />
-        <FormControl className={classes.formControl} fullWidth>
-          <Typography gutterBottom>
-            Photo Quality (0..100%)
-          </Typography>
-          <Slider valueLabelDisplay="on" defaultValue={100} step={5} marks min={0} max={100} onChange={handleSettingsChange} />
+          <Typography gutterBottom>Rotation (degrees): {state.RotateBy}</Typography>
+          <Slider valueLabelDisplay="auto" defaultValue={0} step={180} marks min={0} max={180} onChange={handleRotationChanged} />
+          <Typography gutterBottom>Photo Quality (0..100%): {state.Quality}</Typography>
+          <Slider valueLabelDisplay="auto" defaultValue={0} step={5} marks min={0} max={100} onChange={handleQualityChanged} />
         </FormControl>
       </div>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
