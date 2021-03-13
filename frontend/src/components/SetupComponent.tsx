@@ -2,23 +2,9 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { SettingsResponse } from '../models/response'
-import { createStyles, makeStyles, Theme } from '@material-ui/core/styles';
-import { ButtonGroup, Button, FormControl, Select, MenuItem, Slider, Typography } from '@material-ui/core';
-
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    formControl: {
-      margin: theme.spacing(1),
-      minWidth: 120,
-    },
-    selectEmpty: {
-      marginTop: theme.spacing(2),
-    },
-  }),
-);
+import { ButtonGroup, Button, Select, MenuItem, Slider, Typography } from '@material-ui/core';
 
 export default function SetupComponent() {
-  const classes = useStyles();
   const [state, setState] = useState<SettingsResponse>({
     SecondsBetweenCaptures:  60,
     OffsetWithinHour:        0,
@@ -86,20 +72,18 @@ export default function SetupComponent() {
   return (
     <React.Fragment>
       <div>
-        <FormControl className={classes.formControl} fullWidth>
-          <Typography gutterBottom>Time between captures (minutes): {state.SecondsBetweenCaptures/60}</Typography>
-          <Slider valueLabelDisplay="auto" defaultValue={1} step={1} marks min={1} max={30} onChange={handleTimeBetweenCapturesChanged} />
-          <Typography gutterBottom>Delay within value hour before first capture (minutes): {state.OffsetWithinHour}</Typography>
-          <Slider valueLabelDisplay="auto" defaultValue={0} step={5} marks min={0} max={30} onChange={handleOffsetChanged} />
-          <Typography gutterBottom>Photo Resolution (pixels)</Typography>
-          <Select defaultValue={0}>
-            <MenuItem value={0}>3280x2464</MenuItem>
-          </Select>
-          <Typography gutterBottom>Rotation (degrees): {state.RotateBy}</Typography>
-          <Slider valueLabelDisplay="auto" defaultValue={0} step={180} marks min={0} max={180} onChange={handleRotationChanged} />
-          <Typography gutterBottom>Photo Quality (0..100%): {state.Quality}</Typography>
-          <Slider valueLabelDisplay="auto" defaultValue={0} step={5} marks min={0} max={100} onChange={handleQualityChanged} />
-        </FormControl>
+        <Typography gutterBottom>Time between captures (minutes): {state.SecondsBetweenCaptures/60}</Typography>
+        <Slider valueLabelDisplay="auto" defaultValue={0} step={1} marks min={1} max={30} onChange={handleTimeBetweenCapturesChanged} />
+        <Typography gutterBottom>Delay within value hour before first capture (minutes): {state.OffsetWithinHour}</Typography>
+        <Slider valueLabelDisplay="auto" defaultValue={0} step={5} marks min={0} max={30} onChange={handleOffsetChanged} />
+        <Typography gutterBottom>Photo Resolution (pixels)</Typography>
+        <Select defaultValue={0}>
+          <MenuItem value={0}>3280x2464</MenuItem>
+        </Select>
+        <Typography gutterBottom>Rotation (degrees): {state.RotateBy}</Typography>
+        <Slider valueLabelDisplay="auto" defaultValue={0} step={180} marks min={0} max={180} onChange={handleRotationChanged} />
+        <Typography gutterBottom>Photo Quality (0..100%): {state.Quality}</Typography>
+        <Slider valueLabelDisplay="auto" defaultValue={0} step={5} marks min={0} max={100} onChange={handleQualityChanged} />
       </div>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
         <Button onClick={handleSaveSettingsClicked}>Save</Button>
