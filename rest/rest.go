@@ -44,8 +44,9 @@ func UpdateConfiguration(w http.ResponseWriter, r *http.Request) {
 
 func GetFile(w http.ResponseWriter, r *http.Request) {
 	name := pat.Param(r, "fileName")
+	fullyQualifiedPath := conf.StorageFolder + "/" + name
 
-	canServe, e := files.CanServeFile(name, conf.MaxFileSizeBytes)
+	canServe, e := files.CanServeFile(fullyQualifiedPath, conf.MaxFileSizeBytes)
 	if !canServe {
 		w.WriteHeader(http.StatusNotFound)
 		if e != nil {
@@ -54,7 +55,7 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serveFileContent(w, name)
+	serveFileContent(w, fullyQualifiedPath)
 }
 
 func GetMostRecentFile(w http.ResponseWriter, _ *http.Request) {

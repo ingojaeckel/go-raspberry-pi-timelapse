@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Button, ButtonGroup } from '@material-ui/core';
 import axios from 'axios';
-import { DataGrid, ColDef, RowData, RowId, SelectionModelChangeParams } from '@material-ui/data-grid';
+import { DataGrid, ColDef, RowData, RowId, SelectionModelChangeParams, CellParams } from '@material-ui/data-grid';
 import { PhotosResponse } from '../models/response';
 import { BaseUrl } from '../conf/config'
 
@@ -12,7 +12,7 @@ export interface PhotosRowData {
 }
 
 const columns: ColDef[] = [
-  { field: 'fileName', headerName: 'Name', width: 300 },
+  { field: 'fileName', headerName: 'Name', width: 300, renderCell: (p: CellParams) => (<a href={BaseUrl + "/file/" + p.value}>{p.value}</a> ) },
   { field: 'fileCreateTime', headerName: 'Created At', width: 300 },
   { field: 'fileSizeBytes', headerName: 'Size', width: 100 },
 ];
