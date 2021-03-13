@@ -30,6 +30,7 @@ func main() {
 	listenAddress := flag.String("port", conf.DefaultListenAddress, "HTTP port to listen on.")
 	logToFile := flag.Bool("logToFile", conf.DefaultLogToFile, "Toggle to enable logging to a file on disk instead of stdout. Logging to a file is recommended for long term operation.")
 	storageAddress := flag.String("storageFolder", conf.DefaultStorageFolder, "Folder for storage of timelapse pictures.")
+	secondsBetweenCaptures := flag.Int("secondsBetweenCaptures", conf.DefaultSecondsBetweenCaptures, "Number of seconds between captures")
 	flag.Parse()
 
 	if *versionFlag {
@@ -46,6 +47,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
+	}
+	if secondsBetweenCaptures != nil {
+		// Override config with value passed in on CLI
+		s.SecondsBetweenCaptures = *secondsBetweenCaptures
 	}
 	log.Printf("Seconds between captures: %d\n", s.SecondsBetweenCaptures)
 	log.Printf("Offset within hour:       %d\n", s.OffsetWithinHour)

@@ -21,8 +21,8 @@ var settingsNotFound = errors.New("settings not found")
 
 var initialConfiguration = Settings{
 	DebugEnabled:           false,
-	SecondsBetweenCaptures: 1800, // 30 min
-	OffsetWithinHour:       900,  // 15 min
+	SecondsBetweenCaptures: DefaultSecondsBetweenCaptures,
+	OffsetWithinHour:       DefaultOffsetWithinHour,
 	// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
 	PhotoResolutionWidth:    2186,
 	PhotoResolutionHeight:   1642,
