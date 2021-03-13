@@ -191,17 +191,21 @@ func getBasename(path string) string {
 }
 
 func UpdatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
+	// TODO validate new config coming in via updateRequest
+	log.Printf("Received new configuration: %v\n", updateRequest)
+
 	s, err := conf.LoadConfiguration()
-	log.Printf("Old configuration: %v\n", s)
+	log.Printf("Updating old configuration (%v)\nwith new configuration (%v)\n", s, updateRequest)
 
 	if err != nil {
 		return nil, err
 	}
-	s.OffsetWithinHour = updateRequest.InitialOffset
-	s.SecondsBetweenCaptures = updateRequest.TimeBetween
-	s.RotateBy = updateRequest.RotateBy
-	s.ResolutionSetting = updateRequest.Resolution
+
 	s.Quality = updateRequest.Quality
+	s.RotateBy = updateRequest.RotateBy
+	s.OffsetWithinHour = updateRequest.OffsetWithinHour
+	s.ResolutionSetting = updateRequest.ResolutionSetting
+	s.SecondsBetweenCaptures = updateRequest.SecondsBetweenCaptures
 	switch s.ResolutionSetting {
 	case 2:
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232
