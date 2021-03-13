@@ -76,6 +76,10 @@ func (t Timelapse) CapturePeriodically() {
 				s, err := t.Camera.Capture()
 				if err != nil {
 					log.Printf("Error during capture: %s\n", err.Error())
+
+					// Sleep for 1s after an error to ensure time changed sufficiently before next invocation of WaitForCapture
+					time.Sleep(time.Duration(1 * time.Second))
+					continue
 				}
 
 				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()

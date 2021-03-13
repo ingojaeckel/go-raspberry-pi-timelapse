@@ -11,7 +11,10 @@ import (
 	"time"
 )
 
-const timeStampFormat = "2006-01-02_15:04:05"
+const (
+	timeStampFormat   = "2006-01-02_15:04:05"
+	commandRaspistill = "raspistill"
+)
 
 type Camera struct {
 	savePath                         string
@@ -38,15 +41,18 @@ func NewCamera(path string, width, height int, rotate bool, quality int) (Camera
 func (c *Camera) Capture() (string, error) {
 	fullPath := c.getAbsoluteFilepath()
 	args := c.getRaspistillArgs(fullPath)
-	cmd := exec.Command("raspistill", args...)
+	log.Printf("Running command: %s %v", commandRaspistill, args)
+	cmd := exec.Command(commandRaspistill, args...)
 
 	_, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Println(err)
+		return "", err
 	}
 	err = cmd.Start()
 	if err != nil {
 		log.Println(err)
+		return "", err
 	}
 	cmd.Wait()
 	return fullPath, nil
