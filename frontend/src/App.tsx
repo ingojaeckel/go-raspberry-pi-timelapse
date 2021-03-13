@@ -57,7 +57,7 @@ function App() {
               <Switcher />
             </Grid>
             <Grid item xs={10}>
-              <div className="footer">version: <a href="https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/{process.env.REACT_APP_GIT_SHA}">{process.env.REACT_APP_GIT_SHA}</a></div>
+              <div className="footer">version: <a href={"https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/" + process.env.REACT_APP_GIT_SHA}>{process.env.REACT_APP_GIT_SHA}</a></div>
             </Grid>
           </Grid>
         </Container>
