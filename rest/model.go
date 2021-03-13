@@ -3,6 +3,7 @@ package rest
 import (
 	"encoding/json"
 
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 )
 
@@ -11,17 +12,8 @@ type ListFilesResponse struct {
 }
 
 type UpdateConfigurationRequest struct {
-	SecondsBetweenCaptures int
-	OffsetWithinHour       int
-	RotateBy               int
-	Quality                int
-	ResolutionSetting      int
-
-	// TODO consider adding as neccessary
-	// PhotoResolutionWidth    int
-	// PhotoResolutionHeight   int
-	// PreviewResolutionWidth  int
-	// PreviewResolutionHeight int
+	// For now match the settings type exactly. All settings can be updated. Consider changing this in the future.
+	conf.Settings
 }
 
 func (u UpdateConfigurationRequest) String() string {
