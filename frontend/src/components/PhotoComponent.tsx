@@ -83,10 +83,9 @@ const getPhotos = () => {
 
   return (
     <React.Fragment>
-      <Typography variant="h5" component="h5">Preview</Typography>
-      <Typography variant="body1">
-        <img src={BaseUrl+"/capture"} alt="preview" />
-      </Typography>
+      <Typography variant="h4" component="h4">Photos</Typography>
+      <Typography variant="h5" component="h5">Preview Capture</Typography>
+      <img src={BaseUrl+"/capture"} alt="preview" />
       <ButtonGroup color="primary" aria-label="outlined primary button group">
         <Button onClick={handleRefreshClicked}>Refresh list of pictures</Button>
         <Button onClick={handleDeleteClicked}>Delete selected pictures</Button>

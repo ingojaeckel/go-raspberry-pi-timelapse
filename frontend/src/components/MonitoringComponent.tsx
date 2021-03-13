@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { MonitoringResponse } from '../models/response'
+import { Typography } from '@material-ui/core';
 
 export default function MonitoringComponent() {
   const [state, setState] = useState<MonitoringResponse>({
@@ -23,7 +24,10 @@ export default function MonitoringComponent() {
   }, []);
 
   return (
-    <div><h4>Monitoring</h4>
+    <div>
+      <div>
+        <Typography variant="h4" component="h4">Monitoring</Typography>
+      </div>
       <ul>
         <li>Current Time: <br/><pre>{state.Time}</pre></li>
         <li>Uptime: <br /><pre>{state.Uptime}</pre></li>

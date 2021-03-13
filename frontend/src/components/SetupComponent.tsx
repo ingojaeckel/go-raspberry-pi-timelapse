@@ -57,6 +57,9 @@ export default function SetupComponent() {
   return (
     <React.Fragment>
       <div>
+        <Typography variant="h4" component="h4">Settings</Typography>
+      </div>
+      <div>
         <Typography gutterBottom>Time between captures (minutes): {state.SecondsBetweenCaptures/60}</Typography>
         <Slider valueLabelDisplay="auto" step={1} marks min={1} max={30} value={state.SecondsBetweenCaptures/60} onChange={handleTimeBetweenCapturesChanged} />
         <Typography gutterBottom>Delay within value hour before first capture (minutes): {state.OffsetWithinHour}</Typography>
