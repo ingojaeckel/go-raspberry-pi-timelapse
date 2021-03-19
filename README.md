@@ -76,3 +76,11 @@ This project was created for a timelapse system consisting of the following core
 3. Install software required to allow other devices to connect to access point by running `./etc/os/5_setup_dhcpd.sh`.
 4. Reboot the Pi Zero W. After the reboot it should be available as an access point. Look for the Wifi SSID you configured in `hostapd.conf` (default name: `timelapse-raspberry-pi`, default passphrase: `InsertTheRealPassword`). Connect to the Pi's Wifi.
 5. On a device that is connected to access point open `http://192.168.0.1:8080`. Just like during development mode this will allow you to download the timelapse pictures and check the Pi's status.
+
+# Misc resources
+
+## PiTFT
+* https://learn.adafruit.com/adafruit-pitft-28-inch-resistive-touchscreen-display-raspberry-pi/easy-install-2 - Follow steps and `PiTFT as HDMI Mirror (Best for Raspberry Pi OS with Desktop)`
+* https://learn.adafruit.com/running-opengl-based-games-and-emulators-on-adafruit-pitft-displays/tuning-performance
+* https://willhaley.com/blog/power-off-raspberry-pi-adafruit-tft-screen-shutdown/
+* Streaming raspivid output via network. (1) on the receiving device: `vlc -vvv udp://@:1234 :demux=h264`. (2) on the Pi: `raspivid -t 60000 -o udp://192.168.0.123:1234`.
