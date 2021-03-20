@@ -20,11 +20,15 @@ unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
 unpack /filesystem/home/root /root root
 unpack /filesystem/boot /boot
 
-cd /home/pi && git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git
+git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git /home/pi/go-raspberry-pi-timelapse
 
 # Unpack root at the end, so files are modified before
 unpack /filesystem/root /
 
-# sudo chmod 644 /etc/systemd/system/multi-user.target.wants/timelapse.service
+sudo systemctl stop dhcpcd.service
+sudo systemctl disable dhcpcd.service
+
 sudo chmod 644 /lib/systemd/system/timelapse.service
 sudo systemctl enable timelapse.service
+sudo systemctl enable hostapd
+sudo systemctl enable dnsmasq
