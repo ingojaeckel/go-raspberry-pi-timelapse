@@ -25,5 +25,6 @@ cd /home/pi && git clone https://github.com/ingojaeckel/go-raspberry-pi-timelaps
 # Unpack root at the end, so files are modified before
 unpack /filesystem/root /
 
-sudo chmod 644 /etc/systemd/system/multi-user.target.wants/timelapse.service
+# sudo chmod 644 /etc/systemd/system/multi-user.target.wants/timelapse.service
+sudo chmod 644 /lib/systemd/system/timelapse.service
 sudo systemctl enable timelapse.service
