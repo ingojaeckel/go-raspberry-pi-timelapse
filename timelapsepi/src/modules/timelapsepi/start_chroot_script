@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Go Raspberry Pi Timelapse install script
+# Sets up RPI to be deployed and start taking timelapse photos.
+# Written by Ingo Jaeckel. Based on documentation of https://github.com/guysoft/PleromaPi and https://github.com/interactionresearchstudio/NaturewatchCameraOS.
+# GPL V3
+########
+
+
+# Source error handling, leave this in place
+set -x
+set -e
+
+source /common.sh
+install_cleanup_trap
+
+sudo apt-get update
+sudo apt-get install -y htop screen git python-smbus i2c-tools
+
+unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
+unpack /filesystem/home/root /root root
+unpack /filesystem/boot /boot
+
+git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git /home/pi/go-raspberry-pi-timelapse
+
+# Unpack root at the end, so files are modified before
+unpack /filesystem/root /
+
+sudo chmod 644 /lib/systemd/system/timelapse.service
+sudo systemctl enable timelapse.service

@@ -1,9 +1,0 @@
-source-directory /etc/network/interfaces.d/
-
-auto lo
-iface lo inet loopback
-
-allow-hotplug wlan0
-iface wlan0 inet dhcp
-    wpa-ssid "ssid"
-    wpa-psk  "password"
