@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, ButtonGroup } from '@material-ui/core';
 import axios from 'axios';
+import { Typography, Button, ButtonGroup } from '@material-ui/core';
 import { DataGrid, ColDef, RowData, RowId, SelectionModelChangeParams, CellParams } from '@material-ui/data-grid';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
 import { PhotosResponse } from '../models/response';
 import { BaseUrl } from '../conf/config'
 
 export interface PhotosRowData {
+  ShowDeletionDialog: boolean,
   Photos: RowData[],
   Selected: RowId[],
   SelectedFilesParameter: string,
@@ -19,6 +24,7 @@ const columns: ColDef[] = [
 
 export default function PhotosComponent() {
   const [state, setState] = useState<PhotosRowData>({
+    ShowDeletionDialog: false,
     Photos: [],
     Selected: [],
     SelectedFilesParameter: "",
@@ -44,6 +50,7 @@ const getPhotos = () => {
         }
 
         setState({
+          ShowDeletionDialog: false,
           Photos: rows,
           Selected: [],
           SelectedFilesParameter: "",
@@ -69,6 +76,7 @@ const getPhotos = () => {
     });
 
     setState({
+      ShowDeletionDialog: false,
       Photos: state.Photos,
       Selected: params.selectionModel,
       SelectedFilesParameter: link,
@@ -77,9 +85,35 @@ const getPhotos = () => {
 
   const handleRefreshClicked = () => getPhotos();
   const deletePhotosClicked = () => {
+    if (state.Selected.length > 0) {
+      setState({
+        ShowDeletionDialog: true,
+        Photos: state.Photos,
+        Selected: state.Selected,
+        SelectedFilesParameter: state.SelectedFilesParameter,
+      })
+    }
+  };
+  const handleDeletionCancelled = () => {
+    setState({
+      ShowDeletionDialog: false,
+      Photos: state.Photos,
+      Selected: state.Selected,
+      SelectedFilesParameter: state.SelectedFilesParameter,
+    })
+  };
+  const handleDeletionConfirmed = () => {
     axios
-      .get(BaseUrl + "/file/delete?" + state.SelectedFilesParameter)
-      .then(_resp => getPhotos());
+    .get(BaseUrl + "/file/delete?" + state.SelectedFilesParameter)
+    .then(_resp => {
+      setState({
+        ShowDeletionDialog: false,
+        Photos: state.Photos,
+        Selected: state.Selected,
+        SelectedFilesParameter: state.SelectedFilesParameter,
+      });
+      getPhotos();
+    });
   };
 
   return (
@@ -104,7 +138,16 @@ const getPhotos = () => {
           checkboxSelection={true}
           disableSelectionOnClick={true}
           onSelectionModelChange={handleSelectionModelChanged} />
-        </div>
-      </React.Fragment>
+      </div>
+      <Dialog open={state.ShowDeletionDialog} onClose={handleDeletionCancelled} aria-describedby="alert-dialog-description">
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">Are you sure you want to delete the selected {state.Selected.length} files?</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeletionCancelled} color="primary">Cancel</Button>
+          <Button onClick={handleDeletionConfirmed} color="primary" autoFocus>Delete</Button>
+        </DialogActions>
+      </Dialog>
+    </React.Fragment>
   );
 }
