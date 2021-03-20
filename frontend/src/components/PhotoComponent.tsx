@@ -75,9 +75,11 @@ const getPhotos = () => {
     });
   };
 
-  const handleRefreshClicked = () => {
-    console.log("refresh clicked");
-    getPhotos();
+  const handleRefreshClicked = () => getPhotos();
+  const deletePhotosClicked = () => {
+    axios
+      .get(BaseUrl + "/file/delete?" + state.SelectedFilesParameter)
+      .then(_resp => getPhotos());
   };
 
   return (
@@ -88,16 +90,12 @@ const getPhotos = () => {
         <img src={BaseUrl+"/capture"} alt="preview" />
       </div>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
-        <Button onClick={handleRefreshClicked}>Refresh list of pictures</Button>
+        <Button onClick={handleRefreshClicked}>Refresh</Button>
+        <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.length})</Button>
       </ButtonGroup>
       <ul>
         <li><a href={BaseUrl + "/archive/zip"}>Download all</a></li>
         <li><a href={BaseUrl + "/archive/zip?" + state.SelectedFilesParameter}>Download selected ({state.Selected.length})</a></li>
-        <li>
-          <small>
-            <a href={BaseUrl + "/file/delete?" + state.SelectedFilesParameter}>Delete selected ({state.Selected.length})</a>
-          </small>
-        </li>
       </ul>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid

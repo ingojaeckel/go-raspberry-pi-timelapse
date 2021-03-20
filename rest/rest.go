@@ -182,6 +182,7 @@ func DeleteFiles(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to delete %s: %v\n", path, err)
 		}
 	}
+	writeJSON(w, http.StatusOK, len(filesToDelete))
 }
 
 func Admin(_ http.ResponseWriter, r *http.Request) {

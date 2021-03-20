@@ -58,6 +58,14 @@ func main() {
 	log.Printf("Listen address:           %s\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
+	mux.Use(func(inner http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			before := time.Now()
+			inner.ServeHTTP(w, r)
+			duration := time.Now().Sub(before)
+			log.Printf("[%s] %s took %v\n", r.Method, r.RequestURI, duration)
+		})
+	})
 
 	// Frontend APIs
 	mux.Handle(pat.Get("/static/*"), http.StripPrefix("/static/", http.FileServer(http.FS(content))))
@@ -72,9 +80,9 @@ func main() {
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
 	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
+	mux.HandleFunc(pat.Get("/file/delete"), rest.DeleteFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
-	mux.HandleFunc(pat.Get("/file/delete"), rest.DeleteFiles)
 	mux.HandleFunc(pat.Get("/archive/zip"), rest.GetArchiveZip)
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
