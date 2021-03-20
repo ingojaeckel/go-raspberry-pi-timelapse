@@ -40,15 +40,17 @@ This project was created for a timelapse system consisting of the following core
 #### Step 1: Initial Build
 
 1. Optional: If you want to use the battery backed clocked start by soldering the 2x20-pin strip on Pi Zero W board ([instructions](https://learn.adafruit.com/adding-a-real-time-clock-to-raspberry-pi/wiring-the-rtc)). After the soldering, attach the RTC to the 2x20-pin strip. Don't forget to insert the CR1220 battery into the RTC. 
-2. Insert the micro SD card into the Pi Zero W.
-3. Connect the Pi Zero W and the Pi Camera Board v2 via the Pi Zero Camera cable.
-4. Insert the Pi Zero W into the C4Labs Zerbra Zero Case.
+2. Connect the Pi Zero W and the Pi Camera Board v2 via the Pi Zero Camera cable.
+3. Insert the Pi Zero W into the C4Labs Zerbra Zero Case.
 
-#### Step 2: Install and configure the software
+#### Step 2: Install disk image and access web interface
 
-1. Turn on the Pi Zero W plugging in a micro USB cable into the PWR IN connector (bottom right corner).
-2. Install the most recent go-raspberry-pi-timelapse `.img` file to an empty SD card using the [Raspberry Pi Imager](https://www.raspberrypi.org/software/). The Pi Zero W will act as a Wifi access point. Look for the Wifi SSID configured in `go-raspberry-pi-timelapse/timelapsepi/src/modules/timelapsepi/filesystem/root/etc/hostapd/hostapd.conf` (default name: `timelapse-raspberry-pi`, default passphrase: `InsertTheRealPassword`). 
-3. Connect to the Pi's Wifi. Open the Pi's address in a browser: `http://192.168.0.1:8080/`. This interface will allow you to align the camera, download photos, shutdown the Pi, etc.
+1. From another computer, download and decompress the [most recent go-raspberry-pi-timelapse `.img` file](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/releases/download/0.1.0/go-raspberry-pi-timelapse-0.1.0.img.bz2).
+2. Install the `.img` file to an empty SD card using the [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
+3. Insert the SD card card into the Pi Zero W.
+4. Turn on the Pi Zero W plugging in a micro USB cable into the PWR IN connector (bottom right corner).
+5. The Pi Zero W will act as a Wifi access point. Connect to the Pi's Wifi named `timelapse-raspberry-pi`, passphrase: `InsertTheRealPassword`.
+6. Open the Pi's web interface in a browser: `http://192.168.50.1:8080/`. This interface will allow you to align the camera, download photos, shutdown the Pi, etc.
 
 # Misc resources
 
