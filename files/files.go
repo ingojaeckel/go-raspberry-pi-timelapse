@@ -113,8 +113,9 @@ func ZipWithPipes(filePaths []string, pw *io.PipeWriter) error {
 			return err
 		}
 		zipFile, err := w.CreateHeader(&zip.FileHeader{
-			Name:   info.Name(),
-			Method: zip.Store,
+			Name:     info.Name(),
+			Modified: info.ModTime(),
+			Method:   zip.Store,
 		})
 		if err != nil {
 			return err
