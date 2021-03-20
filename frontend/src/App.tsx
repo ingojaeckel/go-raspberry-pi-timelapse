@@ -8,6 +8,7 @@ import TimelineIcon from '@material-ui/icons/Timeline';
 import { Container, List, Avatar, ListItemAvatar, ListItem, CssBaseline } from '@material-ui/core';
 import Switcher from './Switch';
 import axios from 'axios';
+import { PhotoCamera } from '@material-ui/icons';
 
 // Register default request interceptors
 axios.interceptors.request.use(request => {
@@ -30,6 +31,13 @@ function App() {
                   <ListItemAvatar>
                     <Avatar>
                       <HomeIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                </ListItem>
+                <ListItem to={`${process.env.PUBLIC_URL}/preview`} component={NavLink}>
+                  <ListItemAvatar>
+                    <Avatar>
+                      <PhotoCamera />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
