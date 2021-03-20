@@ -3,11 +3,14 @@ package files
 import (
 	"archive/tar"
 	"archive/zip"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"sort"
 )
+
+var errCannotRemoveDirectory = errors.New("cannot remove a directory")
 
 type File struct {
 	Name         string `json:"name"`
@@ -15,6 +18,17 @@ type File struct {
 	ModTimeEpoch int64  `json:"mod_time_epoch"`
 	IsDir        bool   `json:"is_dir"`
 	Bytes        int64  `json:"bytes"`
+}
+
+func RemoveFile(path string) error {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if fileInfo.IsDir() {
+		return errCannotRemoveDirectory
+	}
+	return os.Remove(path)
 }
 
 func ListFiles(dirname string, skipDirectories bool) ([]File, error) {

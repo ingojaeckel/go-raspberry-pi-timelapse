@@ -8,7 +8,7 @@ import { BaseUrl } from '../conf/config'
 export interface PhotosRowData {
   Photos: RowData[],
   Selected: RowId[],
-  ArchiveFilterParameter: string,
+  SelectedFilesParameter: string,
 }
 
 const columns: ColDef[] = [
@@ -21,7 +21,7 @@ export default function PhotosComponent() {
   const [state, setState] = useState<PhotosRowData>({
     Photos: [],
     Selected: [],
-    ArchiveFilterParameter: "",
+    SelectedFilesParameter: "",
   });
 
 const getPhotos = () => {
@@ -46,7 +46,7 @@ const getPhotos = () => {
         setState({
           Photos: rows,
           Selected: [],
-          ArchiveFilterParameter: "",
+          SelectedFilesParameter: "",
         });
       }
     });
@@ -71,7 +71,7 @@ const getPhotos = () => {
     setState({
       Photos: state.Photos,
       Selected: params.selectionModel,
-      ArchiveFilterParameter: link,
+      SelectedFilesParameter: link,
     });
   };
 
@@ -79,7 +79,6 @@ const getPhotos = () => {
     console.log("refresh clicked");
     getPhotos();
   };
-  const handleDeleteClicked = () => { console.log("delete clicked: ", state.Selected) };
 
   return (
     <React.Fragment>
@@ -90,9 +89,16 @@ const getPhotos = () => {
       </div>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
         <Button onClick={handleRefreshClicked}>Refresh list of pictures</Button>
-        <Button onClick={handleDeleteClicked}>Delete selected pictures</Button>
       </ButtonGroup>
-      <a href={BaseUrl + "/archive/zip?" + state.ArchiveFilterParameter}>Download selected pictures</a>
+      <ul>
+        <li><a href={BaseUrl + "/archive/zip"}>Download all</a></li>
+        <li><a href={BaseUrl + "/archive/zip?" + state.SelectedFilesParameter}>Download selected ({state.Selected.length})</a></li>
+        <li>
+          <small>
+            <a href={BaseUrl + "/files/delete?" + state.SelectedFilesParameter}>Delete selected ({state.Selected.length})</a>
+          </small>
+        </li>
+      </ul>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid
           rows={state.Photos}
