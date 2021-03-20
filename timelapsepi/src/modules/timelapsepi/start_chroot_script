@@ -25,8 +25,8 @@ git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git /home/pi/
 # Unpack root at the end, so files are modified before
 unpack /filesystem/root /
 
-#sudo systemctl stop dhcpcd.service
-#sudo systemctl disable dhcpcd.service
+# Stop/disable if necessary. Seems unnessary as "dhcpcd not running".
+# sudo service dhcpcd stop
 
 sudo chmod 644 /lib/systemd/system/timelapse.service
 sudo systemctl enable timelapse.service
