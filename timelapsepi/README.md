@@ -5,5 +5,10 @@ This folder manages how disk images are created which can be installed on SD car
 To create a new disk image, run the following from Linux (after going through the CustomPiOS setup steps). This will create a disk image in `src/workspace/*.img`. The created image can be installed onto an SD card via the [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
 
 ```
-sudo src/build_dist raspios_lite_arm64
+cd src/ && sudo ./build_dist
+```
+
+Optionally: Download another image variant before invoking `build_dist`
+```
+cd src/images/ && wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-01-12/2021-01-11-raspios-buster-armhf-lite.zip && cd ../../
 ```
