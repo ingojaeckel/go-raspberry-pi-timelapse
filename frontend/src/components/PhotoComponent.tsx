@@ -95,7 +95,7 @@ const getPhotos = () => {
         <li><a href={BaseUrl + "/archive/zip?" + state.SelectedFilesParameter}>Download selected ({state.Selected.length})</a></li>
         <li>
           <small>
-            <a href={BaseUrl + "/files/delete?" + state.SelectedFilesParameter}>Delete selected ({state.Selected.length})</a>
+            <a href={BaseUrl + "/file/delete?" + state.SelectedFilesParameter}>Delete selected ({state.Selected.length})</a>
           </small>
         </li>
       </ul>
