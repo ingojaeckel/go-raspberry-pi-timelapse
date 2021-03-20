@@ -165,6 +165,26 @@ func GetArchiveZip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DeleteFiles(w http.ResponseWriter, r *http.Request) {
+	filesToDelete := r.URL.Query()["f"]
+	filesToDeleteAreProvided := len(filesToDelete) > 0
+
+	if !filesToDeleteAreProvided {
+		writeJSON(w, http.StatusBadRequest, "no files to delete provided.")
+		return
+	}
+
+	log.Printf("Files to delete: %v\n", filesToDelete)
+
+	for _, name := range filesToDelete {
+		path := fmt.Sprintf("%s/%s", conf.StorageFolder, name)
+		if err := files.RemoveFile(path); err != nil {
+			log.Printf("Failed to delete %s: %v\n", path, err)
+		}
+	}
+	writeJSON(w, http.StatusOK, len(filesToDelete))
+}
+
 func Admin(_ http.ResponseWriter, r *http.Request) {
 	command := pat.Param(r, "command")
 	admin.HandleCommand(command)
