@@ -14,7 +14,7 @@ source /common.sh
 install_cleanup_trap
 
 sudo apt-get update
-sudo apt-get install -y htop screen git python-smbus i2c-tools hostapd dnsmasq
+sudo apt-get install -y htop screen git python-smbus i2c-tools
 
 unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
 unpack /filesystem/home/root /root root
@@ -25,10 +25,5 @@ git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git /home/pi/
 # Unpack root at the end, so files are modified before
 unpack /filesystem/root /
 
-# Stop/disable if necessary. Seems unnessary as "dhcpcd not running".
-# sudo service dhcpcd stop
-
 sudo chmod 644 /lib/systemd/system/timelapse.service
 sudo systemctl enable timelapse.service
-sudo systemctl enable hostapd
-sudo systemctl enable dnsmasq
