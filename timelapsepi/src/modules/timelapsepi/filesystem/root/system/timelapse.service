@@ -1,0 +1,7 @@
+[Unit]
+Description = Start Timelapse 
+After = network.target
+[Service]
+ExecStart = /home/pi/go-raspberry-pi-timelapse/bin/arm/go-raspberry-pi-timelapse
+[Install]
+WantedBy = multi-user.target

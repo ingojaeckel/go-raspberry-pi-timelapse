@@ -13,16 +13,16 @@ set -e
 source /common.sh
 install_cleanup_trap
 
+sudo apt-get update
+sudo apt-get install -y htop screen git python-smbus i2c-tools hostapd dnsmasq
+git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git
+
 unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
 unpack /filesystem/home/root /root root
 unpack /filesystem/boot /boot
 
-sudo apt-get update
-sudo apt-get install -y git
-git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git
-
-echo "This is an example module, install and set up what you need here!"
-echo "$TIMELAPSEPI_VAR"
-
 # Unpack root at the end, so files are modified before
 unpack /filesystem/root /
+
+sudo chmod 644 /lib/systemd/system/timelapse.service
+sudo systemctl enable timelapse.service
