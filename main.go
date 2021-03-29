@@ -37,7 +37,7 @@ func main() {
 		fmt.Println(version)
 		return
 	}
-	conf.Update(listenAddress, storageAddress, logToFile)
+	conf.OverrideDefaultConfig(listenAddress, storageAddress, logToFile, secondsBetweenCaptures)
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
@@ -48,14 +48,8 @@ func main() {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
-	if secondsBetweenCaptures != nil {
-		// Override config with value passed in on CLI
-		s.SecondsBetweenCaptures = *secondsBetweenCaptures
-	}
-	log.Printf("Seconds between captures: %d\n", s.SecondsBetweenCaptures)
-	log.Printf("Offset within hour:       %d\n", s.OffsetWithinHour)
-	log.Printf("Resolution:               %d x %d\n", s.PhotoResolutionWidth, s.PhotoResolutionHeight)
-	log.Printf("Listen address:           %s\n", conf.ListenAddress)
+	log.Printf("Settings:       %s\n", s.String())
+	log.Printf("Listen address: %s\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
 	mux.Use(func(inner http.Handler) http.Handler {

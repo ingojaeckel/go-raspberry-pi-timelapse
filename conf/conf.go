@@ -15,22 +15,26 @@ const (
 )
 
 var (
-	LogToFile     = DefaultLogToFile
-	ListenAddress = DefaultListenAddress
-	StorageFolder = DefaultStorageFolder
+	LogToFile              = DefaultLogToFile
+	ListenAddress          = DefaultListenAddress
+	StorageFolder          = DefaultStorageFolder
+	SecondsBetweenCaptures = DefaultSecondsBetweenCaptures
 )
 
 // TODO merge values coming from different sources: config, settings, CLI
 
-// Update Updates configuration depending on the state of CLI flags provided.
-func Update(listenAddress *string, storageAddress *string, logToFile *bool) {
-	if logToFile != nil {
-		LogToFile = *logToFile
+// OverrideDefaultConfig Override default config values which were provided.
+func OverrideDefaultConfig(listenAddressOverride *string, storageAddressOverride *string, logToFileOverride *bool, secondsBetweenCapturesOverride *int) {
+	if logToFileOverride != nil {
+		LogToFile = *logToFileOverride
 	}
-	if listenAddress != nil {
-		ListenAddress = *listenAddress
+	if listenAddressOverride != nil {
+		ListenAddress = *listenAddressOverride
 	}
-	if storageAddress != nil {
-		StorageFolder = *storageAddress
+	if storageAddressOverride != nil {
+		StorageFolder = *storageAddressOverride
+	}
+	if secondsBetweenCapturesOverride != nil {
+		SecondsBetweenCaptures = *secondsBetweenCapturesOverride
 	}
 }
