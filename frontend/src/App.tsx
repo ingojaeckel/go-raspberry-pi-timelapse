@@ -25,38 +25,38 @@ function App() {
       <React.Fragment>
         <CssBaseline />
         <Container fixed>
-          <Grid container spacing={2}>
-            <Grid item xs={1}>
-              <List>
-                <ListItem to={`${process.env.PUBLIC_URL}/`} component={NavLink}>
+          <Grid container spacing={0}>
+            <Grid item xs={2} alignItems="center">
+              <List disablePadding>
+                <ListItem to={`${process.env.PUBLIC_URL}/`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
                       <HomeIcon />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
-                <ListItem to={`${process.env.PUBLIC_URL}/preview`} component={NavLink}>
+                <ListItem to={`${process.env.PUBLIC_URL}/preview`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
                       <PhotoCamera />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
-                <ListItem to={`${process.env.PUBLIC_URL}/monitoring`} component={NavLink}>
+                <ListItem to={`${process.env.PUBLIC_URL}/monitoring`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
                       <TimelineIcon />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
-                <ListItem to={`${process.env.PUBLIC_URL}/settings`} component={NavLink}>
+                <ListItem to={`${process.env.PUBLIC_URL}/settings`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
                       <SettingsIcon />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
-                <ListItem to={`${process.env.PUBLIC_URL}/logs`} component={NavLink}>
+                <ListItem to={`${process.env.PUBLIC_URL}/logs`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
                       <DescriptionIcon />
@@ -68,7 +68,7 @@ function App() {
             <Grid item xs={10}>
               <Switcher />
             </Grid>
-            <Grid item xs={10}>
+            <Grid item xs={12}>
               <div className="footer">version: <a href={"https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/" + process.env.REACT_APP_GIT_SHA}>{process.env.REACT_APP_GIT_SHA}</a></div>
             </Grid>
           </Grid>
