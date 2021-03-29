@@ -77,7 +77,7 @@ func (t Timelapse) CapturePeriodically() {
 	}
 }
 
-func (t Timelapse) waitForCapture() {
+func (t *Timelapse) waitForCapture() {
 	secondsUntilFirstCapture := t.secondsToSleepUntilOffset(time.Now())
 	sleepDuration := time.Duration(secondsUntilFirstCapture) * time.Second
 	nextCaptureAt := time.Now().Add(sleepDuration)
@@ -94,7 +94,6 @@ func (t Timelapse) waitForCapture() {
 			log.Printf("Sleeping for 1 second. Seconds left: %d. Time: %s.\n", secondsUntilFirstCapture, time.Now())
 		}
 		select {
-
 		case newConfig := <-t.ConfigUpdateChannel:
 			log.Printf("Received new configuration: %s\n", newConfig)
 			t.Settings = newConfig
