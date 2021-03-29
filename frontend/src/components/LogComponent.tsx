@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LogResponse } from '../models/response'
-import { Typography, Button } from '@material-ui/core';
+import { Typography, Button, ButtonGroup } from '@material-ui/core';
 import { BaseUrl } from '../conf/config'
 
 export default function LogComponent() {
@@ -23,7 +23,9 @@ export default function LogComponent() {
   return (
     <React.Fragment>
       <Typography variant="h4" component="h4">Logs</Typography>
-      <Button onClick={() => getLogs()}>Refresh</Button>
+      <ButtonGroup color="primary" aria-label="outlined primary button group">
+        <Button onClick={() => getLogs()}>Refresh</Button>
+      </ButtonGroup>
       <div><pre>{logs}</pre></div>
     </React.Fragment>
   );
