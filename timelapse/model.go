@@ -9,8 +9,3 @@ type Timelapse struct {
 	Settings            conf.Settings
 	ConfigUpdateChannel <-chan conf.Settings
 }
-
-type Resolution struct {
-	Width  int
-	Height int
-}
