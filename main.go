@@ -109,6 +109,7 @@ func initLogging() error {
 		}
 		log.SetOutput(f)
 	}
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Printf("Version %s started at %s\n", version, time.Now())
 	return nil
 }
