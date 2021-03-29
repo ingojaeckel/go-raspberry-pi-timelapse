@@ -1,7 +1,6 @@
 package timelapse
 
 import (
-	"errors"
 	"log"
 	"os"
 	"time"
@@ -9,23 +8,7 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 )
 
-var failedToInitCamera = errors.New("failed to instantiate camera")
-
-type Timelapse struct {
-	Camera                  Camera
-	Folder                  string
-	SecondsBetweenCapture   int
-	OffsetWithinHourSeconds int
-	Res                     Resolution
-	DebugEnabled            bool
-}
-
-type Resolution struct {
-	Width  int
-	Height int
-}
-
-func New(folder string, s *conf.Settings) (*Timelapse, error) {
+func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan conf.Settings) (*Timelapse, error) {
 	_, err := os.Stat(folder)
 	createFolder := err != nil && os.IsNotExist(err)
 
@@ -36,98 +19,112 @@ func New(folder string, s *conf.Settings) (*Timelapse, error) {
 	}
 	// Assume folder exists
 
-	c, err := NewCamera(folder, s.PhotoResolutionWidth, s.PhotoResolutionHeight, s.RotateBy == 180, s.Quality)
-	if err != nil {
-		return nil, failedToInitCamera
-	}
-
 	return &Timelapse{
-		Camera:                  c,
-		Folder:                  folder,
-		SecondsBetweenCapture:   s.SecondsBetweenCaptures,
-		OffsetWithinHourSeconds: s.OffsetWithinHour,
-		Res:                     Resolution{Width: s.PhotoResolutionWidth, Height: s.PhotoResolutionHeight},
-		DebugEnabled:            s.DebugEnabled,
+		Folder:              folder,
+		Settings:            initialSettings,
+		ConfigUpdateChannel: configUpdatedChan,
 	}, nil
 }
 
 func (t Timelapse) CapturePeriodically() {
-	offsetDisabled := t.OffsetWithinHourSeconds == -1
+	offsetDisabled := t.Settings.OffsetWithinHour == -1
 
 	if offsetDisabled {
 		log.Println("Offset is disabled. Will start taking pictures immediately.")
 		go func() {
 			for {
-				s, err := t.Camera.Capture()
+				camera, err := NewCamera(t.Folder, t.Settings.PhotoResolutionWidth, t.Settings.PhotoResolutionHeight, t.Settings.RotateBy == 180, t.Settings.Quality)
 				if err != nil {
-					log.Printf("Error during capture: %s\n", err.Error())
+					log.Printf("Error instantiating camera: %s\n", err)
+					// Sleep for a bit and create a new camera instance on the next iteration.
+				} else {
+					s, err := camera.Capture()
+					if err != nil {
+						log.Printf("Error during capture: %s\n", err.Error())
+					}
+					log.Printf("Photo stored in '%s'. Will sleep for %d seconds.\n", s, t.Settings.SecondsBetweenCaptures)
 				}
-				log.Printf("Photo stored in '%s'. Will sleep for %d seconds.\n", s, t.SecondsBetweenCapture)
-				time.Sleep(time.Duration(t.SecondsBetweenCapture) * time.Second)
+				time.Sleep(time.Duration(t.Settings.SecondsBetweenCaptures) * time.Second)
 			}
 		}()
 	} else {
 		log.Println("Offset is enabled. Will wait before taking first picture.")
 		go func() {
 			for {
-				t.WaitForCapture()
+				t.waitForCapture()
 
 				beforeCapture := time.Now()
-				s, err := t.Camera.Capture()
+
+				camera, err := NewCamera(t.Folder, t.Settings.PhotoResolutionWidth, t.Settings.PhotoResolutionHeight, t.Settings.RotateBy == 180, t.Settings.Quality)
 				if err != nil {
-					log.Printf("Error during capture: %s\n", err.Error())
+					log.Printf("Error instantiating camera: %s\n", err)
+					// Sleep for a bit and create a new camera instance on the next iteration.
+				} else {
+					photoPath, err := camera.Capture()
+					if err != nil {
+						log.Printf("Error during capture: %s\n", err.Error())
 
-					// Sleep for 1s after an error to ensure time changed sufficiently before next invocation of WaitForCapture
-					time.Sleep(time.Duration(1 * time.Second))
-					continue
+						// Sleep for 1s after an error to ensure time changed sufficiently before next invocation of WaitForCapture
+						time.Sleep(time.Duration(1 * time.Second))
+						continue
+					}
+					log.Printf("Photo stored in '%s'\n", photoPath)
 				}
-
 				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
-				log.Printf("Photo stored in '%s'. Capturing took %d seconds\n", s, timeToCaptureSeconds)
+				log.Printf("Capture took %d seconds\n", timeToCaptureSeconds)
 			}
 		}()
 	}
 }
 
-func (t Timelapse) WaitForCapture() {
-	secondsUntilFirstCapture := t.SecondsToSleepUntilOffset(time.Now())
+func (t Timelapse) waitForCapture() {
+	secondsUntilFirstCapture := t.secondsToSleepUntilOffset(time.Now())
 	sleepDuration := time.Duration(secondsUntilFirstCapture) * time.Second
 	nextCaptureAt := time.Now().Add(sleepDuration)
 
 	log.Printf("Will take the next picture in %d seconds at %v.\n", secondsUntilFirstCapture, nextCaptureAt)
 
 	for {
-		secondsUntilFirstCapture := t.SecondsToSleepUntilOffset(time.Now())
+		secondsUntilFirstCapture := t.secondsToSleepUntilOffset(time.Now())
 		if secondsUntilFirstCapture == 0 {
 			// Game time!
 			break
 		}
-		if t.DebugEnabled {
+		if t.Settings.DebugEnabled {
 			log.Printf("Sleeping for 1 second. Seconds left: %d. Time: %s.\n", secondsUntilFirstCapture, time.Now())
 		}
-		time.Sleep(time.Duration(1 * time.Second))
+		select {
+
+		case newConfig := <-t.ConfigUpdateChannel:
+			log.Printf("Received new configuration: %s\n", newConfig)
+			t.Settings = newConfig
+			break
+		case <-time.After(time.Duration(1 * time.Second)):
+			break
+		}
+
 	}
 }
 
-func (t Timelapse) SecondsToSleepUntilOffset(currentTime time.Time) int {
-	picturesPerHour := 3600 / t.SecondsBetweenCapture
+func (t Timelapse) secondsToSleepUntilOffset(currentTime time.Time) int {
+	picturesPerHour := 3600 / t.Settings.SecondsBetweenCaptures
 
 	secondsIntoCurrentHour := currentTime.Minute()*60 + currentTime.Second()
 
 	for i := 0; i < int(picturesPerHour); i++ {
 		if i == 0 {
-			if 0 <= secondsIntoCurrentHour && secondsIntoCurrentHour <= t.OffsetWithinHourSeconds {
-				return t.OffsetWithinHourSeconds - secondsIntoCurrentHour
+			if 0 <= secondsIntoCurrentHour && secondsIntoCurrentHour <= t.Settings.OffsetWithinHour {
+				return t.Settings.OffsetWithinHour - secondsIntoCurrentHour
 			}
 		}
 
-		lowerBoundary := t.OffsetWithinHourSeconds + (i-1)*t.SecondsBetweenCapture
-		upperBoundary := t.OffsetWithinHourSeconds + (i)*t.SecondsBetweenCapture
+		lowerBoundary := t.Settings.OffsetWithinHour + (i-1)*t.Settings.SecondsBetweenCaptures
+		upperBoundary := t.Settings.OffsetWithinHour + (i)*t.Settings.SecondsBetweenCaptures
 
 		if lowerBoundary <= secondsIntoCurrentHour && secondsIntoCurrentHour <= upperBoundary {
 			return upperBoundary - secondsIntoCurrentHour
 		}
 	}
 
-	return 3600 - secondsIntoCurrentHour + t.OffsetWithinHourSeconds
+	return 3600 - secondsIntoCurrentHour + t.Settings.OffsetWithinHour
 }

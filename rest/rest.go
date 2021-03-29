@@ -28,18 +28,21 @@ func GetConfiguration(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, c)
 }
 
-func UpdateConfiguration(w http.ResponseWriter, r *http.Request) {
-	var request UpdateConfigurationRequest
-	if err := parseJSON(r.Body, &request); err != nil {
-		writeJSON(w, 400, err.Error())
-		return
+func MakeUpdateConfigurationFn(configUpdatedChan chan<- conf.Settings) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var request UpdateConfigurationRequest
+		if err := parseJSON(r.Body, &request); err != nil {
+			writeJSON(w, 400, err.Error())
+			return
+		}
+		updatedSettings, err := UpdatePartialConfiguration(request)
+		if err != nil {
+			writeJSON(w, 400, err.Error())
+			return
+		}
+		writeJSON(w, 200, updatedSettings)
+		configUpdatedChan <- *updatedSettings
 	}
-	updatedSettings, err := UpdatePartialConfiguration(request)
-	if err != nil {
-		writeJSON(w, 400, err.Error())
-		return
-	}
-	writeJSON(w, 200, updatedSettings)
 }
 
 func GetFile(w http.ResponseWriter, r *http.Request) {

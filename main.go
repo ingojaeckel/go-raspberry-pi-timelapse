@@ -43,12 +43,12 @@ func main() {
 		return
 	}
 
-	s, err := conf.LoadConfiguration()
+	initialSettings, err := conf.LoadConfiguration()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
-	log.Printf("Settings:       %s\n", s.String())
+	log.Printf("Settings:       %s\n", *initialSettings)
 	log.Printf("Listen address: %s\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
@@ -68,8 +68,10 @@ func main() {
 
 	// Backend APIs (should only be called by frontend code)
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
-		rest.Capture(w, s)
+		rest.Capture(w, initialSettings)
 	})
+
+	configUpdatedChan := make(chan conf.Settings)
 
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
 	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
@@ -81,10 +83,10 @@ func main() {
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Options("/configuration"), rest.GetConfiguration)
-	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
+	mux.HandleFunc(pat.Post("/configuration"), rest.MakeUpdateConfigurationFn(configUpdatedChan))
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
 
-	t, err := timelapse.New(conf.StorageFolder, s)
+	t, err := timelapse.New(conf.StorageFolder, *initialSettings, configUpdatedChan)
 	if err != nil {
 		log.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless

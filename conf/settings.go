@@ -44,6 +44,7 @@ func LoadConfiguration() (*Settings, error) {
 	return &existingSettings, err
 }
 
+// WriteConfiguration Persist the provided settings. Returns the updated settings or an error.
 func WriteConfiguration(s Settings) (*Settings, error) {
 	log.Printf("Write configuration: %s\n", s.String())
 	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boldIoTimeout})
