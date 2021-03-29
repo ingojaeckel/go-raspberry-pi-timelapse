@@ -73,6 +73,7 @@ func main() {
 
 	configUpdatedChan := make(chan conf.Settings)
 
+	mux.HandleFunc(pat.Get("/logs"), rest.GetLogs)
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
 	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)

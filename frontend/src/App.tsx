@@ -5,6 +5,7 @@ import Grid from '@material-ui/core/Grid';
 import HomeIcon from '@material-ui/icons/Home';
 import SettingsIcon from '@material-ui/icons/Settings';
 import TimelineIcon from '@material-ui/icons/Timeline';
+import DescriptionIcon from '@material-ui/icons/Description';
 import { Container, List, Avatar, ListItemAvatar, ListItem, CssBaseline } from '@material-ui/core';
 import Switcher from './Switch';
 import axios from 'axios';
@@ -52,6 +53,13 @@ function App() {
                   <ListItemAvatar>
                     <Avatar>
                       <SettingsIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                </ListItem>
+                <ListItem to={`${process.env.PUBLIC_URL}/logs`} component={NavLink}>
+                  <ListItemAvatar>
+                    <Avatar>
+                      <DescriptionIcon />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>

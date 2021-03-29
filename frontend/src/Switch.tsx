@@ -4,6 +4,7 @@ import PhotoComponent from './components/PhotoComponent';
 import MonitoringComponent from './components/MonitoringComponent';
 import SetupComponent from './components/SetupComponent';
 import PreviewComponent from './components/PreviewComponent';
+import LogComponent from './components/LogComponent';
 
 export default function Switcher() {
     return (
@@ -19,6 +20,9 @@ export default function Switcher() {
             </Route>
             <Route exact path={`${process.env.PUBLIC_URL}/settings`}>
                 <SetupComponent />
+            </Route>
+            <Route exact path={`${process.env.PUBLIC_URL}/logs`}>
+                <LogComponent />
             </Route>
         </Switch>
     );

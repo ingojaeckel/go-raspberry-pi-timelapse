@@ -34,6 +34,10 @@ type GetPhotosResponse struct {
 	Photos []Photo
 }
 
+type LogResponse struct {
+	Logs string
+}
+
 type Photo struct {
 	Name    string
 	ModTime string

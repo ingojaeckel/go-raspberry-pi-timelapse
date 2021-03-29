@@ -3,6 +3,7 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
@@ -23,6 +24,18 @@ func GetMonitoring(w http.ResponseWriter, _ *http.Request) {
 		Uptime:         admin.RunCommandOrPanic("/usr/bin/uptime"),
 		FreeDiskSpace:  admin.RunCommandOrPanic("/bin/df", "-h"),
 	})
+}
+
+func GetLogs(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
+
+	logFileContent, err := ioutil.ReadFile(conf.LogFile)
+	if err == nil {
+		json.NewEncoder(w).Encode(LogResponse{Logs: string(logFileContent)})
+	} else {
+		writeJSON(w, http.StatusInternalServerError, err.Error())
+	}
 }
 
 func GetPhotos(w http.ResponseWriter, _ *http.Request) {
