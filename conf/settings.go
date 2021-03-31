@@ -2,7 +2,6 @@ package conf
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"os"
 	"time"
@@ -11,45 +10,9 @@ import (
 )
 
 const (
-	settingsFile = "timelapse-settings.db"
-	bucket       = "settings"
-	settingsKey  = "s"
+	minSecondsBetweenCaptures = 60
+	boldIoTimeout             = 1 * time.Second
 )
-
-var missingBucketError = errors.New("missing bucket")
-var settingsNotFound = errors.New("settings not found")
-
-var initialConfiguration = Settings{
-	DebugEnabled:           false,
-	SecondsBetweenCaptures: DefaultSecondsBetweenCaptures,
-	OffsetWithinHour:       DefaultOffsetWithinHour,
-	// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
-	PhotoResolutionWidth:    2186,
-	PhotoResolutionHeight:   1642,
-	PreviewResolutionWidth:  640,
-	PreviewResolutionHeight: 480,
-	RotateBy:                0,
-	ResolutionSetting:       0,
-	Quality:                 100,
-}
-
-type Settings struct {
-	SecondsBetweenCaptures  int
-	OffsetWithinHour        int
-	PhotoResolutionWidth    int
-	PhotoResolutionHeight   int
-	PreviewResolutionWidth  int
-	PreviewResolutionHeight int
-	RotateBy                int
-	ResolutionSetting       int
-	Quality                 int
-	DebugEnabled            bool
-}
-
-func (s Settings) String() string {
-	jsonStr, _ := json.Marshal(s)
-	return string(jsonStr)
-}
 
 func LoadConfiguration() (*Settings, error) {
 	if areSettingsMissing(settingsFile) {
@@ -58,7 +21,7 @@ func LoadConfiguration() (*Settings, error) {
 	}
 	log.Println("Settings file exists.")
 
-	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boldIoTimeout})
 	defer db.Close()
 
 	val, exists, err := get(db, settingsKey)
@@ -73,17 +36,18 @@ func LoadConfiguration() (*Settings, error) {
 	var existingSettings Settings
 	err = json.Unmarshal([]byte(val), &existingSettings)
 
-	if existingSettings.SecondsBetweenCaptures < 60 {
+	if existingSettings.SecondsBetweenCaptures < minSecondsBetweenCaptures {
 		// Enforce min time between captures. this also protects for errors as a result of this being 0.
-		existingSettings.SecondsBetweenCaptures = 60
+		existingSettings.SecondsBetweenCaptures = minSecondsBetweenCaptures
 	}
 
 	return &existingSettings, err
 }
 
+// WriteConfiguration Persist the provided settings. Returns the updated settings or an error.
 func WriteConfiguration(s Settings) (*Settings, error) {
 	log.Printf("Write configuration: %s\n", s.String())
-	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boldIoTimeout})
 	defer db.Close()
 
 	if err != nil {

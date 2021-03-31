@@ -12,6 +12,7 @@ import (
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf/valid"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io/pat"
@@ -28,18 +29,26 @@ func GetConfiguration(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, c)
 }
 
-func UpdateConfiguration(w http.ResponseWriter, r *http.Request) {
-	var request UpdateConfigurationRequest
-	if err := parseJSON(r.Body, &request); err != nil {
-		writeJSON(w, 400, err.Error())
-		return
+func MakeUpdateConfigurationFn(configUpdatedChan chan<- conf.Settings) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var request UpdateConfigurationRequest
+		if err := parseJSON(r.Body, &request); err != nil {
+			writeJSON(w, 400, err.Error())
+			return
+		}
+		// Validate configuration before updating it.
+		if err := valid.New().Validate(request.Settings); err != nil {
+			writeJSON(w, 400, err.Error())
+			return
+		}
+		updatedSettings, err := updatePartialConfiguration(request)
+		if err != nil {
+			writeJSON(w, 400, err.Error())
+			return
+		}
+		writeJSON(w, 200, updatedSettings)
+		configUpdatedChan <- *updatedSettings
 	}
-	updatedSettings, err := UpdatePartialConfiguration(request)
-	if err != nil {
-		writeJSON(w, 400, err.Error())
-		return
-	}
-	writeJSON(w, 200, updatedSettings)
 }
 
 func GetFile(w http.ResponseWriter, r *http.Request) {
@@ -102,67 +111,38 @@ func Capture(w http.ResponseWriter, s *conf.Settings) {
 
 // GetArchiveZip Reply with ZIP file containing all timelapse pictures
 func GetArchiveZip(w http.ResponseWriter, r *http.Request) {
-	filteredFiles := r.URL.Query()["f"]
-	filterProvided := len(filteredFiles) > 0
-	fileNamesIncluded := make(map[string]bool)
-
-	if filterProvided {
-		log.Printf("Limit archive to files: %v\n", filteredFiles)
-
-		for _, name := range filteredFiles {
-			fileNamesIncluded[name] = true
-		}
-	}
-
-	filesToArchive, _ := files.ListFiles(conf.StorageFolder, true) // TODO handle error
-	if filterProvided {
-		var filteredFileList []files.File
-		for _, file := range filesToArchive {
-			if fileNamesIncluded[file.Name] {
-				filteredFileList = append(filteredFileList, file)
-			}
-		}
-		log.Printf("Reduced number of files in archive from %d to %d based on user provided filter.\n", len(filesToArchive), len(filteredFileList))
-		filesToArchive = filteredFileList
-	}
-
-	// Convert []File to []string
-	strFiles := make([]string, len(filesToArchive))
-	for i, file := range filesToArchive {
-		strFiles[i] = fmt.Sprintf("%s/%s", conf.StorageFolder, file.Name)
-	}
+	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"]) // TODO handle error
 
 	pr, pw := io.Pipe()
 	go func() {
-		files.ZipWithPipes(strFiles, pw)
+		if err := files.ZipWithPipes(strFiles, pw); err != nil {
+			log.Println("failed to create archive", err.Error())
+		}
 		defer pw.Close()
 	}()
 
 	w.Header().Add(conf.HeaderContentType, "application/zip")
 	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.zip")
 
-	// read 1MB from pr and call w.Write()
-	buf := make([]byte, 1024*1024)
-	for {
-		log.Println("Reading...")
-		n, err := pr.Read(buf)
-		log.Printf("Read %d bytes\n", n)
-		if err == io.EOF {
-			log.Println("reached EOF")
-			break
+	writePipeContent(w, pr)
+}
+
+// GetArchiveTar Reply with TAR file containing all timelapse pictures
+func GetArchiveTar(w http.ResponseWriter, r *http.Request) {
+	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"]) // TODO handle error
+
+	pr, pw := io.Pipe()
+	go func() {
+		if err := files.TarWithPipes(strFiles, pw); err != nil {
+			log.Println("failed to create archive", err.Error())
 		}
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println("Error: ", err.Error())
-			break
-		}
-		if n == 0 {
-			log.Println("no bytes left")
-			return
-		}
-		log.Printf("Writing %d bytes..\n", n)
-		w.Write(buf[0:n])
-	}
+		defer pw.Close()
+	}()
+
+	w.Header().Add(conf.HeaderContentType, "application/tar")
+	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.tar")
+
+	writePipeContent(w, pr)
 }
 
 func DeleteFiles(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +191,7 @@ func getBasename(path string) string {
 	return path[i+1:]
 }
 
-func UpdatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
+func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
 	// TODO validate new config coming in via updateRequest
 	log.Printf("Received new configuration: %v\n", updateRequest)
 
@@ -239,4 +219,66 @@ func UpdatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 
 	log.Printf("New configuration: %v\n", s)
 	return conf.WriteConfiguration(*s)
+}
+
+func writePipeContent(w http.ResponseWriter, pr *io.PipeReader) {
+	emptyReadMaxAttemps := 100 // The first few read attempts may not get any data yet as another go routine produces the data. Tweak this to adjust the number of attempts used before giving up.
+	buf := make([]byte, 1024*1024)
+
+	for i := 0; ; i++ {
+		// read the next (up to) 1MB from the pipe to send to response writer
+		n, err := pr.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Println("Error: ", err.Error())
+			break
+		}
+		if n == 0 {
+			if i < emptyReadMaxAttemps {
+				continue
+			}
+			return
+		}
+		w.Write(buf[0:n])
+	}
+}
+
+// Converts the front-end requested file names (provided via query param) to paths relative to the storage folder. If no filter was provided, assume all files are requested.
+func requestedFilesToRelativePaths(filteredFiles []string) ([]string, error) {
+	filterProvided := len(filteredFiles) > 0
+	fileNamesIncluded := make(map[string]bool)
+
+	if filterProvided {
+		log.Printf("Limit archive to files: %v\n", filteredFiles)
+
+		for _, name := range filteredFiles {
+			fileNamesIncluded[name] = true
+		}
+	}
+
+	filesToArchive, err := files.ListFiles(conf.StorageFolder, true)
+	if err != nil {
+		return nil, err
+	}
+	if filterProvided {
+		var filteredFileList []files.File
+		for _, file := range filesToArchive {
+			if fileNamesIncluded[file.Name] {
+				filteredFileList = append(filteredFileList, file)
+			}
+		}
+		log.Printf("Reduced number of files in archive from %d to %d based on user provided filter.\n", len(filesToArchive), len(filteredFileList))
+		filesToArchive = filteredFileList
+	}
+
+	// Convert []File to []string
+	strFiles := make([]string, len(filesToArchive))
+	for i, file := range filesToArchive {
+		strFiles[i] = fmt.Sprintf("%s/%s", conf.StorageFolder, file.Name)
+	}
+
+	return strFiles, nil
 }

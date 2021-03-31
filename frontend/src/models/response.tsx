@@ -20,6 +20,10 @@ export interface SettingsResponse {
 	DebugEnabled:            boolean
 }
 
+export interface LogResponse {
+	Logs: string
+}
+
 export interface PhotosResponse {
     Photos: Photo[]
 }

@@ -37,25 +37,19 @@ func main() {
 		fmt.Println(version)
 		return
 	}
-	conf.Update(listenAddress, storageAddress, logToFile)
+	conf.OverrideDefaultConfig(listenAddress, storageAddress, logToFile, secondsBetweenCaptures)
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
 	}
 
-	s, err := conf.LoadConfiguration()
+	initialSettings, err := conf.LoadConfiguration()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
-	if secondsBetweenCaptures != nil {
-		// Override config with value passed in on CLI
-		s.SecondsBetweenCaptures = *secondsBetweenCaptures
-	}
-	log.Printf("Seconds between captures: %d\n", s.SecondsBetweenCaptures)
-	log.Printf("Offset within hour:       %d\n", s.OffsetWithinHour)
-	log.Printf("Resolution:               %d x %d\n", s.PhotoResolutionWidth, s.PhotoResolutionHeight)
-	log.Printf("Listen address:           %s\n", conf.ListenAddress)
+	log.Printf("Settings:       %s\n", *initialSettings)
+	log.Printf("Listen address: %s\n", conf.ListenAddress)
 
 	mux := goji.NewMux()
 	mux.Use(func(inner http.Handler) http.Handler {
@@ -74,9 +68,12 @@ func main() {
 
 	// Backend APIs (should only be called by frontend code)
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
-		rest.Capture(w, s)
+		rest.Capture(w, initialSettings)
 	})
 
+	configUpdatedChan := make(chan conf.Settings)
+
+	mux.HandleFunc(pat.Get("/logs"), rest.GetLogs)
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
 	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
@@ -84,13 +81,14 @@ func main() {
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)
 	mux.HandleFunc(pat.Get("/file/:fileName"), rest.GetFile)
 	mux.HandleFunc(pat.Get("/archive/zip"), rest.GetArchiveZip)
+	mux.HandleFunc(pat.Get("/archive/tar"), rest.GetArchiveTar)
 	mux.HandleFunc(pat.Get("/admin/:command"), rest.Admin)
 	mux.HandleFunc(pat.Get("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Options("/configuration"), rest.GetConfiguration)
-	mux.HandleFunc(pat.Post("/configuration"), rest.UpdateConfiguration)
+	mux.HandleFunc(pat.Post("/configuration"), rest.MakeUpdateConfigurationFn(configUpdatedChan))
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
 
-	t, err := timelapse.New(conf.StorageFolder, s)
+	t, err := timelapse.New(conf.StorageFolder, *initialSettings, configUpdatedChan)
 	if err != nil {
 		log.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless
@@ -113,6 +111,7 @@ func initLogging() error {
 		}
 		log.SetOutput(f)
 	}
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Printf("Version %s started at %s\n", version, time.Now())
 	return nil
 }
