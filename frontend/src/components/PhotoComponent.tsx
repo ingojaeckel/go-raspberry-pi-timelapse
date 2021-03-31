@@ -124,7 +124,8 @@ const getPhotos = () => {
         <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.length})</Button>
       </ButtonGroup>
       <ul>
-        <li><a href={BaseUrl + "/archive/zip"}>Download all</a></li>
+        <li><a href={BaseUrl + "/archive/zip"}>Download all (zip)</a></li>
+        <li><a href={BaseUrl + "/archive/tar"}>Download all (tar)</a></li>
         <li><a href={BaseUrl + "/archive/zip?" + state.SelectedFilesParameter}>Download selected ({state.Selected.length})</a></li>
       </ul>
       <div style={{ height: 500, width: '100%' }}>
