@@ -115,7 +115,9 @@ func GetArchiveZip(w http.ResponseWriter, r *http.Request) {
 
 	pr, pw := io.Pipe()
 	go func() {
-		files.ZipWithPipes(strFiles, pw)
+		if err := files.ZipWithPipes(strFiles, pw); err != nil {
+			log.Println("failed to create archive", err.Error())
+		}
 		defer pw.Close()
 	}()
 
@@ -131,7 +133,9 @@ func GetArchiveTar(w http.ResponseWriter, r *http.Request) {
 
 	pr, pw := io.Pipe()
 	go func() {
-		files.TarWithPipes(strFiles, pw)
+		if err := files.TarWithPipes(strFiles, pw); err != nil {
+			log.Println("failed to create archive", err.Error())
+		}
 		defer pw.Close()
 	}()
 
@@ -218,14 +222,13 @@ func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 }
 
 func writePipeContent(w http.ResponseWriter, pr *io.PipeReader) {
-	// read 1MB from pr and call w.Write()
+	emptyReadMaxAttemps := 100 // The first few read attempts may not get any data yet as another go routine produces the data. Tweak this to adjust the number of attempts used before giving up.
 	buf := make([]byte, 1024*1024)
-	for {
-		log.Println("Reading...")
+
+	for i := 0; ; i++ {
+		// read the next (up to) 1MB from the pipe to send to response writer
 		n, err := pr.Read(buf)
-		log.Printf("Read %d bytes\n", n)
 		if err == io.EOF {
-			log.Println("reached EOF")
 			break
 		}
 		if err != nil {
@@ -234,10 +237,11 @@ func writePipeContent(w http.ResponseWriter, pr *io.PipeReader) {
 			break
 		}
 		if n == 0 {
-			log.Println("no bytes left")
+			if i < emptyReadMaxAttemps {
+				continue
+			}
 			return
 		}
-		log.Printf("Writing %d bytes..\n", n)
 		w.Write(buf[0:n])
 	}
 }

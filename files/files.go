@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"sort"
 )
@@ -77,26 +78,30 @@ func CanServeFile(path string, maxFileSizeBytes int64) (bool, error) {
 // As a result this can only write as quickly as the content is being read.
 func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
 	tw := tar.NewWriter(pw)
+	defer tw.Close()
 
 	for _, f := range filePaths {
 		info, err := os.Stat(f)
 		if err != nil {
 			return err
 		}
-		hdr, _ := tar.FileInfoHeader(info, info.Name())
-		if err = tw.WriteHeader(hdr); err != nil {
+		hdr := &tar.Header{
+			Name:    f,
+			Size:    info.Size(),
+			Mode:    int64(info.Mode()),
+			ModTime: info.ModTime(),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
 			return err
 		}
-		content, err := ioutil.ReadFile(f)
+		file, err := os.Open(f)
 		if err != nil {
 			return err
 		}
-		if _, err := tw.Write(content); err != nil {
+		if _, err := io.Copy(tw, file); err != nil {
+			log.Println(err.Error())
 			return err
 		}
-	}
-	if err := tw.Close(); err != nil {
-		return err
 	}
 	return nil
 }
@@ -106,6 +111,7 @@ func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
 // As a result this can only write as quickly as the content is being read.
 func ZipWithPipes(filePaths []string, pw *io.PipeWriter) error {
 	w := zip.NewWriter(pw)
+	defer w.Close()
 
 	for _, f := range filePaths {
 		info, err := os.Stat(f)
@@ -128,9 +134,6 @@ func ZipWithPipes(filePaths []string, pw *io.PipeWriter) error {
 		if err != nil {
 			return err
 		}
-	}
-	if err := w.Close(); err != nil {
-		return err
 	}
 	return nil
 }
