@@ -3,6 +3,7 @@ package timelapse
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/facebookgo/ensure"
 )
@@ -20,9 +21,9 @@ func TestBuildingArguments(t *testing.T) {
 	ensure.False(t, unrotatedCamera.flipHorizontally)
 
 	p := unrotatedCamera.getAbsoluteFilepath()
+	// Example: "foo/20210913-184442.jpg"
 	ensure.DeepEqual(t, 0, strings.Index(p, "foo/"))
-	ensure.DeepEqual(t, 23, strings.Index(p, ".jpg"))
-	ensure.DeepEqual(t, 27, len(p))
+	ensure.DeepEqual(t, strings.Index(p, ".jpg"), 19)
 }
 
 func TestRaspistillArgs(t *testing.T) {
@@ -32,7 +33,15 @@ func TestRaspistillArgs(t *testing.T) {
 }
 
 func TestCreateRotatedCamera(t *testing.T) {
-	rotatedCamera, _ := NewCamera("foo", 200, 100, true, 100)
+	rotatedCamera, err := NewCamera("foo", 200, 100, true, 100)
+	ensure.Nil(t, err)
 	ensure.True(t, rotatedCamera.flipVertically)
 	ensure.True(t, rotatedCamera.flipHorizontally)
+}
+
+func TestCreateFileName(t *testing.T) {
+	ensure.DeepEqual(t, getFileName(time.Date(1974, time.January, 1, 1, 0, 0, 0, time.UTC)), "19740101-010000.jpg")
+	ensure.DeepEqual(t, getFileName(time.Date(1974, time.January, 19, 1, 2, 3, 0, time.UTC)), "19740119-010203.jpg")
+	ensure.DeepEqual(t, getFileName(time.Date(1974, time.May, 19, 1, 2, 3, 0, time.UTC)), "19740519-010203.jpg")
+	ensure.DeepEqual(t, getFileName(time.Date(1974, time.December, 19, 1, 2, 3, 4, time.UTC)), "19741219-010203.jpg")
 }
