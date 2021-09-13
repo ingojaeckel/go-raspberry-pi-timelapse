@@ -10,5 +10,5 @@ cd src/ && sudo ./build_dist
 
 Optionally: Download another image variant before invoking `build_dist`
 ```
-cd src/images/ && wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-01-12/2021-01-11-raspios-buster-armhf-lite.zip && cd ../../
+cd src/image/ && wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-05-28/2021-05-07-raspios-buster-armhf-lite.zip && cd ../../
 ```
