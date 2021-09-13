@@ -4,6 +4,7 @@ package timelapse
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 )
 
 const (
-	timeStampFormat   = "2006-01-02_15:04:05"
 	commandRaspistill = "raspistill"
 )
 
@@ -73,7 +73,10 @@ func (c *Camera) getRaspistillArgs(fullPath string) []string {
 	return append(args, "-o", fullPath)
 }
 
+func getFileName(t time.Time) string {
+	return fmt.Sprintf("%4d%02d%02d-%02d%02d%02d.jpg", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+}
+
 func (c *Camera) getAbsoluteFilepath() string {
-	fileName := time.Now().Format(timeStampFormat) + ".jpg"
-	return filepath.Join(c.savePath, fileName)
+	return filepath.Join(c.savePath, getFileName(time.Now()))
 }
