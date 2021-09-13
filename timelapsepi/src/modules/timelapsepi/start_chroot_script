@@ -20,10 +20,10 @@ unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
 unpack /filesystem/home/root /root root
 unpack /filesystem/boot /boot
 
-git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git /home/pi/go-raspberry-pi-timelapse
+git clone --depth 1 https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git /home/pi/go-raspberry-pi-timelapse
 
 # Unpack root at the end, so files are modified before
 unpack /filesystem/root /
 
-sudo chmod 644 /lib/systemd/system/timelapse.service
+sudo chmod 644 /etc/systemd/system/timelapse.service
 sudo systemctl enable timelapse.service
