@@ -29,8 +29,6 @@ export default function SetupComponent() {
       });
   }, []);
 
-
-
   const handleRestartClicked = () => {
     console.log("restart clicked");
     axios.get(BaseUrl + "/admin/restart").then(() => console.log("restart initiated"));
@@ -66,13 +64,13 @@ export default function SetupComponent() {
           <Typography gutterBottom>Time between captures (minutes):</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" onChange={handleTimeBetweenCapturesChanged} defaultValue={state.SecondsBetweenCaptures/60} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }}  />
+          <TextField type="number" onChange={handleTimeBetweenCapturesChanged} defaultValue={state.SecondsBetweenCaptures/60} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
           <Typography gutterBottom>Delay within value hour before first capture (minutes): {state.OffsetWithinHour}</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" defaultValue={state.OffsetWithinHour} onChange={handleOffsetChanged} />
+          <TextField type="number" defaultValue={state.OffsetWithinHour} onChange={handleOffsetChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
           <Typography gutterBottom>Photo Resolution (pixels)</Typography>
@@ -86,13 +84,13 @@ export default function SetupComponent() {
           <Typography gutterBottom>Rotation (degrees): {state.RotateBy}</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" defaultValue={state.RotateBy} onChange={handleRotationChanged} />
+          <TextField type="number" defaultValue={state.RotateBy} onChange={handleRotationChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
           <Typography gutterBottom>Photo Quality (0..100%): {state.Quality}</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" defaultValue={state.Quality} onChange={handleQualityChanged} />
+          <TextField type="number" defaultValue={state.Quality} onChange={handleQualityChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
         </Grid>
