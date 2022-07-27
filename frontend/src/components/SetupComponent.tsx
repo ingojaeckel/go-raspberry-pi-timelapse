@@ -6,6 +6,7 @@ import { ButtonGroup, Button, Select, MenuItem, Typography, TextField, Grid } fr
 
 export default function SetupComponent() {
   const [state, setState] = useState<SettingsResponse>({
+    // Initial values shown while current config is loaded async
     SecondsBetweenCaptures:  60,
     OffsetWithinHour:        0,
     PhotoResolutionWidth:    3280,
@@ -25,6 +26,7 @@ export default function SetupComponent() {
       .then(resp => {
         if (resp.data) {
           setState(resp.data);
+          updateForm(resp.data);
         }
       });
   }, []);
@@ -48,12 +50,32 @@ export default function SetupComponent() {
       });
   };
 
+  // TODO replace this with proper binding
+  function updateForm(data: SettingsResponse) {
+    const fieldSecondsBetweenCaptures = document.getElementById("tfSecondsBetweenCaptures") as HTMLInputElement | null
+    const fieldOffset = document.getElementById("tfOffset") as HTMLInputElement | null
+    const fieldRotation = document.getElementById("tfRotation") as HTMLInputElement | null
+    const fieldQuality = document.getElementById("tfQuality") as HTMLInputElement | null
+
+    if (fieldSecondsBetweenCaptures) {
+      fieldSecondsBetweenCaptures.value = (data.SecondsBetweenCaptures / 60).toString();
+    }
+    if (fieldOffset) {
+      fieldOffset.value = data.OffsetWithinHour.toString();
+    }
+    if (fieldRotation) {
+      fieldRotation.value = data.RotateBy.toString();
+    }
+    if (fieldQuality) {
+      fieldQuality.value = data.Quality.toString();
+    }
+  }
+
   const handleOffsetChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { OffsetWithinHour: parseInt(e.target.value) as number }));
   const handleQualityChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { Quality: parseInt(e.target.value) as number }));
   const handleRotationChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { RotateBy: parseInt(e.target.value) as number }));
   const handleTimeBetweenCapturesChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { SecondsBetweenCaptures: (parseInt(e.target.value) as number) * 60 }));
 
-  // TODO Fix bug: Values only update on save
   return (
     <React.Fragment>
       <div>
@@ -64,13 +86,13 @@ export default function SetupComponent() {
           <Typography gutterBottom>Time between captures (minutes):</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" onChange={handleTimeBetweenCapturesChanged} defaultValue={state.SecondsBetweenCaptures/60} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
+          <TextField id="tfSecondsBetweenCaptures" type="number" onChange={handleTimeBetweenCapturesChanged} defaultValue={state.SecondsBetweenCaptures/60} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Delay within value hour before first capture (minutes): {state.OffsetWithinHour}</Typography>
+          <Typography gutterBottom>Delay within value hour before first capture (minutes):</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" defaultValue={state.OffsetWithinHour} onChange={handleOffsetChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
+          <TextField id="tfOffset" type="number" defaultValue={state.OffsetWithinHour} onChange={handleOffsetChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
           <Typography gutterBottom>Photo Resolution (pixels)</Typography>
@@ -81,16 +103,16 @@ export default function SetupComponent() {
           </Select>
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Rotation (degrees): {state.RotateBy}</Typography>
+          <Typography gutterBottom>Rotation (degrees):</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" defaultValue={state.RotateBy} onChange={handleRotationChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
+          <TextField id="tfRotation" type="number" defaultValue={state.RotateBy} onChange={handleRotationChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Photo Quality (0..100%): {state.Quality}</Typography>
+          <Typography gutterBottom>Photo Quality (0..100%):</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField type="number" defaultValue={state.Quality} onChange={handleQualityChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
+          <TextField id="tfQuality" type="number" defaultValue={state.Quality} onChange={handleQualityChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
         </Grid>
