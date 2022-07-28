@@ -25,7 +25,7 @@ func TestSecondsToSleepUntilOffset(t *testing.T) {
 			OffsetWithinHour:       15 * 60,
 		},
 	}
-	s := tl.secondsToSleepUntilOffset(time.Now())
+	s := tl.getSecondsToFirstCapture(time.Now())
 	ensure.True(t, 0 <= s)
 	ensure.True(t, s <= tl.Settings.SecondsBetweenCaptures)
 }
@@ -38,22 +38,10 @@ func TestSecondsToSleepUntilOffset2(t *testing.T) {
 		},
 	}
 
-	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 46, sec: 1, location: time.UTC}.toDate()))
-	ensure.DeepEqual(t, 13*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 32, sec: 1, location: time.UTC}.toDate()))
-	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 16, sec: 1, location: time.UTC}.toDate()))
-	ensure.DeepEqual(t, 7*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 8, sec: 1, location: time.UTC}.toDate()))
-}
-
-func TestFewPicsPerDay(t *testing.T) {
-	// TODO prepare test for scenarios where pictures are taken more infrequently e.g. once or few times per day.
-	tl := Timelapse{
-		Settings: conf.Settings{
-			SecondsBetweenCaptures: 60 * 30,
-			OffsetWithinHour:       0,
-		},
-	}
-
-	ensure.DeepEqual(t, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 45, location: time.UTC}.toDate()), 15*60)
+	ensure.DeepEqual(t, 29*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 46, sec: 1, location: time.UTC}.toDate()))
+	ensure.DeepEqual(t, 13*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 32, sec: 1, location: time.UTC}.toDate()))
+	ensure.DeepEqual(t, 29*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 16, sec: 1, location: time.UTC}.toDate()))
+	ensure.DeepEqual(t, 7*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 8, sec: 1, location: time.UTC}.toDate()))
 }
 
 func TestNoSleepTillBrooklyn(t *testing.T) {
@@ -76,7 +64,7 @@ func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTim
 	tl := createTimelapseForTesting(t, 900)
 	theTime := time.Date(2017, time.January, 1, 1, minute, second, 0, time.UTC)
 
-	ensure.DeepEqual(t, tl.secondsToSleepUntilOffset(theTime), expectedSleepTime)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(theTime), expectedSleepTime)
 }
 
 func createTimelapseForTesting(t *testing.T, offsetWithinHourSeconds int) Timelapse {
