@@ -41,8 +41,10 @@ func (t Timelapse) CapturePeriodically() {
 					s, err := camera.Capture()
 					if err != nil {
 						log.Printf("Error during capture: %s\n", err.Error())
+					} else {
+						log.Printf("Photo stored in '%s'\n", s)
 					}
-					log.Printf("Photo stored in '%s'. Will sleep for %d seconds.\n", s, t.Settings.SecondsBetweenCaptures)
+					log.Printf("Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
 				}
 				time.Sleep(time.Duration(t.Settings.SecondsBetweenCaptures) * time.Second)
 			}
