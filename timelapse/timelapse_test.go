@@ -38,10 +38,10 @@ func TestSecondsToSleepUntilOffset2(t *testing.T) {
 		},
 	}
 
-	ensure.DeepEqual(t, 29*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 46, sec: 1, location: time.UTC}.toDate()))
-	ensure.DeepEqual(t, 13*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 32, sec: 1, location: time.UTC}.toDate()))
-	ensure.DeepEqual(t, 29*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 16, sec: 1, location: time.UTC}.toDate()))
-	ensure.DeepEqual(t, 7*60-1, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 8, sec: 1, location: time.UTC}.toDate()))
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 46, sec: 1, location: time.UTC}.toDate()), 29*60-1)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 32, sec: 1, location: time.UTC}.toDate()), 13*60-1)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 16, sec: 1, location: time.UTC}.toDate()), 29*60-1)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 8, sec: 1, location: time.UTC}.toDate()), 7*60-1)
 }
 
 func TestNoSleepTillBrooklyn(t *testing.T) {
