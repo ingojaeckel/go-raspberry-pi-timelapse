@@ -52,23 +52,15 @@ export default function SetupComponent() {
 
   // TODO replace this with proper binding
   function updateForm(data: SettingsResponse) {
-    const fieldSecondsBetweenCaptures = document.getElementById("tfSecondsBetweenCaptures") as HTMLInputElement | null
-    const fieldOffset = document.getElementById("tfOffset") as HTMLInputElement | null
-    const fieldRotation = document.getElementById("tfRotation") as HTMLInputElement | null
-    const fieldQuality = document.getElementById("tfQuality") as HTMLInputElement | null
+    const fieldSecondsBetweenCaptures = document.getElementById("tfSecondsBetweenCaptures")! as HTMLInputElement
+    const fieldOffset = document.getElementById("tfOffset")! as HTMLInputElement
+    const fieldRotation = document.getElementById("tfRotation")! as HTMLInputElement
+    const fieldQuality = document.getElementById("tfQuality")! as HTMLInputElement
 
-    if (fieldSecondsBetweenCaptures) {
-      fieldSecondsBetweenCaptures.value = (data.SecondsBetweenCaptures / 60).toString();
-    }
-    if (fieldOffset) {
-      fieldOffset.value = data.OffsetWithinHour.toString();
-    }
-    if (fieldRotation) {
-      fieldRotation.value = data.RotateBy.toString();
-    }
-    if (fieldQuality) {
-      fieldQuality.value = data.Quality.toString();
-    }
+    fieldSecondsBetweenCaptures.value = (data.SecondsBetweenCaptures / 60).toString();
+    fieldOffset.value = data.OffsetWithinHour.toString();
+    fieldRotation.value = data.RotateBy.toString();
+    fieldQuality.value = data.Quality.toString();
   }
 
   const handleOffsetChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { OffsetWithinHour: parseInt(e.target.value) as number }));
@@ -89,10 +81,10 @@ export default function SetupComponent() {
           <TextField id="tfSecondsBetweenCaptures" type="number" onChange={handleTimeBetweenCapturesChanged} defaultValue={state.SecondsBetweenCaptures/60} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Delay within value hour before first capture (minutes):</Typography>
+          <Typography gutterBottom>Delay within the hour before the first capture or -1 to disable (minutes):</Typography>
         </Grid>
         <Grid item xs={6}>
-          <TextField id="tfOffset" type="number" defaultValue={state.OffsetWithinHour} onChange={handleOffsetChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
+          <TextField id="tfOffset" type="number" defaultValue={state.OffsetWithinHour} onChange={handleOffsetChanged} inputProps={{ inputMode: 'numeric', pattern: '-?[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
           <Typography gutterBottom>Photo Resolution (pixels)</Typography>

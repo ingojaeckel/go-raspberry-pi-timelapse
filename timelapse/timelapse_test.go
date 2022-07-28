@@ -8,6 +8,16 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 )
 
+type abbrevTime struct {
+	year, day, hour, min, sec int
+	month                     time.Month
+	location                  *time.Location
+}
+
+func (t abbrevTime) toDate() time.Time {
+	return time.Date(t.year, t.month, t.day, t.hour, t.min, t.sec, 0, t.location)
+}
+
 func TestSecondsToSleepUntilOffset(t *testing.T) {
 	tl := Timelapse{
 		Settings: conf.Settings{
@@ -15,9 +25,9 @@ func TestSecondsToSleepUntilOffset(t *testing.T) {
 			OffsetWithinHour:       15 * 60,
 		},
 	}
-	s := tl.secondsToSleepUntilOffset(time.Now())
+	s := tl.getSecondsToFirstCapture(time.Now())
 	ensure.True(t, 0 <= s)
-	ensure.True(t, s <= int(tl.Settings.SecondsBetweenCaptures))
+	ensure.True(t, s <= tl.Settings.SecondsBetweenCaptures)
 }
 
 func TestSecondsToSleepUntilOffset2(t *testing.T) {
@@ -28,23 +38,10 @@ func TestSecondsToSleepUntilOffset2(t *testing.T) {
 		},
 	}
 
-	l := time.Now().Location()
-	hour := 8
-	min := 46
-	sec := 1
-	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min, sec, 0, l)))
-
-	min2 := 32
-	sec2 := 1
-	ensure.DeepEqual(t, 13*60-1, tl.secondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min2, sec2, 0, l)))
-
-	min3 := 16
-	sec3 := 1
-	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min3, sec3, 0, l)))
-
-	min4 := 8
-	sec4 := 1
-	ensure.DeepEqual(t, 7*60-1, tl.secondsToSleepUntilOffset(time.Date(2017, 12, 1, hour, min4, sec4, 0, l)))
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 46, sec: 1, location: time.UTC}.toDate()), 29*60-1)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 32, sec: 1, location: time.UTC}.toDate()), 13*60-1)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 16, sec: 1, location: time.UTC}.toDate()), 29*60-1)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 8, sec: 1, location: time.UTC}.toDate()), 7*60-1)
 }
 
 func TestNoSleepTillBrooklyn(t *testing.T) {
@@ -67,7 +64,7 @@ func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTim
 	tl := createTimelapseForTesting(t, 900)
 	theTime := time.Date(2017, time.January, 1, 1, minute, second, 0, time.UTC)
 
-	ensure.DeepEqual(t, tl.secondsToSleepUntilOffset(theTime), expectedSleepTime)
+	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(theTime), expectedSleepTime)
 }
 
 func createTimelapseForTesting(t *testing.T, offsetWithinHourSeconds int) Timelapse {

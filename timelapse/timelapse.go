@@ -27,7 +27,7 @@ func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan 
 }
 
 func (t Timelapse) CapturePeriodically() {
-	offsetDisabled := t.Settings.OffsetWithinHour == -1
+	offsetDisabled := t.Settings.OffsetWithinHour < 0 // negative values disable the offset
 
 	if offsetDisabled {
 		log.Println("Offset is disabled. Will start taking pictures immediately.")
@@ -41,8 +41,10 @@ func (t Timelapse) CapturePeriodically() {
 					s, err := camera.Capture()
 					if err != nil {
 						log.Printf("Error during capture: %s\n", err.Error())
+					} else {
+						log.Printf("Photo stored in '%s'\n", s)
 					}
-					log.Printf("Photo stored in '%s'. Will sleep for %d seconds.\n", s, t.Settings.SecondsBetweenCaptures)
+					log.Printf("Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
 				}
 				time.Sleep(time.Duration(t.Settings.SecondsBetweenCaptures) * time.Second)
 			}
@@ -78,14 +80,14 @@ func (t Timelapse) CapturePeriodically() {
 }
 
 func (t *Timelapse) waitForCapture() {
-	secondsUntilFirstCapture := t.secondsToSleepUntilOffset(time.Now())
+	secondsUntilFirstCapture := t.getSecondsToFirstCapture(time.Now())
 	sleepDuration := time.Duration(secondsUntilFirstCapture) * time.Second
 	nextCaptureAt := time.Now().Add(sleepDuration)
 
 	log.Printf("Will take the next picture in %d seconds at %v.\n", secondsUntilFirstCapture, nextCaptureAt)
 
 	for {
-		secondsUntilFirstCapture := t.secondsToSleepUntilOffset(time.Now())
+		secondsUntilFirstCapture := t.getSecondsToFirstCapture(time.Now())
 		if secondsUntilFirstCapture == 0 {
 			// Game time!
 			break
@@ -101,13 +103,11 @@ func (t *Timelapse) waitForCapture() {
 		case <-time.After(time.Duration(1 * time.Second)):
 			break
 		}
-
 	}
 }
 
-func (t Timelapse) secondsToSleepUntilOffset(currentTime time.Time) int {
+func (t Timelapse) getSecondsToFirstCapture(currentTime time.Time) int {
 	picturesPerHour := 3600 / t.Settings.SecondsBetweenCaptures
-
 	secondsIntoCurrentHour := currentTime.Minute()*60 + currentTime.Second()
 
 	for i := 0; i < int(picturesPerHour); i++ {
