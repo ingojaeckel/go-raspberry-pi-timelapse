@@ -38,11 +38,10 @@ func TestSecondsToSleepUntilOffset2(t *testing.T) {
 		},
 	}
 
-	loc := time.Now().Location()
-	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 46, sec: 1, location: loc}.toDate()))
-	ensure.DeepEqual(t, 13*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 32, sec: 1, location: loc}.toDate()))
-	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 16, sec: 1, location: loc}.toDate()))
-	ensure.DeepEqual(t, 7*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 8, sec: 1, location: loc}.toDate()))
+	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 46, sec: 1, location: time.UTC}.toDate()))
+	ensure.DeepEqual(t, 13*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 32, sec: 1, location: time.UTC}.toDate()))
+	ensure.DeepEqual(t, 29*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 16, sec: 1, location: time.UTC}.toDate()))
+	ensure.DeepEqual(t, 7*60-1, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 8, sec: 1, location: time.UTC}.toDate()))
 }
 
 func TestFewPicsPerDay(t *testing.T) {
@@ -54,8 +53,7 @@ func TestFewPicsPerDay(t *testing.T) {
 		},
 	}
 
-	loc := time.Now().Location()
-	ensure.DeepEqual(t, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 45, location: loc}.toDate()), 15*60)
+	ensure.DeepEqual(t, tl.secondsToSleepUntilOffset(abbrevTime{year: 2017, month: 12, day: 1, hour: 8, min: 45, location: time.UTC}.toDate()), 15*60)
 }
 
 func TestNoSleepTillBrooklyn(t *testing.T) {
