@@ -10,7 +10,7 @@ jobs:
     - name: Set up npm
       uses: actions/setup-node@v2
       with:
-        node-version: '14'
+        node-version: '18'
     - name: Build frontend
       run: cd frontend && npm install && npm run build && cd ../
     - name: Set up Go
