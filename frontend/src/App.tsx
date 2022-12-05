@@ -25,7 +25,7 @@ function LinkTab(props: LinkTabProps) {
     <Tab
       component="a"
       onClick={(event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-        //event.preventDefault();
+        //event.preventDefault(); // TODO currently needs to be disabled to enable navigation
       }}
       {...props}
     />
@@ -44,15 +44,15 @@ function App() {
         <Container fixed>
           <Grid container spacing={0}>
             <Grid item xs={12}>
-              <Tabs value={value} onChange={handleChange} aria-label="icon label tabs">
-                <LinkTab label="Home" href={`${process.env.PUBLIC_URL}/`} icon={<Home />} />
-                <LinkTab label="Preview" href={`${process.env.PUBLIC_URL}/preview`} icon={<PhotoCamera />} />
-                <LinkTab label="Monitoring" href={`${process.env.PUBLIC_URL}/monitoring`} icon={<Timeline />} />
-                <LinkTab label="Settings" href={`${process.env.PUBLIC_URL}/settings`} icon={<Settings />} />
-                <LinkTab label="Logs" href={`${process.env.PUBLIC_URL}/logs`} icon={<Description />} />
+              <Tabs value={value} onChange={handleChange} variant="scrollable" scrollButtons allowScrollButtonsMobile aria-label="scrollable icon label tabs">
+                <LinkTab label="home" href={`${process.env.PUBLIC_URL}/`} icon={<Home />} />
+                <LinkTab label="preview" href={`${process.env.PUBLIC_URL}/preview`} icon={<PhotoCamera />} />
+                <LinkTab label="monitoring" href={`${process.env.PUBLIC_URL}/monitoring`} icon={<Timeline />} />
+                <LinkTab label="settings" href={`${process.env.PUBLIC_URL}/settings`} icon={<Settings />} />
+                <LinkTab label="logs" href={`${process.env.PUBLIC_URL}/logs`} icon={<Description />} />
               </Tabs>
             </Grid>
-            <Grid item xs={10}>
+            <Grid item xs={12}>
               <Switcher />
             </Grid>
             <Grid item xs={12}>
