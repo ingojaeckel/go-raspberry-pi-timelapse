@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Button, ButtonGroup, Typography } from '@mui/material';
 import { LogResponse } from '../models/response'
-import { Typography, Button, ButtonGroup } from '@material-ui/core';
 import { BaseUrl } from '../conf/config'
 
 export default function LogComponent() {

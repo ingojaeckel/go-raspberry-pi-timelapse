@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { MonitoringResponse } from '../models/response'
-import { Typography } from '@material-ui/core';
+import { Typography } from '@mui/material';
 
 export default function MonitoringComponent() {
   const [state, setState] = useState<MonitoringResponse>({

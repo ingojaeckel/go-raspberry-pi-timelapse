@@ -1,15 +1,10 @@
 import React from 'react';
 import { createBrowserHistory } from "history";
 import { NavLink, Router } from 'react-router-dom';
-import Grid from '@material-ui/core/Grid';
-import HomeIcon from '@material-ui/icons/Home';
-import SettingsIcon from '@material-ui/icons/Settings';
-import TimelineIcon from '@material-ui/icons/Timeline';
-import DescriptionIcon from '@material-ui/icons/Description';
-import { Container, List, Avatar, ListItemAvatar, ListItem, CssBaseline } from '@material-ui/core';
 import Switcher from './Switch';
 import axios from 'axios';
-import { PhotoCamera } from '@material-ui/icons';
+import { Avatar, Container, CssBaseline, Grid, List, ListItem, ListItemAvatar } from '@mui/material';
+import { Home, PhotoCamera, Timeline, Settings, Description } from '@mui/icons-material'
 
 // Register default request interceptors
 axios.interceptors.request.use(request => {
@@ -31,7 +26,7 @@ function App() {
                 <ListItem to={`${process.env.PUBLIC_URL}/`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
-                      <HomeIcon />
+                      <Home />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
@@ -45,21 +40,21 @@ function App() {
                 <ListItem to={`${process.env.PUBLIC_URL}/monitoring`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
-                      <TimelineIcon />
+                      <Timeline />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
                 <ListItem to={`${process.env.PUBLIC_URL}/settings`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
-                      <SettingsIcon />
+                      <Settings />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>
                 <ListItem to={`${process.env.PUBLIC_URL}/logs`} component={NavLink} disableGutters>
                   <ListItemAvatar>
                     <Avatar>
-                      <DescriptionIcon />
+                      <Description />
                     </Avatar>
                   </ListItemAvatar>
                 </ListItem>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { SettingsResponse } from '../models/response'
-import { ButtonGroup, Button, Select, MenuItem, Typography, TextField, Grid } from '@material-ui/core';
+import { Button, ButtonGroup, Grid, MenuItem, Select, TextField, Typography } from '@mui/material';
 
 export default function SetupComponent() {
   const [state, setState] = useState<SettingsResponse>({
