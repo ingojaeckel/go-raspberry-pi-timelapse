@@ -70,9 +70,6 @@ export default function SetupComponent() {
 
   return (
     <React.Fragment>
-      <div>
-        <Typography variant="h4" component="h4">Settings</Typography>
-      </div>
       <Grid container spacing={2}>
         <Grid item xs={6}>
           <Typography gutterBottom>Time between captures (minutes):</Typography>

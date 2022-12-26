@@ -48,7 +48,7 @@ function App() {
   return (
     <React.Fragment>
       <CssBaseline />
-      <Container fixed>
+      <Container>
         <Grid container spacing={0}>
           <Grid item xs={12}>
             <Tabs value={value} onChange={handleChange} variant="scrollable" scrollButtons allowScrollButtonsMobile aria-label="scrollable icon label tabs">

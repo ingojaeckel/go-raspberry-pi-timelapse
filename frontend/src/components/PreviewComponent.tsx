@@ -1,11 +1,9 @@
-import { Typography } from '@mui/material';
 import React from 'react';
 import { BaseUrl } from '../conf/config';
 
 export default function PhotosComponent() {
   return (
     <React.Fragment>
-      <Typography variant="h4" component="h4">Photo preview</Typography>
       <div><img src={BaseUrl+"/capture"} alt="preview" /></div>
       <div>
           Tips for fine-tuning the camera position, focus, etc:

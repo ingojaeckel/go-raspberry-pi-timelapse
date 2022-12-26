@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { DataGrid, GridColDef, GridRowData, GridRowId, GridCellParams, GridSelectionModel, GridCallbackDetails } from '@mui/x-data-grid';
-import { Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, Typography } from '@mui/material';
+import { Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText } from '@mui/material';
 import { BaseUrl } from '../conf/config'
 import { PhotosResponse } from '../models/response';
 
@@ -114,7 +114,6 @@ const getPhotos = () => {
 
   return (
     <React.Fragment>
-      <Typography variant="h4" component="h4">Photos</Typography>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
         <Button onClick={handleRefreshClicked}>Refresh</Button>
         <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.length})</Button>
