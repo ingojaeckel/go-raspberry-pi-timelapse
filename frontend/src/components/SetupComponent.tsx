@@ -111,6 +111,12 @@ export default function SetupComponent() {
         <Button onClick={handleRestartClicked}>Restart</Button>
         <Button onClick={handleShutdownClicked}>Shutdown</Button>
       </ButtonGroup>
+      <Grid container spacing={2}>
+        <Grid item xs={6} />
+        <Grid item xs={6}>
+          Version: {process.env.REACT_APP_GIT_SHA && (<a href={"https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/" + process.env.REACT_APP_GIT_SHA}>{process.env.REACT_APP_GIT_SHA}</a>)}
+        </Grid>
+      </Grid>
     </React.Fragment>
   );
 }

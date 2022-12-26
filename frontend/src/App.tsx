@@ -54,28 +54,15 @@ function App() {
             <Tabs value={value} onChange={handleChange} variant="scrollable" scrollButtons allowScrollButtonsMobile aria-label="scrollable icon label tabs">
               <Tab label="home" icon={<Home />} />
               <Tab label="preview" icon={<PhotoCamera />} />
-              <Tab label="monitoring"  icon={<Timeline />} />
-              <Tab label="settings"  icon={<Settings />} />
-              <Tab label="logs"  icon={<Description />} />
+              <Tab label="monitoring" icon={<Timeline />} />
+              <Tab label="settings" icon={<Settings />} />
+              <Tab label="logs" icon={<Description />} />
             </Tabs>
-            <TabPanel value={value} index={0}>
-              <PhotoComponent />
-            </TabPanel>
-            <TabPanel value={value} index={1}>
-              <PreviewComponent />
-            </TabPanel>
-            <TabPanel value={value} index={2}>
-              <MonitoringComponent />
-            </TabPanel>
-            <TabPanel value={value} index={3}>
-              <SetupComponent />
-            </TabPanel>
-            <TabPanel value={value} index={4}>
-              <LogComponent />
-            </TabPanel>
-          </Grid>
-          <Grid item xs={12}>
-            <div className="footer">version: <a href={"https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/" + process.env.REACT_APP_GIT_SHA}>{process.env.REACT_APP_GIT_SHA}</a></div>
+            <TabPanel value={value} index={0}><PhotoComponent /></TabPanel>
+            <TabPanel value={value} index={1}><PreviewComponent /></TabPanel>
+            <TabPanel value={value} index={2}><MonitoringComponent /></TabPanel>
+            <TabPanel value={value} index={3}><SetupComponent /></TabPanel>
+            <TabPanel value={value} index={4}><LogComponent /></TabPanel>
           </Grid>
         </Grid>
       </Container>
