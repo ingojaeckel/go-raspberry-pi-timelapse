@@ -2,7 +2,7 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { SettingsResponse } from '../models/response'
-import { ButtonGroup, Button, Select, MenuItem, Typography, TextField, Grid } from '@material-ui/core';
+import { Button, ButtonGroup, Grid, MenuItem, Select, TextField, Typography } from '@mui/material';
 
 export default function SetupComponent() {
   const [state, setState] = useState<SettingsResponse>({
@@ -70,9 +70,6 @@ export default function SetupComponent() {
 
   return (
     <React.Fragment>
-      <div>
-        <Typography variant="h4" component="h4">Settings</Typography>
-      </div>
       <Grid container spacing={2}>
         <Grid item xs={6}>
           <Typography gutterBottom>Time between captures (minutes):</Typography>
@@ -114,6 +111,12 @@ export default function SetupComponent() {
         <Button onClick={handleRestartClicked}>Restart</Button>
         <Button onClick={handleShutdownClicked}>Shutdown</Button>
       </ButtonGroup>
+      <Grid container spacing={2}>
+        <Grid item xs={6} />
+        <Grid item xs={6}>
+          Version: {process.env.REACT_APP_GIT_SHA && (<a href={"https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/" + process.env.REACT_APP_GIT_SHA}>{process.env.REACT_APP_GIT_SHA}</a>)}
+        </Grid>
+      </Grid>
     </React.Fragment>
   );
 }

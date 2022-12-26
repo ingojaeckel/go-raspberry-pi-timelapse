@@ -1,23 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Typography, Button, ButtonGroup } from '@material-ui/core';
-import { DataGrid, ColDef, RowData, RowId, SelectionModelChangeParams, CellParams } from '@material-ui/data-grid';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
-import { PhotosResponse } from '../models/response';
+import { DataGrid, GridColDef, GridRowData, GridRowId, GridCellParams, GridSelectionModel, GridCallbackDetails } from '@mui/x-data-grid';
+import { Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText } from '@mui/material';
 import { BaseUrl } from '../conf/config'
+import { PhotosResponse } from '../models/response';
 
 export interface PhotosRowData {
   ShowDeletionDialog: boolean,
-  Photos: RowData[],
-  Selected: RowId[],
+  Photos: GridRowData[], // TODO replace with GridRowModel
+  Selected: GridRowId[],
   SelectedFilesParameter: string,
 }
 
-const columns: ColDef[] = [
-  { field: 'fileName', headerName: 'Name', width: 300, renderCell: (p: CellParams) => (<a href={BaseUrl + "/file/" + p.value}>{p.value}</a> ) },
+const columns: GridColDef[] = [
+  { field: 'fileName', headerName: 'Name', width: 300, renderCell: (p: GridCellParams) => (<a href={BaseUrl + "/file/" + p.value}>{p.value}</a> ) },
   { field: 'fileCreateTime', headerName: 'Created At', width: 300 },
   { field: 'fileSizeBytes', headerName: 'Size', width: 100 },
 ];
@@ -37,7 +33,7 @@ const getPhotos = () => {
     .then(resp => {
       // After receiving a response, map the PhotosResponse to RowData[] which can be displayed in the data grid.
       if (resp.data) {
-        var rows: RowData[] = [];
+        var rows: GridRowData[] = [];
 
         for (var i=0; i<resp.data.Photos.length; i++) {
           let photo = resp.data.Photos[i];
@@ -63,11 +59,11 @@ const getPhotos = () => {
     getPhotos()
   }, []);
 
-  const handleSelectionModelChanged = (params: SelectionModelChangeParams) => {
-    console.log("selection changed: ", params);
+  const handleSelectionModelChanged = (selectionModel: GridSelectionModel, details: GridCallbackDetails) => {
+    console.log("selection changed: ", selectionModel, details);
 
     var link = "";
-    params.selectionModel.forEach(selected => {
+    selectionModel.forEach(selected => {
       let selectedPhoto = state.Photos.find(e => e.id === selected);
       if (selectedPhoto) {
         let selectedPhotoFilename = selectedPhoto.fileName;
@@ -78,7 +74,7 @@ const getPhotos = () => {
     setState({
       ShowDeletionDialog: false,
       Photos: state.Photos,
-      Selected: params.selectionModel,
+      Selected: selectionModel,
       SelectedFilesParameter: link,
     });
   };
@@ -118,7 +114,6 @@ const getPhotos = () => {
 
   return (
     <React.Fragment>
-      <Typography variant="h4" component="h4">Photos</Typography>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
         <Button onClick={handleRefreshClicked}>Refresh</Button>
         <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.length})</Button>

@@ -4,9 +4,10 @@
   "private": true,
   "homepage": "/static/frontend/build",
   "dependencies": {
-    "@material-ui/core": "^4.11.3",
-    "@material-ui/data-grid": "^4.0.0-alpha.20",
-    "@material-ui/icons": "^4.11.2",
+    "@mui/icons-material": "^5.10.16",
+    "@mui/material": "^5.10.16",
+    "@mui/styles": "^5.10.16",
+    "@mui/x-data-grid": "^5.17.14",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
@@ -20,7 +21,7 @@
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-router-dom": "^5.2.0",
-    "react-scripts": "3.4.0",
+    "react-scripts": "^5.0.1",
     "source-map-explorer": "^2.5.2",
     "typescript": "^3.9.9"
   },
