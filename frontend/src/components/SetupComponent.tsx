@@ -72,19 +72,19 @@ export default function SetupComponent() {
     <React.Fragment>
       <Grid container spacing={2}>
         <Grid item xs={6}>
-          <Typography gutterBottom>Time between captures (minutes):</Typography>
+          <Typography component={'span'} gutterBottom>Time between captures (minutes):</Typography>
         </Grid>
         <Grid item xs={6}>
           <TextField id="tfSecondsBetweenCaptures" type="number" onChange={handleTimeBetweenCapturesChanged} defaultValue={state.SecondsBetweenCaptures/60} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Delay within the hour before the first capture or -1 to disable (minutes):</Typography>
+          <Typography component={'span'} gutterBottom>Delay within the hour before the first capture or -1 to disable (minutes):</Typography>
         </Grid>
         <Grid item xs={6}>
           <TextField id="tfOffset" type="number" defaultValue={state.OffsetWithinHour} onChange={handleOffsetChanged} inputProps={{ inputMode: 'numeric', pattern: '-?[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Photo Resolution (pixels)</Typography>
+          <Typography component={'span'} gutterBottom>Photo Resolution (pixels)</Typography>
         </Grid>
         <Grid item xs={6}>
           <Select defaultValue={0}>
@@ -92,13 +92,13 @@ export default function SetupComponent() {
           </Select>
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Rotation (degrees):</Typography>
+          <Typography component={'span'} gutterBottom>Rotation (degrees):</Typography>
         </Grid>
         <Grid item xs={6}>
           <TextField id="tfRotation" type="number" defaultValue={state.RotateBy} onChange={handleRotationChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
         </Grid>
         <Grid item xs={6}>
-          <Typography gutterBottom>Photo Quality (0..100%):</Typography>
+          <Typography component={'span'} gutterBottom>Photo Quality (0..100%):</Typography>
         </Grid>
         <Grid item xs={6}>
           <TextField id="tfQuality" type="number" defaultValue={state.Quality} onChange={handleQualityChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
@@ -114,7 +114,9 @@ export default function SetupComponent() {
       <Grid container spacing={2}>
         <Grid item xs={6} />
         <Grid item xs={6}>
-          Version: {process.env.REACT_APP_GIT_SHA && (<a href={"https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/" + process.env.REACT_APP_GIT_SHA}>{process.env.REACT_APP_GIT_SHA}</a>)}
+          Version: {process.env.REACT_APP_GIT_SHA && (<span>
+              <a href={"https://github.com/ingojaeckel/go-raspberry-pi-timelapse/commit/" + process.env.REACT_APP_GIT_SHA}>{process.env.REACT_APP_GIT_SHA_ABBREV}</a> built {process.env.REACT_APP_COMMIT_TIME}
+            </span>)}
         </Grid>
       </Grid>
     </React.Fragment>
