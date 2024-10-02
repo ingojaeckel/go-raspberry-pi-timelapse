@@ -12,6 +12,6 @@ sudo apt-get clean
 
 sudo apt-get update -y
 sudo apt-get upgrade -y
-sudo apt-get install -y htop screen git python-smbus i2c-tools
+sudo apt-get install -y htop screen git python3-smbus i2c-tools
 git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git
 cd go-raspberry-pi-timelapse/
