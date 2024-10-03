@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	commandRaspistill = "raspistill"
+	commandRaspistill = "rpicam-still"
 )
 
 type Camera struct {
