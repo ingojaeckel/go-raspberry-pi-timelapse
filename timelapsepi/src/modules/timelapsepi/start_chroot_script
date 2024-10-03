@@ -14,7 +14,7 @@ source /common.sh
 install_cleanup_trap
 
 sudo apt-get update
-sudo apt-get install -y htop screen git python3-smbus i2c-tools raspistill raspivid
+sudo apt-get install -y htop screen git python3-smbus i2c-tools
 sudo rpi-update
 
 unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
