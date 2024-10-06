@@ -8,4 +8,4 @@ export NETWORK_DISABLE_PWRSAVE=yes
 export NETWORK_WPA_SUPPLICANT=no
 export NETWORK_NETWORK_MANAGER=yes
 
-export MODULES="base(network,disable-services(raspicam,timelapsepi))"
+export MODULES="base(network,raspicam,disable-services(timelapsepi))"
