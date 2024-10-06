@@ -29,7 +29,7 @@ func TestBuildingArguments(t *testing.T) {
 func TestRaspistillArgs(t *testing.T) {
 	unrotatedCamera, _ := NewCamera("foo", 200, 100, false, 100)
 	args := unrotatedCamera.getRaspistillArgs("foo/someFile.jpg")
-	ensure.DeepEqual(t, []string{"-w", "200", "-h", "100", "-q", "100", "-o", "foo/someFile.jpg"}, args)
+	ensure.DeepEqual(t, []string{"--width", "200", "--height", "100", "--quality", "100", "--output", "foo/someFile.jpg"}, args)
 }
 
 func TestCreateRotatedCamera(t *testing.T) {
