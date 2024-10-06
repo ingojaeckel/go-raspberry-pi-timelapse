@@ -45,7 +45,7 @@ func TestSecondsToSleepUntilOffset2(t *testing.T) {
 }
 
 func TestNoSleepTillBrooklyn(t *testing.T) {
-	tl := createTimelapseForTesting(t, 0)
+	tl := createTimelapseForTesting(0)
 	tl.Settings.SecondsBetweenCaptures = 1
 
 	before := time.Now().Unix()
