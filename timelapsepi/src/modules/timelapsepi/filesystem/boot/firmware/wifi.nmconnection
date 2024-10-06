@@ -13,10 +13,13 @@ key-mgmt=wpa-psk
 psk=InsertTheRealPassword
 
 [ipv4]
-method=auto
+dns-search=
+address1=192.168.50.1/24,192.168.50.1
+method=shared
 
 [ipv6]
+dns-search=
 addr-gen-mode=stable-privacy
-method=auto
+method=ignore
 
 [proxy]
