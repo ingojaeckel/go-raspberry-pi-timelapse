@@ -27,3 +27,6 @@ unpack /filesystem/root /
 
 sudo chmod 644 /etc/systemd/system/timelapse.service
 sudo systemctl enable timelapse.service
+
+# Other system setup:
+sudo systemctl disable NetworkManager-wait-online.service
