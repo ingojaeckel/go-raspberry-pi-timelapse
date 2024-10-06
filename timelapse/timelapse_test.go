@@ -61,13 +61,13 @@ func TestGetInitialSleepTime(t *testing.T) {
 }
 
 func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTime int) {
-	tl := createTimelapseForTesting(t, 900)
+	tl := createTimelapseForTesting(900)
 	theTime := time.Date(2017, time.January, 1, 1, minute, second, 0, time.UTC)
 
 	ensure.DeepEqual(t, tl.getSecondsToFirstCapture(theTime), expectedSleepTime)
 }
 
-func createTimelapseForTesting(t *testing.T, offsetWithinHourSeconds int) Timelapse {
+func createTimelapseForTesting(offsetWithinHourSeconds int) Timelapse {
 	return Timelapse{
 		Folder: conf.StorageFolder,
 		Settings: conf.Settings{
