@@ -80,3 +80,8 @@ func getFileName(t time.Time) string {
 func (c *Camera) getAbsoluteFilepath() string {
 	return filepath.Join(c.savePath, getFileName(time.Now()))
 }
+
+func isNightPhoto(now time.Time) bool {
+	h := now.Hour()
+	return h > 22 || h < 6
+}

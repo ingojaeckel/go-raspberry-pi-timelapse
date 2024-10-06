@@ -38,13 +38,17 @@ func (t Timelapse) CapturePeriodically() {
 					log.Printf("Error instantiating camera: %s\n", err)
 					// Sleep for a bit and create a new camera instance on the next iteration.
 				} else {
-					s, err := camera.Capture()
-					if err != nil {
-						log.Printf("Error during capture: %s\n", err.Error())
+					if t.Settings.SkipPhotosAtNight && isNightPhoto(time.Now()) {
+						log.Printf("Skipping night time photo\n")
 					} else {
-						log.Printf("Photo stored in '%s'\n", s)
+						s, err := camera.Capture()
+						if err != nil {
+							log.Printf("Error during capture: %s\n", err.Error())
+						} else {
+							log.Printf("Photo stored in '%s'\n", s)
+						}
+						log.Printf("Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
 					}
-					log.Printf("Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
 				}
 				time.Sleep(time.Duration(t.Settings.SecondsBetweenCaptures) * time.Second)
 			}
@@ -62,15 +66,19 @@ func (t Timelapse) CapturePeriodically() {
 					log.Printf("Error instantiating camera: %s\n", err)
 					// Sleep for a bit and create a new camera instance on the next iteration.
 				} else {
-					photoPath, err := camera.Capture()
-					if err != nil {
-						log.Printf("Error during capture: %s\n", err.Error())
+					if t.Settings.SkipPhotosAtNight && isNightPhoto(time.Now()) {
+						log.Printf("Skipping night time photo\n")
+					} else {
+						photoPath, err := camera.Capture()
+						if err != nil {
+							log.Printf("Error during capture: %s\n", err.Error())
 
-						// Sleep for 1s after an error to ensure time changed sufficiently before next invocation of WaitForCapture
-						time.Sleep(time.Duration(1 * time.Second))
-						continue
+							// Sleep for 1s after an error to ensure time changed sufficiently before next invocation of WaitForCapture
+							time.Sleep(time.Duration(1 * time.Second))
+							continue
+						}
+						log.Printf("Photo stored in '%s'\n", photoPath)
 					}
-					log.Printf("Photo stored in '%s'\n", photoPath)
 				}
 				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
 				log.Printf("Capture took %d seconds\n", timeToCaptureSeconds)

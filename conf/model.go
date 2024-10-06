@@ -26,6 +26,7 @@ var initialConfiguration = Settings{
 	RotateBy:                0,
 	ResolutionSetting:       0,
 	Quality:                 100,
+	SkipPhotosAtNight:       DefaultSkipPhotosAtNight,
 }
 
 type Settings struct {
@@ -39,6 +40,7 @@ type Settings struct {
 	ResolutionSetting       int
 	Quality                 int
 	DebugEnabled            bool
+	SkipPhotosAtNight       bool
 }
 
 func (s Settings) String() string {

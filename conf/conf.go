@@ -3,6 +3,7 @@ package conf
 const (
 	DefaultListenAddress          = ":8080"
 	DefaultLogToFile              = false
+	DefaultSkipPhotosAtNight      = false
 	DefaultSecondsBetweenCaptures = 1800      // 30min
 	DefaultOffsetWithinHour       = 900       // 15min
 	MaxFileSizeBytes              = 100485760 // 100 MB
