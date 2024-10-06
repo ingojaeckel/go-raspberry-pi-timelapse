@@ -3,8 +3,9 @@ export DIST_VERSION=0.5.0
 
 export BASE_ENABLE_UART=yes
 export BASE_SSH_ENABLE=yes
-export NETWORK_DISABLE_PWRSAVE=yes
 
-export MODULES="base(network,disable-services(auto-hotspot,raspicam,timelapsepi))"
-export AUTO_HOTSPOT_NAME=timelapse-raspberry-pi
-export AUTO_HOTSPOT_PASSWORD=InsertTheRealPassword
+export NETWORK_DISABLE_PWRSAVE=yes
+export NETWORK_WPA_SUPPLICANT=no
+export NETWORK_NETWORK_MANAGER=yes
+
+export MODULES="base(network,disable-services(raspicam,timelapsepi))"
