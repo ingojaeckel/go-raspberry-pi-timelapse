@@ -1,6 +1,10 @@
 export DIST_NAME=timelapsepi
 export DIST_VERSION=0.5.0
-export MODULES="base(network,disable-services(auto-hotspot,raspicam,timelapsepi))"
+
+export BASE_ENABLE_UART=yes
 export BASE_SSH_ENABLE=yes
+export NETWORK_DISABLE_PWRSAVE=yes
+
+export MODULES="base(network,disable-services(auto-hotspot,raspicam,timelapsepi))"
 export AUTO_HOTSPOT_NAME=timelapse-raspberry-pi
 export AUTO_HOTSPOT_PASSWORD=InsertTheRealPassword
