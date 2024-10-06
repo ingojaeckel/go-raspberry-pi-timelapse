@@ -9,7 +9,6 @@ mode=ap
 ssid=timelapse-raspberry-pi
 
 [wifi-security]
-auth-alg=open
 key-mgmt=wpa-psk
 psk=InsertTheRealPassword
 
@@ -17,7 +16,7 @@ psk=InsertTheRealPassword
 method=auto
 
 [ipv6]
-addr-gen-mode=default
+addr-gen-mode=stable-privacy
 method=auto
 
 [proxy]
