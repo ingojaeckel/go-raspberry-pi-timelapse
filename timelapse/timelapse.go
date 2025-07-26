@@ -38,7 +38,7 @@ func (t Timelapse) CapturePeriodically() {
 					log.Printf("Error instantiating camera: %s\n", err)
 					// Sleep for a bit and create a new camera instance on the next iteration.
 				} else {
-					if t.Settings.SkipPhotosAtNight && isNightPhoto(time.Now()) {
+					if t.shouldSkipCapture(time.Now()) {
 						log.Printf("Skipping night time photo\n")
 					} else {
 						s, err := camera.Capture()
