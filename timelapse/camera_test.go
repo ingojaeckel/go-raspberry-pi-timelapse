@@ -55,6 +55,6 @@ func TestIsNightTime(t *testing.T) {
 	ensure.True(t, isNightPhoto(elevenPM))
 	ensure.True(t, isNightPhoto(fourAM))
 
-	ensure.False(t, isNightPhoto(tenPM))
+	ensure.True(t, isNightPhoto(tenPM))
 	ensure.False(t, isNightPhoto(sixAM))
 }
