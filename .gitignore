@@ -3,6 +3,7 @@
 *.log
 
 go-raspberry-pi-timelapse
+timelapse-camera
 timelapse-pictures/
 timelapse-settings.db
 
