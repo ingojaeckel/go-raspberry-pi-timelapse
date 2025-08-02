@@ -57,6 +57,10 @@ export default function PhotosComponent() {
               {detection.Objects && detection.Objects.length > 0 && (
                 <p><strong>Detected objects:</strong> {detection.Objects.join(', ')}</p>
               )}
+              <div style={{ display: 'flex', gap: '20px', marginTop: '8px', fontSize: '0.9em', color: '#666' }}>
+                <span><strong>Detection time:</strong> {detection.LatencyMs}ms</span>
+                <span><strong>Confidence:</strong> {(detection.OverallConfidence * 100).toFixed(1)}%</span>
+              </div>
             </div>
           ) : (
             <p>No detection results available. Click "Refresh" to analyze the most recent photo.</p>

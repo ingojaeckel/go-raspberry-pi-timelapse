@@ -19,11 +19,13 @@ import (
 
 // DetectionResult represents the results of object detection analysis
 type DetectionResult struct {
-	IsDay     bool     `json:"isDay"`
-	Objects   []string `json:"objects"`
-	Summary   string   `json:"summary"`
-	PhotoPath string   `json:"photoPath"`
-	Details   []ObjectDetail `json:"details,omitempty"`
+	IsDay             bool     `json:"isDay"`
+	Objects           []string `json:"objects"`
+	Summary           string   `json:"summary"`
+	PhotoPath         string   `json:"photoPath"`
+	Details           []ObjectDetail `json:"details,omitempty"`
+	LatencyMs         int64    `json:"latencyMs"`         // Detection time in milliseconds
+	OverallConfidence float32  `json:"overallConfidence"` // Overall confidence score (0.0-1.0)
 }
 
 // ObjectDetail provides detailed information about detected objects
@@ -56,6 +58,8 @@ func AnalyzePhoto(photoPath string) (*DetectionResult, error) {
 
 // AnalyzePhotoWithConfig performs object detection with configuration options
 func AnalyzePhotoWithConfig(photoPath string, config *DetectionConfig) (*DetectionResult, error) {
+	startTime := time.Now()
+	
 	if photoPath == "" {
 		return nil, fmt.Errorf("photo path cannot be empty")
 	}
@@ -73,18 +77,39 @@ func AnalyzePhotoWithConfig(photoPath string, config *DetectionConfig) (*Detecti
 		}
 	}
 
+	var result *DetectionResult
+	var err error
+	
 	// Try OpenCV-based detection first if enabled
 	if config.UseOpenCV {
-		if result, err := analyzeWithOpenCV(photoPath, config.Timeout); err == nil {
+		if result, err = analyzeWithOpenCV(photoPath, config.Timeout); err == nil {
 			log.Printf("Using OpenCV for high-accuracy object detection")
-			return result, nil
 		} else {
 			log.Printf("OpenCV detection failed (%v), falling back to enhanced analysis", err)
+			// Fallback to original enhanced detection
+			result, err = analyzeWithEnhancedDetection(photoPath)
 		}
+	} else {
+		// Use enhanced detection directly
+		result, err = analyzeWithEnhancedDetection(photoPath)
 	}
-
-	// Fallback to original enhanced detection
-	return analyzeWithEnhancedDetection(photoPath)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	// Calculate detection latency
+	latency := time.Since(startTime)
+	result.LatencyMs = latency.Milliseconds()
+	
+	// Calculate overall confidence from individual detection confidence scores
+	result.OverallConfidence = calculateOverallConfidence(result.Details)
+	
+	// Log detection performance metrics
+	log.Printf("Object detection completed in %dms with overall confidence %.2f", 
+		result.LatencyMs, result.OverallConfidence)
+	
+	return result, nil
 }
 
 // DetectionConfig holds configuration for object detection
@@ -149,9 +174,11 @@ func analyzeWithEnhancedDetection(photoPath string) (*DetectionResult, error) {
 
 	// Initialize result
 	result := &DetectionResult{
-		PhotoPath: photoPath,
-		Objects:   []string{},
-		Details:   []ObjectDetail{},
+		PhotoPath:         photoPath,
+		Objects:           []string{},
+		Details:           []ObjectDetail{},
+		LatencyMs:         0, // Will be set by calling function
+		OverallConfidence: 0, // Will be calculated by calling function
 	}
 
 	// Analyze time of day using brightness
@@ -653,6 +680,39 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// calculateOverallConfidence computes an overall confidence score from individual detections
+func calculateOverallConfidence(details []ObjectDetail) float32 {
+	if len(details) == 0 {
+		return 0.5 // Default confidence when no specific detections
+	}
+	
+	// Calculate weighted average confidence based on detection quality
+	totalWeight := float32(0)
+	weightedSum := float32(0)
+	
+	for _, detail := range details {
+		// Weight higher confidence detections more heavily
+		weight := detail.Confidence * detail.Confidence // Square for emphasis
+		weightedSum += detail.Confidence * weight
+		totalWeight += weight
+	}
+	
+	if totalWeight == 0 {
+		return 0.5
+	}
+	
+	overall := weightedSum / totalWeight
+	
+	// Ensure confidence is within valid range
+	if overall > 1.0 {
+		overall = 1.0
+	} else if overall < 0.0 {
+		overall = 0.0
+	}
+	
+	return overall
 }
 
 // generateSummary creates a human-readable summary of the detection results

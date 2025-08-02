@@ -40,6 +40,8 @@ export interface DetectionResult {
     Objects: string[]
     Summary: string
     PhotoPath: string
+    LatencyMs: number
+    OverallConfidence: number
 }
 
 export interface DetectionResponse {
@@ -47,4 +49,6 @@ export interface DetectionResponse {
     Objects: string[]
     Summary: string
     PhotoPath: string
+    LatencyMs: number
+    OverallConfidence: number
 }
