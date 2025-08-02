@@ -1,10 +1,69 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { BaseUrl } from '../conf/config';
+import { DetectionResponse, SettingsResponse } from '../models/response';
 
 export default function PhotosComponent() {
+  const [detection, setDetection] = useState<DetectionResponse | null>(null);
+  const [settings, setSettings] = useState<SettingsResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Load settings to check if object detection is enabled
+    axios.get<SettingsResponse>(BaseUrl + "/configuration")
+      .then(resp => {
+        setSettings(resp.data);
+        if (resp.data.ObjectDetectionEnabled) {
+          loadDetectionResults();
+        }
+      })
+      .catch(err => console.log("Error loading settings:", err));
+  }, []);
+
+  const loadDetectionResults = () => {
+    setLoading(true);
+    axios.get<DetectionResponse>(BaseUrl + "/detection")
+      .then(resp => {
+        setDetection(resp.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.log("Error loading detection results:", err);
+        setLoading(false);
+      });
+  };
+
+  const handleRefreshDetection = () => {
+    if (settings?.ObjectDetectionEnabled) {
+      loadDetectionResults();
+    }
+  };
+
   return (
     <React.Fragment>
       <div><img src={BaseUrl+"/capture"} alt="preview" /></div>
+      
+      {settings?.ObjectDetectionEnabled && (
+        <div style={{ margin: '10px 0', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <strong>Object Detection Results:</strong>
+            <button onClick={handleRefreshDetection} disabled={loading}>
+              {loading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+          {detection ? (
+            <div style={{ marginTop: '10px' }}>
+              <p><strong>Summary:</strong> {detection.Summary}</p>
+              {detection.Objects && detection.Objects.length > 0 && (
+                <p><strong>Detected objects:</strong> {detection.Objects.join(', ')}</p>
+              )}
+            </div>
+          ) : (
+            <p>No detection results available. Click "Refresh" to analyze the most recent photo.</p>
+          )}
+        </div>
+      )}
+
       <div>
           Tips for fine-tuning the camera position, focus, etc:
           <ul>

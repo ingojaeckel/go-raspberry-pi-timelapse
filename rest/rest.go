@@ -13,6 +13,7 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf/valid"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/detection"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io/pat"
@@ -107,6 +108,35 @@ func Capture(w http.ResponseWriter, s *conf.Settings) {
 
 	// Remove the temporary file
 	os.Remove(path)
+}
+
+// GetDetection performs object detection on the most recent photo and returns results
+func GetDetection(w http.ResponseWriter, s *conf.Settings) {
+	if !s.ObjectDetectionEnabled {
+		writeJSON(w, 200, DetectionResponse{&detection.DetectionResult{
+			Summary: "Object detection is disabled",
+		}})
+		return
+	}
+
+	// Get the most recent photo
+	files, err := files.ListFiles(conf.StorageFolder, true)
+	if err != nil || len(files) == 0 {
+		writeJSON(w, 404, map[string]string{"error": "No photos found"})
+		return
+	}
+
+	mostRecentFile := files[len(files)-1]
+	photoPath := fmt.Sprintf("%s/%s", conf.StorageFolder, mostRecentFile.Name)
+
+	// Run object detection
+	result, err := detection.AnalyzePhoto(photoPath)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": fmt.Sprintf("Object detection failed: %s", err.Error())})
+		return
+	}
+
+	writeJSON(w, 200, DetectionResponse{result})
 }
 
 // GetArchiveZip Reply with ZIP file containing all timelapse pictures
