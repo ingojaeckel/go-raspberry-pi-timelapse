@@ -5,6 +5,7 @@ go 1.23.2
 require (
 	github.com/boltdb/bolt v1.3.2-0.20171120010307-9da317453632
 	github.com/facebookgo/ensure v0.0.0-20200202191622-63f1cf65ac4c
+	gocv.io/x/gocv v0.42.0
 	goji.io v2.0.0+incompatible
 )
 

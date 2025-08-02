@@ -3,7 +3,9 @@ package detection
 import (
 	"image"
 	"image/color"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestAnalyzePhoto_InvalidPath(t *testing.T) {
@@ -180,4 +182,53 @@ func createTestImage(width, height int, c color.RGBA) image.Image {
 		}
 	}
 	return img
+}
+
+// TestNativeOpenCVIntegration tests the native Go OpenCV integration
+func TestNativeOpenCVIntegration(t *testing.T) {
+	// Test that the native OpenCV function exists and handles missing OpenCV gracefully
+	result, err := analyzeWithNativeOpenCV("/nonexistent/path.jpg", nil)
+	
+	// In environments without OpenCV, we expect this to return an error
+	if err == nil {
+		t.Error("Expected error when OpenCV is not available or file doesn't exist")
+	}
+	
+	if result != nil {
+		t.Error("Expected nil result when detection fails")
+	}
+	
+	// The error message should indicate OpenCV availability issue
+	errorMsg := err.Error()
+	if !strings.Contains(errorMsg, "OpenCV") && !strings.Contains(errorMsg, "failed") {
+		t.Logf("Error message: %s", errorMsg)
+	}
+}
+
+// TestDetectionConfigurationOpenCV tests detection with OpenCV configuration
+func TestDetectionConfigurationOpenCV(t *testing.T) {
+	// Test detection configuration with OpenCV enabled
+	config := &DetectionConfig{
+		UseOpenCV: true,
+		Timeout:   1 * time.Minute,
+	}
+	
+	// Test with non-existent file
+	result, err := AnalyzePhotoWithConfig("/nonexistent/path.jpg", config)
+	
+	if err == nil {
+		t.Error("Expected error for non-existent file")
+	}
+	
+	if result != nil {
+		t.Error("Expected nil result for failed analysis")
+	}
+	
+	// Test with OpenCV disabled (should work with enhanced detection)
+	config.UseOpenCV = false
+	result, err = AnalyzePhotoWithConfig("/nonexistent/path.jpg", config)
+	
+	if err == nil {
+		t.Error("Expected error for non-existent file even with enhanced detection")
+	}
 }

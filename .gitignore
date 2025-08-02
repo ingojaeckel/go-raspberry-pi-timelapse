@@ -5,3 +5,7 @@
 go-raspberry-pi-timelapse
 timelapse-pictures/
 timelapse-settings.db
+
+# Frontend build artifacts
+frontend/build/
+frontend/node_modules/
