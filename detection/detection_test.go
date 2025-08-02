@@ -18,26 +18,26 @@ func TestAnalyzePhoto_InvalidPath(t *testing.T) {
 	}
 }
 
-func TestAnalyzeTimeOfDay(t *testing.T) {
+func TestAnalyzeTimeOfDayEnhanced(t *testing.T) {
 	// Create a bright test image (day)
 	brightImg := createTestImage(200, 200, color.RGBA{200, 200, 200, 255})
-	isDayBright := analyzeTimeOfDay(brightImg)
+	isDayBright := analyzeTimeOfDayEnhanced(brightImg)
 	if !isDayBright {
 		t.Error("Expected bright image to be detected as day")
 	}
 
 	// Create a dark test image (night)
 	darkImg := createTestImage(200, 200, color.RGBA{20, 20, 20, 255})
-	isDayDark := analyzeTimeOfDay(darkImg)
+	isDayDark := analyzeTimeOfDayEnhanced(darkImg)
 	if isDayDark {
 		t.Error("Expected dark image to be detected as night")
 	}
 }
 
-func TestAnalyzeBasicObjects(t *testing.T) {
+func TestDetectObjectsEnhanced(t *testing.T) {
 	// Create a green test image (vegetation)
 	greenImg := createTestImage(200, 200, color.RGBA{50, 150, 50, 255})
-	objects := analyzeBasicObjects(greenImg)
+	objects, details := detectObjectsEnhanced(greenImg)
 	
 	found := false
 	for _, obj := range objects {
@@ -48,6 +48,57 @@ func TestAnalyzeBasicObjects(t *testing.T) {
 	}
 	if !found {
 		t.Error("Expected to detect vegetation in green image")
+	}
+	
+	// Check that details are provided
+	if len(details) == 0 {
+		t.Error("Expected detection details to be provided")
+	}
+}
+
+func TestEnhancedColorDetection(t *testing.T) {
+	// Test skin color detection
+	if !isSkinColor(150, 100, 80) {
+		t.Error("Expected skin color to be detected")
+	}
+	
+	// Test vegetation color detection
+	if !isVegetationColor(50, 150, 50) {
+		t.Error("Expected vegetation color to be detected")
+	}
+	
+	// Test sky color detection
+	if !isSkyColor(100, 150, 255) {
+		t.Error("Expected sky color to be detected")
+	}
+	
+	// Test metal color detection
+	if !isMetalColor(120, 120, 120) {
+		t.Error("Expected metal color to be detected")
+	}
+}
+
+func TestCategorizeObject(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"human", "human"},
+		{"person", "human"},
+		{"animal", "animal"},
+		{"cat", "animal"},
+		{"vehicle", "vehicle"},
+		{"car", "vehicle"},
+		{"machinery", "machinery"},
+		{"truck", "machinery"},
+		{"unknown", "unknown"},
+	}
+	
+	for _, test := range tests {
+		result := categorizeObject(test.input)
+		if result != test.expected {
+			t.Errorf("categorizeObject(%s) = %s, expected %s", test.input, result, test.expected)
+		}
 	}
 }
 
