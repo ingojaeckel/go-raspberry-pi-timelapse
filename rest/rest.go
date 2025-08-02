@@ -112,7 +112,14 @@ func Capture(w http.ResponseWriter, s *conf.Settings) {
 
 // GetDetection performs object detection on the most recent photo and returns results
 func GetDetection(w http.ResponseWriter, s *conf.Settings) {
-	if !s.ObjectDetectionEnabled {
+	// Load current settings to get the latest configuration
+	currentSettings, err := conf.LoadConfiguration()
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": fmt.Sprintf("Failed to load configuration: %s", err.Error())})
+		return
+	}
+	
+	if !currentSettings.ObjectDetectionEnabled {
 		writeJSON(w, 200, DetectionResponse{&detection.DetectionResult{
 			Summary: "Object detection is disabled",
 		}})
@@ -237,6 +244,7 @@ func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 	s.OffsetWithinHour = updateRequest.OffsetWithinHour
 	s.ResolutionSetting = updateRequest.ResolutionSetting
 	s.SecondsBetweenCaptures = updateRequest.SecondsBetweenCaptures
+	s.ObjectDetectionEnabled = updateRequest.ObjectDetectionEnabled
 	switch s.ResolutionSetting {
 	case 2:
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232

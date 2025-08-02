@@ -3,6 +3,8 @@ package detection
 import (
 	"fmt"
 	"image"
+	_ "image/jpeg" // Register JPEG format
+	_ "image/png"  // Register PNG format
 	"log"
 	"os"
 	"strings"
