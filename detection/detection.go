@@ -51,6 +51,11 @@ var cocoClassNames = []string{
 // AnalyzePhoto performs advanced object detection using OpenCV when available,
 // falling back to enhanced image analysis
 func AnalyzePhoto(photoPath string) (*DetectionResult, error) {
+	return AnalyzePhotoWithConfig(photoPath, nil)
+}
+
+// AnalyzePhotoWithConfig performs object detection with configuration options
+func AnalyzePhotoWithConfig(photoPath string, config *DetectionConfig) (*DetectionResult, error) {
 	if photoPath == "" {
 		return nil, fmt.Errorf("photo path cannot be empty")
 	}
@@ -60,20 +65,36 @@ func AnalyzePhoto(photoPath string) (*DetectionResult, error) {
 		return nil, fmt.Errorf("photo file does not exist: %s", photoPath)
 	}
 
-	// Try OpenCV-based detection first
-	if result, err := analyzeWithOpenCV(photoPath); err == nil {
-		log.Printf("Using OpenCV for high-accuracy object detection")
-		return result, nil
-	} else {
-		log.Printf("OpenCV detection failed (%v), falling back to enhanced analysis", err)
+	// Use default config if none provided
+	if config == nil {
+		config = &DetectionConfig{
+			UseOpenCV: true,
+			Timeout:   5 * time.Minute,
+		}
+	}
+
+	// Try OpenCV-based detection first if enabled
+	if config.UseOpenCV {
+		if result, err := analyzeWithOpenCV(photoPath, config.Timeout); err == nil {
+			log.Printf("Using OpenCV for high-accuracy object detection")
+			return result, nil
+		} else {
+			log.Printf("OpenCV detection failed (%v), falling back to enhanced analysis", err)
+		}
 	}
 
 	// Fallback to original enhanced detection
 	return analyzeWithEnhancedDetection(photoPath)
 }
 
+// DetectionConfig holds configuration for object detection
+type DetectionConfig struct {
+	UseOpenCV bool          // Whether to try OpenCV detection first
+	Timeout   time.Duration // Maximum time for detection
+}
+
 // analyzeWithOpenCV performs object detection using the OpenCV Python script
-func analyzeWithOpenCV(photoPath string) (*DetectionResult, error) {
+func analyzeWithOpenCV(photoPath string, timeout time.Duration) (*DetectionResult, error) {
 	// Get the directory where this Go file is located
 	_, currentFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -87,8 +108,8 @@ func analyzeWithOpenCV(photoPath string) (*DetectionResult, error) {
 		return nil, fmt.Errorf("OpenCV detection script not found: %s", scriptPath)
 	}
 	
-	// Run the Python script with a timeout (up to 5 minutes as requested)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// Run the Python script with configurable timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	
 	cmd := exec.CommandContext(ctx, "python3", scriptPath, photoPath, "--output-json")

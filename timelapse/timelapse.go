@@ -47,7 +47,11 @@ func (t Timelapse) CapturePeriodically() {
 						
 						// Run object detection if enabled
 						if t.Settings.ObjectDetectionEnabled {
-							if result, err := detection.AnalyzePhoto(s); err != nil {
+							config := &detection.DetectionConfig{
+								UseOpenCV: t.Settings.UseOpenCVDetection,
+								Timeout:   time.Duration(t.Settings.DetectionTimeout) * time.Second,
+							}
+							if result, err := detection.AnalyzePhotoWithConfig(s, config); err != nil {
 								log.Printf("Object detection error: %s\n", err.Error())
 							} else {
 								log.Printf("Object detection: %s\n", result.Summary)
@@ -84,7 +88,11 @@ func (t Timelapse) CapturePeriodically() {
 					
 					// Run object detection if enabled
 					if t.Settings.ObjectDetectionEnabled {
-						if result, err := detection.AnalyzePhoto(photoPath); err != nil {
+						config := &detection.DetectionConfig{
+							UseOpenCV: t.Settings.UseOpenCVDetection,
+							Timeout:   time.Duration(t.Settings.DetectionTimeout) * time.Second,
+						}
+						if result, err := detection.AnalyzePhotoWithConfig(photoPath, config); err != nil {
 							log.Printf("Object detection error: %s\n", err.Error())
 						} else {
 							log.Printf("Object detection: %s\n", result.Summary)

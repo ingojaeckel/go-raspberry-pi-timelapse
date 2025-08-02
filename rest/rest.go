@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
@@ -136,8 +137,12 @@ func GetDetection(w http.ResponseWriter, s *conf.Settings) {
 	mostRecentFile := files[len(files)-1]
 	photoPath := fmt.Sprintf("%s/%s", conf.StorageFolder, mostRecentFile.Name)
 
-	// Run object detection
-	result, err := detection.AnalyzePhoto(photoPath)
+	// Run object detection with current settings
+	config := &detection.DetectionConfig{
+		UseOpenCV: currentSettings.UseOpenCVDetection,
+		Timeout:   time.Duration(currentSettings.DetectionTimeout) * time.Second,
+	}
+	result, err := detection.AnalyzePhotoWithConfig(photoPath, config)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": fmt.Sprintf("Object detection failed: %s", err.Error())})
 		return

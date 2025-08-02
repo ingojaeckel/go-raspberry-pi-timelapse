@@ -27,6 +27,8 @@ var initialConfiguration = Settings{
 	ResolutionSetting:       0,
 	Quality:                 100,
 	ObjectDetectionEnabled:  false,
+	UseOpenCVDetection:      true,  // Prefer OpenCV when available
+	DetectionTimeout:        300,   // 5 minutes max
 }
 
 type Settings struct {
@@ -41,6 +43,8 @@ type Settings struct {
 	Quality                 int
 	DebugEnabled            bool
 	ObjectDetectionEnabled  bool
+	UseOpenCVDetection      bool // Prefer OpenCV-based detection when available
+	DetectionTimeout        int  // Detection timeout in seconds (max 5 minutes)
 }
 
 func (s Settings) String() string {
