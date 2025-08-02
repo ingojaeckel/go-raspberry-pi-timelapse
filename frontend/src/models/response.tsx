@@ -35,6 +35,20 @@ export interface Photo {
     Size: string
 }
 
+export interface BoundingBox {
+    x: number
+    y: number  
+    width: number
+    height: number
+}
+
+export interface ObjectDetail {
+    class: string
+    confidence: number
+    category: string
+    bbox?: BoundingBox
+}
+
 export interface DetectionResult {
     IsDay: boolean
     Objects: string[]
@@ -42,6 +56,7 @@ export interface DetectionResult {
     PhotoPath: string
     LatencyMs: number
     OverallConfidence: number
+    Details?: ObjectDetail[]
 }
 
 export interface DetectionResponse {
@@ -51,4 +66,5 @@ export interface DetectionResponse {
     PhotoPath: string
     LatencyMs: number
     OverallConfidence: number
+    Details?: ObjectDetail[]
 }

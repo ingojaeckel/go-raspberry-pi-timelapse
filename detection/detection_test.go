@@ -118,6 +118,59 @@ func TestGenerateSummary(t *testing.T) {
 	}
 }
 
+func TestBoundingBoxGeneration(t *testing.T) {
+	// Test generateFakeBBox function
+	bounds := image.Rect(0, 0, 600, 400)
+	bbox := generateFakeBBox(bounds)
+	
+	if bbox == nil {
+		t.Error("Expected bounding box to be generated")
+	}
+	
+	// Check that the bounding box is within the image bounds
+	if bbox.X < 0 || bbox.Y < 0 {
+		t.Error("Bounding box coordinates should be positive")
+	}
+	
+	if bbox.X+bbox.Width > 600 || bbox.Y+bbox.Height > 400 {
+		t.Error("Bounding box should be within image bounds")
+	}
+	
+	// Check that the box has reasonable dimensions (should be about 1/3 of image)
+	expectedWidth := 600 / 3
+	expectedHeight := 400 / 3
+	
+	if bbox.Width != expectedWidth || bbox.Height != expectedHeight {
+		t.Errorf("Expected dimensions %dx%d, got %dx%d", expectedWidth, expectedHeight, bbox.Width, bbox.Height)
+	}
+}
+
+func TestDetectionWithBoundingBoxes(t *testing.T) {
+	// Create a green test image (should detect vegetation)
+	greenImg := createTestImage(300, 200, color.RGBA{50, 150, 50, 255})
+	objects, details := detectObjectsEnhanced(greenImg)
+	
+	// Check that details include bounding boxes
+	for _, detail := range details {
+		if detail.BBox == nil {
+			t.Error("Expected all detection details to include bounding boxes")
+		}
+		
+		// Check that bounding box coordinates are valid
+		if detail.BBox.X < 0 || detail.BBox.Y < 0 {
+			t.Error("Bounding box coordinates should be non-negative")
+		}
+		
+		if detail.BBox.Width <= 0 || detail.BBox.Height <= 0 {
+			t.Error("Bounding box dimensions should be positive")
+		}
+	}
+	
+	if len(objects) == 0 {
+		t.Error("Expected to detect some objects in green image")
+	}
+}
+
 // Helper function to create test images
 func createTestImage(width, height int, c color.RGBA) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))

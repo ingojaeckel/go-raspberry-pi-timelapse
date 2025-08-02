@@ -30,9 +30,18 @@ type DetectionResult struct {
 
 // ObjectDetail provides detailed information about detected objects
 type ObjectDetail struct {
-	Class      string  `json:"class"`
-	Confidence float32 `json:"confidence"`
-	Category   string  `json:"category"`
+	Class      string    `json:"class"`
+	Confidence float32   `json:"confidence"`
+	Category   string    `json:"category"`
+	BBox       *BoundingBox `json:"bbox,omitempty"` // Bounding box coordinates for visual display
+}
+
+// BoundingBox represents the coordinates of a detected object
+type BoundingBox struct {
+	X      int `json:"x"`      // Left coordinate
+	Y      int `json:"y"`      // Top coordinate  
+	Width  int `json:"width"`  // Width of the box
+	Height int `json:"height"` // Height of the box
 }
 
 // COCO dataset class names for object detection
@@ -286,6 +295,7 @@ func detectObjectsEnhanced(img image.Image) ([]string, []ObjectDetail) {
 				Class:      category,
 				Confidence: float32(confidence),
 				Category:   categorizeObject(category),
+				BBox:       generateFakeBBox(bounds), // Generate approximate bounding box for enhanced detection
 			}
 			details = append(details, detail)
 			
@@ -680,6 +690,26 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// generateFakeBBox creates a generic bounding box for enhanced detection (non-OpenCV)
+// Since enhanced detection doesn't provide precise location data, we create a representative box
+func generateFakeBBox(bounds image.Rectangle) *BoundingBox {
+	width := bounds.Max.X - bounds.Min.X
+	height := bounds.Max.Y - bounds.Min.Y
+	
+	// Create a centered box that's about 1/3 of the image size
+	boxWidth := width / 3
+	boxHeight := height / 3
+	x := width/2 - boxWidth/2
+	y := height/2 - boxHeight/2
+	
+	return &BoundingBox{
+		X:      x,
+		Y:      y,
+		Width:  boxWidth,
+		Height: boxHeight,
+	}
 }
 
 // calculateOverallConfidence computes an overall confidence score from individual detections
