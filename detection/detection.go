@@ -1,6 +1,8 @@
 package detection
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"image"
 	_ "image/jpeg" // Register JPEG format
@@ -8,7 +10,11 @@ import (
 	"log"
 	"math"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 )
 
 // DetectionResult represents the results of object detection analysis
@@ -42,7 +48,8 @@ var cocoClassNames = []string{
 	"hair drier", "toothbrush",
 }
 
-// AnalyzePhoto performs advanced object detection using enhanced image analysis
+// AnalyzePhoto performs advanced object detection using OpenCV when available,
+// falling back to enhanced image analysis
 func AnalyzePhoto(photoPath string) (*DetectionResult, error) {
 	if photoPath == "" {
 		return nil, fmt.Errorf("photo path cannot be empty")
@@ -53,6 +60,56 @@ func AnalyzePhoto(photoPath string) (*DetectionResult, error) {
 		return nil, fmt.Errorf("photo file does not exist: %s", photoPath)
 	}
 
+	// Try OpenCV-based detection first
+	if result, err := analyzeWithOpenCV(photoPath); err == nil {
+		log.Printf("Using OpenCV for high-accuracy object detection")
+		return result, nil
+	} else {
+		log.Printf("OpenCV detection failed (%v), falling back to enhanced analysis", err)
+	}
+
+	// Fallback to original enhanced detection
+	return analyzeWithEnhancedDetection(photoPath)
+}
+
+// analyzeWithOpenCV performs object detection using the OpenCV Python script
+func analyzeWithOpenCV(photoPath string) (*DetectionResult, error) {
+	// Get the directory where this Go file is located
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, fmt.Errorf("could not determine current file location")
+	}
+	detectionDir := filepath.Dir(currentFile)
+	scriptPath := filepath.Join(detectionDir, "opencv_detector.py")
+	
+	// Check if the Python script exists
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("OpenCV detection script not found: %s", scriptPath)
+	}
+	
+	// Run the Python script with a timeout (up to 5 minutes as requested)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	
+	cmd := exec.CommandContext(ctx, "python3", scriptPath, photoPath, "--output-json")
+	
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("OpenCV detection script failed: %v", err)
+	}
+	
+	// Parse the JSON output
+	var result DetectionResult
+	if err := json.Unmarshal(output, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse OpenCV detection output: %v", err)
+	}
+	
+	log.Printf("OpenCV detection completed: found %d object categories", len(result.Objects))
+	return &result, nil
+}
+
+// analyzeWithEnhancedDetection performs the original enhanced detection as fallback
+func analyzeWithEnhancedDetection(photoPath string) (*DetectionResult, error) {
 	// Open and decode the image
 	file, err := os.Open(photoPath)
 	if err != nil {
