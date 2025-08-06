@@ -121,7 +121,8 @@ func (d *OpenCVDetector) DetectObjects(imagePath string) ([]DetectionBox, error)
 		return nil, fmt.Errorf("OpenCV detector not properly initialized")
 	}
 
-	// Load the image
+	// Load the image in color mode (BGR) - YOLO models require 3-channel color input
+	// IMReadColor ensures we get BGR color data rather than grayscale, which is essential for accurate object detection
 	img := gocv.IMRead(imagePath, gocv.IMReadColor)
 	if img.Empty() {
 		return nil, fmt.Errorf("failed to load image: %s", imagePath)
@@ -133,7 +134,8 @@ func (d *OpenCVDetector) DetectObjects(imagePath string) ([]DetectionBox, error)
 
 // detectObjectsFromMat performs detection on a gocv.Mat
 func (d *OpenCVDetector) detectObjectsFromMat(img gocv.Mat) ([]DetectionBox, error) {
-	// Create blob from image
+	// Create blob from image - converts image to YOLO input format
+	// Normalizes pixel values (1.0/255.0), resizes to 416x416, and arranges data layout for neural network processing
 	blob := gocv.BlobFromImage(img, 1.0/255.0, image.Pt(416, 416), gocv.NewScalar(0, 0, 0, 0), true, false, gocv.MatTypeCV32F)
 	defer blob.Close()
 
