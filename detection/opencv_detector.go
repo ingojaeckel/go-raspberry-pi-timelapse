@@ -56,7 +56,9 @@ func (d *OpenCVDetector) initialize() {
 
 	classesPath := "/opt/yolo/coco.names"
 
-	// Load class names
+	// Load class names from COCO dataset
+	// COCO class names reference: https://github.com/pjreddie/darknet/blob/master/data/coco.names
+	// If successful, this loads 80 standard COCO object class names (person, car, dog, etc.)
 	if err := d.loadClassNames(classesPath); err != nil {
 		log.Printf("Failed to load class names from %s: %v", classesPath, err)
 		// Use default COCO class names as fallback
