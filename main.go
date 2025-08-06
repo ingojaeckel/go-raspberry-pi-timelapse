@@ -70,6 +70,9 @@ func main() {
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
 		rest.Capture(w, initialSettings)
 	})
+	mux.HandleFunc(pat.Get("/detection"), func(w http.ResponseWriter, _ *http.Request) {
+		rest.GetDetection(w, initialSettings)
+	})
 
 	configUpdatedChan := make(chan conf.Settings)
 

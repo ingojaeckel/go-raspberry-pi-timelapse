@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/detection"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 )
 
@@ -42,4 +43,8 @@ type Photo struct {
 	Name    string
 	ModTime string
 	Size    string
+}
+
+type DetectionResponse struct {
+	*detection.DetectionResult
 }

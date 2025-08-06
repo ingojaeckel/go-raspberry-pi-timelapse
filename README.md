@@ -52,6 +52,54 @@ This project was created for a timelapse system consisting of the following core
 5. The Pi Zero W will act as a Wifi access point. Connect to the Pi's Wifi named `timelapse-raspberry-pi`, passphrase: `InsertTheRealPassword`.
 6. Open the Pi's web interface in a browser: `http://192.168.50.1:8080/`. This interface will allow you to align the camera, download photos, shutdown the Pi, etc.
 
+# Native OpenCV Object Detection
+
+This timelapse camera includes advanced object detection capabilities using native Go OpenCV bindings (GoCV) for high-accuracy real-time analysis.
+
+## Features
+
+* **Native Go OpenCV Integration**: Uses GoCV bindings for direct OpenCV access from Go code, eliminating Python dependencies
+* **YOLO Object Detection**: YOLOv3-tiny optimized for Raspberry Pi Zero performance
+* **Multiple Object Categories**: Detects animals, humans, vehicles, and machinery with high accuracy
+* **Visual Bounding Boxes**: Colored frames around detected objects with category-specific colors
+* **Real-time Performance Monitoring**: Latency tracking and confidence assessment
+* **Offline Operation**: Complete functionality without internet connectivity
+
+## Build Requirements
+
+For full OpenCV support, the system must have OpenCV C++ libraries installed:
+
+```bash
+# Install OpenCV development libraries
+sudo apt-get install -y libopencv-dev libopencv-contrib-dev
+sudo apt-get install -y build-essential cmake pkg-config
+
+# Build with OpenCV support
+go build -tags opencv -o timelapse-camera
+```
+
+## Configuration
+
+Object detection can be configured via the `DetectionConfig` struct:
+
+```go
+config := &DetectionConfig{
+    UseOpenCV: true,                // Enable native OpenCV detection
+    Timeout:   5 * time.Minute,     // Maximum detection time
+}
+```
+
+## Storage Requirements
+
+The OpenCV integration adds approximately **500-900MB** of storage:
+- OpenCV Libraries: ~200-300MB
+- YOLO Model Files: ~250-600MB (YOLOv3-tiny recommended for Pi Zero)
+- Additional Dependencies: ~50-100MB
+
+## Fallback Support
+
+The system automatically falls back to enhanced pixel-based analysis if OpenCV is unavailable, ensuring reliability across different hardware configurations.
+
 # Misc resources
 
 ## PiTFT

@@ -2,7 +2,7 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { SettingsResponse } from '../models/response'
-import { Button, ButtonGroup, Grid, MenuItem, Select, TextField, Typography } from '@mui/material';
+import { Button, ButtonGroup, Grid, MenuItem, Select, TextField, Typography, FormControlLabel, Checkbox } from '@mui/material';
 
 export default function SetupComponent() {
   const [state, setState] = useState<SettingsResponse>({
@@ -17,6 +17,7 @@ export default function SetupComponent() {
     ResolutionSetting:       0,
     Quality:                 100,
     DebugEnabled:            false,
+    ObjectDetectionEnabled:  false,
   });
 
   useEffect(() => {
@@ -67,6 +68,7 @@ export default function SetupComponent() {
   const handleQualityChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { Quality: parseInt(e.target.value) as number }));
   const handleRotationChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { RotateBy: parseInt(e.target.value) as number }));
   const handleTimeBetweenCapturesChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { SecondsBetweenCaptures: (parseInt(e.target.value) as number) * 60 }));
+  const handleObjectDetectionChanged = (e: ChangeEvent<HTMLInputElement>) => setState(Object.assign(state, { ObjectDetectionEnabled: e.target.checked }));
 
   return (
     <React.Fragment>
@@ -102,6 +104,21 @@ export default function SetupComponent() {
         </Grid>
         <Grid item xs={6}>
           <TextField id="tfQuality" type="number" defaultValue={state.Quality} onChange={handleQualityChanged} inputProps={{ inputMode: 'numeric', pattern: '[0-9]+' }} />
+        </Grid>
+        <Grid item xs={6}>
+          <Typography component={'span'} gutterBottom>Object Detection:</Typography>
+        </Grid>
+        <Grid item xs={6}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={state.ObjectDetectionEnabled}
+                onChange={handleObjectDetectionChanged}
+                name="objectDetection"
+              />
+            }
+            label="Enable object detection"
+          />
         </Grid>
         <Grid item xs={6}>
         </Grid>

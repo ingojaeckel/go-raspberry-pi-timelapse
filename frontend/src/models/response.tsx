@@ -18,6 +18,7 @@ export interface SettingsResponse {
 	ResolutionSetting:       number
 	Quality:                 number
 	DebugEnabled:            boolean
+	ObjectDetectionEnabled:  boolean
 }
 
 export interface LogResponse {
@@ -32,4 +33,38 @@ export interface Photo {
     Name: string
     ModTime: string
     Size: string
+}
+
+export interface BoundingBox {
+    x: number
+    y: number  
+    width: number
+    height: number
+}
+
+export interface ObjectDetail {
+    class: string
+    confidence: number
+    category: string
+    bbox?: BoundingBox
+}
+
+export interface DetectionResult {
+    IsDay: boolean
+    Objects: string[]
+    Summary: string
+    PhotoPath: string
+    LatencyMs: number
+    OverallConfidence: number
+    Details?: ObjectDetail[]
+}
+
+export interface DetectionResponse {
+    IsDay: boolean
+    Objects: string[]
+    Summary: string
+    PhotoPath: string
+    LatencyMs: number
+    OverallConfidence: number
+    Details?: ObjectDetail[]
 }

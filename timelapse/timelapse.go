@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/detection"
 )
 
 func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan conf.Settings) (*Timelapse, error) {
@@ -43,6 +44,19 @@ func (t Timelapse) CapturePeriodically() {
 						log.Printf("Error during capture: %s\n", err.Error())
 					} else {
 						log.Printf("Photo stored in '%s'\n", s)
+						
+						// Run object detection if enabled
+						if t.Settings.ObjectDetectionEnabled {
+							config := &detection.DetectionConfig{
+								UseOpenCV: t.Settings.UseOpenCVDetection,
+								Timeout:   time.Duration(t.Settings.DetectionTimeout) * time.Second,
+							}
+							if result, err := detection.AnalyzePhotoWithConfig(s, config); err != nil {
+								log.Printf("Object detection error: %s\n", err.Error())
+							} else {
+								log.Printf("Object detection: %s\n", result.Summary)
+							}
+						}
 					}
 					log.Printf("Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
 				}
@@ -71,6 +85,19 @@ func (t Timelapse) CapturePeriodically() {
 						continue
 					}
 					log.Printf("Photo stored in '%s'\n", photoPath)
+					
+					// Run object detection if enabled
+					if t.Settings.ObjectDetectionEnabled {
+						config := &detection.DetectionConfig{
+							UseOpenCV: t.Settings.UseOpenCVDetection,
+							Timeout:   time.Duration(t.Settings.DetectionTimeout) * time.Second,
+						}
+						if result, err := detection.AnalyzePhotoWithConfig(photoPath, config); err != nil {
+							log.Printf("Object detection error: %s\n", err.Error())
+						} else {
+							log.Printf("Object detection: %s\n", result.Summary)
+						}
+					}
 				}
 				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
 				log.Printf("Capture took %d seconds\n", timeToCaptureSeconds)

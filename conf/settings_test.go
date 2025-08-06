@@ -12,6 +12,6 @@ func TestAreSettingsMissing(t *testing.T) {
 }
 
 func TestSettingsToString(t *testing.T) {
-	expected := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"ResolutionSetting":0,"Quality":0,"DebugEnabled":false}`
+	expected := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"ResolutionSetting":0,"Quality":0,"DebugEnabled":false,"ObjectDetectionEnabled":false,"UseOpenCVDetection":false,"DetectionTimeout":0}`
 	ensure.DeepEqual(t, expected, Settings{}.String())
 }
