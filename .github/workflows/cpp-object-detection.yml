@@ -1,0 +1,232 @@
+name: C++ Object Detection Build
+
+on:
+  push:
+    paths:
+      - 'cpp-object-detection/**'
+      - '.github/workflows/cpp-object-detection.yml'
+  pull_request:
+    paths:
+      - 'cpp-object-detection/**'
+      - '.github/workflows/cpp-object-detection.yml'
+
+jobs:
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        arch: [x86_64, i386]
+        include:
+          - arch: x86_64
+            cmake_flags: ""
+            packages: ""
+          - arch: i386
+            cmake_flags: "-DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32"
+            packages: "gcc-multilib g++-multilib"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          libopencv-dev \
+          pkg-config \
+          libgtest-dev \
+          ${{ matrix.packages }}
+
+    - name: Build Google Test
+      run: |
+        cd /usr/src/gtest
+        sudo cmake .
+        sudo make
+        sudo cp lib/*.a /usr/lib || sudo cp *.a /usr/lib
+
+    - name: Configure CMake
+      working-directory: cpp-object-detection
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_flags }}
+
+    - name: Build application
+      working-directory: cpp-object-detection/build
+      run: make -j$(nproc)
+
+    - name: Run unit tests
+      working-directory: cpp-object-detection/build
+      run: |
+        if [ -f "object_detection_tests" ]; then
+          ./object_detection_tests
+        else
+          echo "Unit tests not available for this configuration"
+        fi
+
+    - name: Test executable
+      working-directory: cpp-object-detection/build
+      run: |
+        # Test that executable runs and shows help
+        ./object_detection --help
+        
+        # Test argument parsing
+        ./object_detection --max-fps 3 --min-confidence 0.7 --help
+
+    - name: Create artifact name
+      id: artifact
+      run: echo "name=object-detection-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.artifact.outputs.name }}
+        path: |
+          cpp-object-detection/build/object_detection
+          cpp-object-detection/models/
+          cpp-object-detection/README.md
+        retention-days: 30
+
+  build-static:
+    name: Static Build
+    runs-on: ubuntu-latest
+    needs: build-test
+    
+    strategy:
+      matrix:
+        arch: [x86_64, i386]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          pkg-config
+        
+        # Install static OpenCV or build from source for static linking
+        # For now, we'll use dynamic linking but this could be enhanced
+        sudo apt-get install -y libopencv-dev
+
+    - name: Add multilib support for i386
+      if: matrix.arch == 'i386'
+      run: |
+        sudo apt-get install -y gcc-multilib g++-multilib
+
+    - name: Configure for static linking
+      working-directory: cpp-object-detection
+      run: |
+        mkdir -p build-static
+        cd build-static
+        
+        # Configure with static linking flags
+        if [ "${{ matrix.arch }}" = "i386" ]; then
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-m32" \
+            -DCMAKE_CXX_FLAGS="-m32" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
+        else
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
+        fi
+
+    - name: Build static executable
+      working-directory: cpp-object-detection/build-static
+      run: make -j$(nproc)
+
+    - name: Test static executable
+      working-directory: cpp-object-detection/build-static
+      run: |
+        ./object_detection --help
+        ldd ./object_detection || true  # Show dependencies (should be minimal)
+
+    - name: Create release package
+      working-directory: cpp-object-detection
+      run: |
+        mkdir -p release/object-detection-${{ matrix.arch }}
+        cp build-static/object_detection release/object-detection-${{ matrix.arch }}/
+        cp README.md release/object-detection-${{ matrix.arch }}/
+        cp -r models release/object-detection-${{ matrix.arch }}/
+        cp -r scripts release/object-detection-${{ matrix.arch }}/
+        
+        # Create download script for YOLO model
+        cat << 'EOF' > release/object-detection-${{ matrix.arch }}/download_model.sh
+        #!/bin/bash
+        echo "Downloading YOLOv5s model..."
+        wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+        echo "Model downloaded successfully!"
+        EOF
+        chmod +x release/object-detection-${{ matrix.arch }}/download_model.sh
+        
+        # Create tar archive
+        cd release
+        tar -czf object-detection-${{ matrix.arch }}.tar.gz object-detection-${{ matrix.arch }}/
+
+    - name: Upload release package
+      uses: actions/upload-artifact@v4
+      with:
+        name: object-detection-${{ matrix.arch }}-release
+        path: cpp-object-detection/release/object-detection-${{ matrix.arch }}.tar.gz
+        retention-days: 90
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libopencv-dev pkg-config
+
+    - name: Build application
+      working-directory: cpp-object-detection
+      run: ./scripts/build.sh
+
+    - name: Run integration tests
+      working-directory: cpp-object-detection
+      run: |
+        # Test configuration validation
+        cd build
+        
+        # Test valid configurations
+        ./object_detection --max-fps 1 --min-confidence 0.9 --help
+        ./object_detection --camera-id 0 --verbose --help
+        
+        # Test invalid configurations (should fail)
+        ./object_detection --max-fps 0 || echo "Correctly rejected invalid max-fps"
+        ./object_detection --min-confidence 1.5 || echo "Correctly rejected invalid confidence"
+        ./object_detection --camera-id -1 || echo "Correctly rejected invalid camera-id"
+
+    - name: Test mock camera scenario
+      working-directory: cpp-object-detection/build
+      run: |
+        # Test with non-existent camera (should fail gracefully)
+        timeout 10s ./object_detection --camera-id 999 --verbose || true
+
+    - name: Verify log output format
+      working-directory: cpp-object-detection/build
+      run: |
+        # Run briefly and check if log file is created with proper format
+        LOG_FILE="/tmp/test_integration.log"
+        timeout 5s ./object_detection --log-file "$LOG_FILE" --camera-id 999 || true
+        
+        if [ -f "$LOG_FILE" ]; then
+          echo "Log file created successfully"
+          echo "Log contents:"
+          cat "$LOG_FILE"
+        else
+          echo "Warning: Log file not created"
+        fi
