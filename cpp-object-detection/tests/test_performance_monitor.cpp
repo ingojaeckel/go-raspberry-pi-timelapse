@@ -4,17 +4,31 @@
 #include "performance_monitor.hpp"
 #include "logger.hpp"
 
+// Check if filesystem is available
+#if __has_include(<filesystem>)
+    #include <filesystem>
+    namespace fs = std::filesystem;
+#else
+    // Fallback for older systems
+    #include <cstdio>
+    namespace fs {
+        inline bool remove(const std::string& path) {
+            return std::remove(path.c_str()) == 0;
+        }
+    }
+#endif
+
 class PerformanceMonitorTest : public ::testing::Test {
 protected:
     void SetUp() override {
         test_log_file = "/tmp/test_perf_monitor.log";
-        std::filesystem::remove(test_log_file);
+        fs::remove(test_log_file);
         logger = std::make_shared<Logger>(test_log_file, false);
         perf_monitor = std::make_unique<PerformanceMonitor>(logger, 1.0);
     }
 
     void TearDown() override {
-        std::filesystem::remove(test_log_file);
+        fs::remove(test_log_file);
     }
 
     std::string test_log_file;

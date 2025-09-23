@@ -71,7 +71,7 @@ private:
     static constexpr int INPUT_WIDTH = 640;
     static constexpr int INPUT_HEIGHT = 640;
     static constexpr float SCALE_FACTOR = 1.0 / 255.0;
-    static constexpr cv::Scalar MEAN = cv::Scalar(0, 0, 0);
+    static const cv::Scalar MEAN;
     
     bool loadClassNames();
     bool loadModel();

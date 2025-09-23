@@ -2,7 +2,24 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
-#include <filesystem>
+
+// Check if filesystem is available
+#if __has_include(<filesystem>)
+    #include <filesystem>
+    namespace fs = std::filesystem;
+#else
+    // Fallback for older systems
+    #include <sys/stat.h>
+    namespace fs {
+        inline bool exists(const std::string& path) {
+            struct stat buffer;
+            return (stat(path.c_str(), &buffer) == 0);
+        }
+    }
+#endif
+
+// Define the static const member
+const cv::Scalar ObjectDetector::MEAN = cv::Scalar(0, 0, 0);
 
 ObjectDetector::ObjectDetector(const std::string& model_path,
                               const std::string& config_path,
@@ -152,7 +169,7 @@ bool ObjectDetector::loadClassNames() {
 bool ObjectDetector::loadModel() {
     try {
         // Check if model file exists
-        if (!std::filesystem::exists(model_path_)) {
+        if (!fs::exists(model_path_)) {
             logger_->error("Model file not found: " + model_path_);
             logger_->error("Please download a YOLO model (e.g., YOLOv5s) and place it at the specified path");
             logger_->error("Example: wget https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx");
@@ -167,13 +184,13 @@ bool ObjectDetector::loadModel() {
             return false;
         }
 
-        // Try to use GPU if available
-        if (cv::dnn::DNN_BACKEND_CUDA == cv::dnn::getAvailableBackends()[0]) {
-            logger_->info("CUDA backend available, attempting to use GPU");
+        // Try to use GPU if available (simplified check)
+        try {
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
-        } else {
-            logger_->info("Using CPU backend for inference");
+            logger_->info("Attempting to use CUDA backend for GPU acceleration");
+        } catch (const std::exception& e) {
+            logger_->info("CUDA not available, using CPU backend for inference");
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
         }

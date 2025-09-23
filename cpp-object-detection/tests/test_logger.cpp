@@ -1,19 +1,36 @@
 #include <gtest/gtest.h>
 #include <fstream>
-#include <filesystem>
 #include "logger.hpp"
+
+// Check if filesystem is available
+#if __has_include(<filesystem>)
+    #include <filesystem>
+    namespace fs = std::filesystem;
+#else
+    // Fallback for older systems
+    #include <cstdio>
+    namespace fs {
+        inline bool exists(const std::string& path) {
+            std::ifstream f(path.c_str());
+            return f.good();
+        }
+        inline bool remove(const std::string& path) {
+            return std::remove(path.c_str()) == 0;
+        }
+    }
+#endif
 
 class LoggerTest : public ::testing::Test {
 protected:
     void SetUp() override {
         test_log_file = "/tmp/test_object_detection.log";
         // Remove any existing test log file
-        std::filesystem::remove(test_log_file);
+        fs::remove(test_log_file);
     }
 
     void TearDown() override {
         // Clean up test log file
-        std::filesystem::remove(test_log_file);
+        fs::remove(test_log_file);
     }
 
     std::string test_log_file;
@@ -21,7 +38,7 @@ protected:
 
 TEST_F(LoggerTest, CreateLogger) {
     auto logger = std::make_unique<Logger>(test_log_file, false);
-    EXPECT_TRUE(std::filesystem::exists(test_log_file));
+    EXPECT_TRUE(fs::exists(test_log_file));
 }
 
 TEST_F(LoggerTest, LogBasicMessage) {

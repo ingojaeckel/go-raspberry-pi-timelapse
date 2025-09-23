@@ -47,12 +47,16 @@ target_compile_options(object_detection PRIVATE
     -march=native
 )
 
-# Enable testing
+# Enable testing (optional)
 enable_testing()
 
-# Add test subdirectory if it exists
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+# Add test subdirectory if it exists and GTest is available
+find_package(GTest QUIET)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests AND GTest_FOUND)
+    message(STATUS "Google Test found, building tests")
     add_subdirectory(tests)
+else()
+    message(STATUS "Google Test not found or tests directory missing, skipping tests")
 endif()
 
 # Installation
