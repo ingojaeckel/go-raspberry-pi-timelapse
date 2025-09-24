@@ -60,6 +60,11 @@ public:
      * Validate configuration values
      */
     bool validateConfig() const;
+    
+    /**
+     * List available cameras and exit
+     */
+    void listCameras() const;
 
 private:
     std::unique_ptr<Config> config_;

@@ -156,3 +156,47 @@ void WebcamInterface::setCameraProperties() {
                         ", requested " + std::to_string(width_) + "x" + std::to_string(height_));
     }
 }
+
+std::vector<std::string> WebcamInterface::listAvailableCameras() {
+    std::vector<std::string> cameras;
+    
+    // Test camera IDs from 0 to 9 (covers most common cases)
+    for (int camera_id = 0; camera_id < 10; ++camera_id) {
+        cv::VideoCapture test_capture;
+        
+        // Try to open the camera
+        if (test_capture.open(camera_id)) {
+            // Get camera information
+            std::stringstream camera_info;
+            camera_info << "Camera " << camera_id << ": ";
+            
+            // Get resolution
+            int width = static_cast<int>(test_capture.get(cv::CAP_PROP_FRAME_WIDTH));
+            int height = static_cast<int>(test_capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+            camera_info << width << "x" << height;
+            
+            // Get FPS if available
+            double fps = test_capture.get(cv::CAP_PROP_FPS);
+            if (fps > 0) {
+                camera_info << " @ " << fps << " fps";
+            }
+            
+            // Get backend info
+            int backend = static_cast<int>(test_capture.get(cv::CAP_PROP_BACKEND));
+            camera_info << " (backend: " << backend << ")";
+            
+            // Try to capture a test frame to verify the camera actually works
+            cv::Mat test_frame;
+            if (test_capture.read(test_frame) && !test_frame.empty()) {
+                camera_info << " - Working";
+            } else {
+                camera_info << " - Available but may not work properly";
+            }
+            
+            cameras.push_back(camera_info.str());
+            test_capture.release();
+        }
+    }
+    
+    return cameras;
+}

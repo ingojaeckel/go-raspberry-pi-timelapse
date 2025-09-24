@@ -2,6 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <memory>
+#include <vector>
 #include "logger.hpp"
 
 /**
@@ -38,6 +39,12 @@ public:
      * Release camera resources
      */
     void release();
+    
+    /**
+     * List all available cameras
+     * Returns a vector of camera information strings
+     */
+    static std::vector<std::string> listAvailableCameras();
 
 private:
     int camera_id_;

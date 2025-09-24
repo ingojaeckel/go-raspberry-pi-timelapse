@@ -1,4 +1,5 @@
 #include "config_manager.hpp"
+#include "webcam_interface.hpp"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -39,6 +40,10 @@ bool ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->enable_gpu = true;
         } else if (arg == "--no-headless") {
             config_->headless = false;
+        } else if (arg == "--list-cameras" || arg == "--list") {
+            // List cameras and exit
+            listCameras();
+            return false;
         } else {
             std::cerr << "Unknown argument: " << arg << std::endl;
             return false;
@@ -96,6 +101,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "OPTIONS:\n"
               << "  -h, --help                     Show this help message\n"
               << "  -v, --verbose                  Enable verbose logging\n"
+              << "  --list-cameras, --list         List all available cameras and exit\n"
               << "  --max-fps N                    Maximum frames per second to process (default: 5)\n"
               << "  --min-confidence N             Minimum confidence threshold (0.0-1.0, default: 0.5)\n"
               << "  --min-fps-warning N            FPS threshold for performance warnings (default: 1)\n"
@@ -111,6 +117,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --enable-gpu                   Enable GPU acceleration if available\n"
               << "  --no-headless                  Disable headless mode (show GUI windows)\n\n"
               << "EXAMPLES:\n"
+              << "  " << program_name << " --list-cameras\n"
               << "  " << program_name << " --max-fps 3 --min-confidence 0.7\n"
               << "  " << program_name << " --camera-id 1 --verbose --log-file /tmp/detection.log\n"
               << "  " << program_name << " --frame-width 640 --frame-height 480 --max-fps 10\n\n"
@@ -158,4 +165,30 @@ bool ConfigManager::validateConfig() const {
     }
     
     return true;
+}
+
+void ConfigManager::listCameras() const {
+    std::cout << "Scanning for available cameras...\n" << std::endl;
+    
+    auto cameras = WebcamInterface::listAvailableCameras();
+    
+    if (cameras.empty()) {
+        std::cout << "No cameras found." << std::endl;
+        std::cout << "\nTroubleshooting tips:" << std::endl;
+        std::cout << "- Check that your camera is connected via USB" << std::endl;
+        std::cout << "- Verify camera permissions: sudo usermod -a -G video $USER" << std::endl;
+        std::cout << "- Check for device files: ls -la /dev/video*" << std::endl;
+        std::cout << "- Test manually: v4l2-ctl --list-devices" << std::endl;
+    } else {
+        std::cout << "Found " << cameras.size() << " camera(s):" << std::endl;
+        std::cout << std::endl;
+        
+        for (const auto& camera : cameras) {
+            std::cout << "  " << camera << std::endl;
+        }
+        
+        std::cout << std::endl;
+        std::cout << "To use a specific camera, use: --camera-id <ID>" << std::endl;
+        std::cout << "Example: ./object_detection --camera-id 0" << std::endl;
+    }
 }
