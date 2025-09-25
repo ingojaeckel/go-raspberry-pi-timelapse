@@ -173,6 +173,28 @@ sudo apt-get install -y cmake build-essential libopencv-dev pkg-config
 sudo yum install -y cmake gcc-c++ opencv-devel pkgconfig
 ```
 
+**macOS (Intel-based):**
+```bash
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install dependencies
+brew update
+brew install cmake opencv pkg-config
+```
+
+**For testing (optional):**
+```bash
+# Ubuntu/Debian
+sudo apt-get install -y libgtest-dev lcov gcovr
+
+# CentOS/RHEL  
+sudo yum install -y gtest-devel lcov gcovr
+
+# macOS
+brew install googletest lcov gcovr
+```
+
 ### Build Instructions
 
 1. **Clone and navigate to the project:**
@@ -187,22 +209,39 @@ cd cpp-object-detection
 
 3. **Download a YOLO model (required for object detection):**
 ```bash
+# Use wget on Linux or curl on macOS/Linux
 wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+# OR
+curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
 ```
 
 ### Cross-Platform Builds
 
-**For x86_64:**
+**For x86_64 (Linux/macOS):**
 ```bash
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=x86_64
 make -j$(nproc)
 ```
 
-**For 386 (32-bit):**
+**For 386 (32-bit Linux only):**
 ```bash
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=i386 -DCMAKE_C_FLAGS="-m32" -DCMAKE_CXX_FLAGS="-m32"
 make -j$(nproc)
 ```
+
+### Platform-Specific Notes
+
+**macOS:**
+- Supports Intel-based Macs (x86_64)
+- Uses dynamic linking (static linking not supported the same way as Linux)
+- OpenCV installed via Homebrew
+- Use `otool -L ./object_detection` to check dependencies
+
+**Linux:**
+- Supports both x86_64 and 386 architectures
+- Static linking available for standalone deployment
+- Use `ldd ./object_detection` to check dependencies
+- Headless operation supported (no X11 required)
 
 ## Usage
 

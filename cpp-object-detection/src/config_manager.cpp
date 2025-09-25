@@ -140,7 +140,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "SUPPORTED PLATFORMS:\n"
               << "  - Linux x86_64 (Intel Core i7, AMD Ryzen 5 3600)\n"
               << "  - Linux 386 (Intel Pentium M)\n"
-              << "  - Headless operation (no X11 required)\n"
+              << "  - macOS x86_64 (Intel-based Macs)\n"
+              << "  - Headless operation (no X11 required on Linux)\n"
               << "  - USB webcams (Logitech C920 recommended)\n\n";
 }
 

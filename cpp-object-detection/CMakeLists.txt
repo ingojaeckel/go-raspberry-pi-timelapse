@@ -9,7 +9,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
 
 # Enable static linking for standalone executable
-set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+if(APPLE)
+    # macOS doesn't support static-libgcc/libstdc++ in the same way
+    # Use default dynamic linking with runtime resolution
+    set(CMAKE_EXE_LINKER_FLAGS "")
+else()
+    # Linux static linking
+    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+endif()
 
 # Find required packages
 find_package(OpenCV REQUIRED)
@@ -42,13 +49,25 @@ target_link_libraries(object_detection
 )
 
 # Compiler flags for optimization and warnings
-target_compile_options(object_detection PRIVATE 
-    -O3 
-    -Wall 
-    -Wextra 
-    -pedantic
-    -march=native
-)
+if(APPLE)
+    # macOS-specific optimizations
+    target_compile_options(object_detection PRIVATE 
+        -O3 
+        -Wall 
+        -Wextra 
+        -pedantic
+        -mtune=native  # Use mtune instead of march on macOS for better compatibility
+    )
+else()
+    # Linux-specific optimizations
+    target_compile_options(object_detection PRIVATE 
+        -O3 
+        -Wall 
+        -Wextra 
+        -pedantic
+        -march=native
+    )
+endif()
 
 # Code coverage support
 option(ENABLE_COVERAGE "Enable code coverage" OFF)

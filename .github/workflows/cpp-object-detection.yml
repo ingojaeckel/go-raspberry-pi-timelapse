@@ -13,24 +13,35 @@ on:
 jobs:
   build-test:
     name: Build and Test
-    runs-on: ubuntu-latest
-    
     strategy:
       matrix:
-        arch: [x86_64, i386]
         include:
-          - arch: x86_64
+          # Linux builds
+          - os: ubuntu-latest
+            arch: x86_64
             cmake_flags: ""
             packages: ""
-          - arch: i386
+            platform: linux
+          - os: ubuntu-latest
+            arch: i386
             cmake_flags: "-DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32"
             packages: "gcc-multilib g++-multilib"
+            platform: linux
+          # macOS build
+          - os: macos-13
+            arch: x86_64
+            cmake_flags: ""
+            packages: ""
+            platform: macos
+    
+    runs-on: ${{ matrix.os }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install dependencies (Linux)
+      if: matrix.platform == 'linux'
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -43,7 +54,14 @@ jobs:
           gcovr \
           ${{ matrix.packages }}
 
-    - name: Build Google Test
+    - name: Install dependencies (macOS)
+      if: matrix.platform == 'macos'
+      run: |
+        brew update
+        brew install cmake opencv pkg-config googletest lcov gcovr
+
+    - name: Build Google Test (Linux)
+      if: matrix.platform == 'linux'
       run: |
         cd /usr/src/gtest
         sudo cmake .
@@ -95,7 +113,7 @@ jobs:
         fi
 
     - name: Upload coverage reports
-      if: matrix.arch == 'x86_64'  # Only upload for one architecture to avoid duplicates
+      if: matrix.arch == 'x86_64' && matrix.platform == 'linux'  # Only upload for one platform/architecture to avoid duplicates
       uses: actions/upload-artifact@v4
       with:
         name: coverage-reports
@@ -107,7 +125,7 @@ jobs:
         retention-days: 30
 
     - name: Comment coverage on PR
-      if: github.event_name == 'pull_request' && matrix.arch == 'x86_64'
+      if: github.event_name == 'pull_request' && matrix.arch == 'x86_64' && matrix.platform == 'linux'
       uses: actions/github-script@v7
       with:
         script: |
@@ -148,7 +166,7 @@ jobs:
 
     - name: Create artifact name
       id: artifact
-      run: echo "name=object-detection-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+      run: echo "name=object-detection-${{ matrix.platform }}-${{ matrix.arch }}" >> $GITHUB_OUTPUT
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -162,18 +180,30 @@ jobs:
 
   build-static:
     name: Static Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     needs: build-test
     
     strategy:
       matrix:
-        arch: [x86_64, i386]
+        include:
+          # Linux builds
+          - os: ubuntu-latest
+            arch: x86_64
+            platform: linux
+          - os: ubuntu-latest
+            arch: i386
+            platform: linux
+          # macOS build
+          - os: macos-13
+            arch: x86_64
+            platform: macos
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install dependencies (Linux)
+      if: matrix.platform == 'linux'
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -185,8 +215,14 @@ jobs:
         # For now, we'll use dynamic linking but this could be enhanced
         sudo apt-get install -y libopencv-dev
 
-    - name: Add multilib support for i386
-      if: matrix.arch == 'i386'
+    - name: Install dependencies (macOS)
+      if: matrix.platform == 'macos'
+      run: |
+        brew update
+        brew install cmake opencv pkg-config
+
+    - name: Add multilib support for i386 (Linux)
+      if: matrix.arch == 'i386' && matrix.platform == 'linux'
       run: |
         sudo apt-get install -y gcc-multilib g++-multilib
 
@@ -196,13 +232,18 @@ jobs:
         mkdir -p build-static
         cd build-static
         
-        # Configure with static linking flags
-        if [ "${{ matrix.arch }}" = "i386" ]; then
+        # Configure with platform-specific linking flags
+        if [ "${{ matrix.platform }}" = "macos" ]; then
+          # macOS configuration
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+        elif [ "${{ matrix.arch }}" = "i386" ]; then
+          # Linux i386 configuration
           cmake .. -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_FLAGS="-m32" \
             -DCMAKE_CXX_FLAGS="-m32" \
             -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
         else
+          # Linux x86_64 configuration
           cmake .. -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
         fi
@@ -215,35 +256,46 @@ jobs:
       working-directory: cpp-object-detection/build-static
       run: |
         ./object_detection --help
-        ldd ./object_detection || true  # Show dependencies (should be minimal)
+        if [ "${{ matrix.platform }}" = "linux" ]; then
+          ldd ./object_detection || true  # Show dependencies (should be minimal)
+        else
+          otool -L ./object_detection || true  # Show dependencies on macOS
+        fi
 
     - name: Create release package
       working-directory: cpp-object-detection
       run: |
-        mkdir -p release/object-detection-${{ matrix.arch }}
-        cp build-static/object_detection release/object-detection-${{ matrix.arch }}/
-        cp README.md release/object-detection-${{ matrix.arch }}/
-        cp -r models release/object-detection-${{ matrix.arch }}/
-        cp -r scripts release/object-detection-${{ matrix.arch }}/
+        mkdir -p release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}
+        cp build-static/object_detection release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
+        cp README.md release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
+        cp -r models release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
+        cp -r scripts release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
         
         # Create download script for YOLO model
-        cat << 'EOF' > release/object-detection-${{ matrix.arch }}/download_model.sh
+        cat << 'EOF' > release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/download_model.sh
         #!/bin/bash
         echo "Downloading YOLOv5s model..."
-        wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+        if command -v wget >/dev/null; then
+          wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+        elif command -v curl >/dev/null; then
+          curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+        else
+          echo "Please install wget or curl to download the model"
+          exit 1
+        fi
         echo "Model downloaded successfully!"
         EOF
-        chmod +x release/object-detection-${{ matrix.arch }}/download_model.sh
+        chmod +x release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/download_model.sh
         
         # Create tar archive
         cd release
-        tar -czf object-detection-${{ matrix.arch }}.tar.gz object-detection-${{ matrix.arch }}/
+        tar -czf object-detection-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
 
     - name: Upload release package
       uses: actions/upload-artifact@v4
       with:
-        name: object-detection-${{ matrix.arch }}-release
-        path: cpp-object-detection/release/object-detection-${{ matrix.arch }}.tar.gz
+        name: object-detection-${{ matrix.platform }}-${{ matrix.arch }}-release
+        path: cpp-object-detection/release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
         retention-days: 90
 
   integration-test:
