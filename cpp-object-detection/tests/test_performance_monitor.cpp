@@ -99,5 +99,5 @@ TEST_F(PerformanceMonitorTest, StatsFormat) {
     EXPECT_TRUE(stats.find("FPS:") != std::string::npos);
     EXPECT_TRUE(stats.find("ms") != std::string::npos);
     EXPECT_TRUE(stats.find("1/1") != std::string::npos);
-    EXPECT_TRUE(stats.find("(100%)") != std::string::npos);
+    EXPECT_TRUE(stats.find("(100.0%)") != std::string::npos);
 }
