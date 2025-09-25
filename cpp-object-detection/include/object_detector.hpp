@@ -1,24 +1,19 @@
 #pragma once
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/dnn.hpp>
 #include <vector>
 #include <string>
 #include <memory>
 #include "logger.hpp"
+#include "detection_model_interface.hpp"
 
 /**
- * Object detection using YOLO or similar deep learning model
+ * Object detection orchestrator using pluggable detection models
+ * This class manages object tracking and event logging while delegating
+ * the actual detection to interchangeable model implementations
  */
 class ObjectDetector {
 public:
-    struct Detection {
-        std::string class_name;
-        double confidence;
-        cv::Rect bbox;
-        int class_id;
-    };
-
     struct ObjectTracker {
         std::string object_type;
         cv::Point2f center;
@@ -30,7 +25,8 @@ public:
                   const std::string& config_path,
                   const std::string& classes_path,
                   double confidence_threshold,
-                  std::shared_ptr<Logger> logger);
+                  std::shared_ptr<Logger> logger,
+                  DetectionModelFactory::ModelType model_type = DetectionModelFactory::ModelType::YOLO_V5_SMALL);
     
     ~ObjectDetector();
 
@@ -58,6 +54,21 @@ public:
      * Check if a class name is a target class we're interested in
      */
     bool isTargetClass(const std::string& class_name) const;
+    
+    /**
+     * Get current model information and performance metrics
+     */
+    ModelMetrics getModelMetrics() const;
+    
+    /**
+     * Switch to a different detection model
+     */
+    bool switchModel(DetectionModelFactory::ModelType new_model_type);
+    
+    /**
+     * Get available model types with their characteristics
+     */
+    static std::vector<ModelMetrics> getAvailableModels();
 
 private:
     std::string model_path_;
@@ -65,23 +76,13 @@ private:
     std::string classes_path_;
     double confidence_threshold_;
     std::shared_ptr<Logger> logger_;
+    DetectionModelFactory::ModelType model_type_;
     
-    cv::dnn::Net net_;
-    std::vector<std::string> class_names_;
+    std::unique_ptr<IDetectionModel> detection_model_;
     std::vector<ObjectTracker> tracked_objects_;
     
     bool initialized_;
     
-    // Model parameters
-    static constexpr int INPUT_WIDTH = 640;
-    static constexpr int INPUT_HEIGHT = 640;
-    static constexpr float SCALE_FACTOR = 1.0 / 255.0;
-    static const cv::Scalar MEAN;
-    
-    bool loadClassNames();
-    bool loadModel();
-    std::vector<Detection> postProcess(const cv::Mat& frame, 
-                                     const std::vector<cv::Mat>& outputs);
     void updateTrackedObjects(const std::vector<Detection>& detections);
     void logObjectEvents(const std::vector<Detection>& current_detections);
 };

@@ -28,6 +28,7 @@ public:
         std::string model_path = "models/yolov5s.onnx";
         std::string config_path = "models/yolov5s.yaml";
         std::string classes_path = "models/coco.names";
+        std::string model_type = "yolov5s";  // Model type: yolov5s, yolov5l, yolov8n, yolov8m
         
         // Performance
         bool enable_gpu = false;

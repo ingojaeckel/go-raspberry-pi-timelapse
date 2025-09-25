@@ -61,10 +61,19 @@ int main(int argc, char* argv[]) {
 
         logger->info("Webcam initialized: " + webcam->getCameraInfo());
 
-        // Initialize object detector
+        // Initialize object detector with model type selection
+        DetectionModelFactory::ModelType model_type;
+        try {
+            model_type = DetectionModelFactory::parseModelType(config.model_type);
+        } catch (const std::exception& e) {
+            logger->error("Invalid model type: " + config.model_type);
+            logger->error("Available models: yolov5s, yolov5l, yolov8n, yolov8m");
+            return 1;
+        }
+
         auto detector = std::make_shared<ObjectDetector>(
             config.model_path, config.config_path, config.classes_path,
-            config.min_confidence, logger);
+            config.min_confidence, logger, model_type);
 
         if (!detector->initialize()) {
             logger->error("Failed to initialize object detector");
@@ -72,6 +81,14 @@ int main(int argc, char* argv[]) {
         }
 
         logger->info("Object detector initialized successfully");
+        
+        // Log model performance characteristics
+        auto model_metrics = detector->getModelMetrics();
+        logger->info("Using model: " + model_metrics.model_name + " (" + model_metrics.model_type + ")");
+        logger->info("Model accuracy: " + std::to_string(static_cast<int>(model_metrics.accuracy_score * 100)) + "%");
+        logger->info("Expected inference time: ~" + std::to_string(model_metrics.avg_inference_time_ms) + "ms");
+        logger->info("Model description: " + model_metrics.description);
+        
         logger->info("Target objects: person, vehicle, small animals (cat/dog/fox)");
         logger->info("Minimum confidence threshold: " + std::to_string(config.min_confidence));
         logger->info("Maximum processing rate: " + std::to_string(config.max_fps) + " fps");

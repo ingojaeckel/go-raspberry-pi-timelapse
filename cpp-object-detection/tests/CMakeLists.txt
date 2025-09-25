@@ -10,6 +10,7 @@ set(TEST_SOURCES
     test_webcam_interface.cpp
     test_object_detector.cpp
     test_parallel_frame_processor.cpp
+    test_detection_model_interface.cpp
 )
 
 # Create test executable
@@ -38,6 +39,8 @@ target_sources(object_detection_tests PRIVATE
     ../src/webcam_interface.cpp
     ../src/object_detector.cpp
     ../src/parallel_frame_processor.cpp
+    ../src/detection_model_factory.cpp
+    ../src/yolo_v5_model.cpp
 )
 
 # Code coverage support for tests
