@@ -11,6 +11,7 @@
 #include "object_detector.hpp"
 #include "logger.hpp"
 #include "performance_monitor.hpp"
+#include "detection_model_interface.hpp"
 
 /**
  * Parallel frame processor that can handle multiple frames concurrently
@@ -21,7 +22,7 @@ public:
     struct FrameResult {
         std::chrono::high_resolution_clock::time_point capture_time;
         bool processed;
-        std::vector<ObjectDetector::Detection> detections;
+        std::vector<Detection> detections;
     };
 
     ParallelFrameProcessor(std::shared_ptr<ObjectDetector> detector,

@@ -212,11 +212,6 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
         tracked_objects_.end());
 }
 
-bool ObjectDetector::isTargetClass(const std::string& class_name) const {
-    auto target_classes = getTargetClasses();
-    return std::find(target_classes.begin(), target_classes.end(), class_name) != target_classes.end();
-}
-
 void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detections) {
     // Log enter/exit events based on tracking
     for (const auto& tracked : tracked_objects_) {
