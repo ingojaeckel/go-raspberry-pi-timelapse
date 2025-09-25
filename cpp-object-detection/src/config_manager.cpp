@@ -38,6 +38,8 @@ bool ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->verbose = true;
         } else if (arg == "--enable-gpu") {
             config_->enable_gpu = true;
+        } else if (arg == "--enable-parallel") {
+            config_->enable_parallel_processing = true;
         } else if (arg == "--no-headless") {
             config_->headless = false;
         } else if (arg == "--list-cameras" || arg == "--list") {
@@ -79,6 +81,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->classes_path = value;
         } else if (arg == "--processing-threads") {
             config_->processing_threads = std::stoi(value);
+        } else if (arg == "--max-frame-queue") {
+            config_->max_frame_queue_size = std::stoi(value);
         } else {
             return false;
         }
@@ -114,6 +118,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --config-path FILE             Path to model config file (default: models/yolov5s.yaml)\n"
               << "  --classes-path FILE            Path to class names file (default: models/coco.names)\n"
               << "  --processing-threads N         Number of processing threads (default: 1)\n"
+              << "  --enable-parallel              Enable parallel frame processing\n"
+              << "  --max-frame-queue N            Maximum frames in processing queue (default: 10)\n"
               << "  --enable-gpu                   Enable GPU acceleration if available\n"
               << "  --no-headless                  Disable headless mode (show GUI windows)\n\n"
               << "EXAMPLES:\n"
@@ -162,6 +168,16 @@ bool ConfigManager::validateConfig() const {
     if (config_->processing_threads <= 0 || config_->processing_threads > 16) {
         std::cerr << "Invalid processing_threads: " << config_->processing_threads << " (must be 1-16)" << std::endl;
         return false;
+    }
+    
+    if (config_->max_frame_queue_size <= 0 || config_->max_frame_queue_size > 100) {
+        std::cerr << "Invalid max_frame_queue_size: " << config_->max_frame_queue_size << " (must be 1-100)" << std::endl;
+        return false;
+    }
+    
+    // Enable parallel processing automatically if more than 1 thread is specified
+    if (config_->processing_threads > 1) {
+        config_->enable_parallel_processing = true;
     }
     
     return true;

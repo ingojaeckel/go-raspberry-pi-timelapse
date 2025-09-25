@@ -53,6 +53,11 @@ public:
      * Get list of target object classes we're interested in
      */
     static std::vector<std::string> getTargetClasses();
+    
+    /**
+     * Check if a class name is a target class we're interested in
+     */
+    bool isTargetClass(const std::string& class_name) const;
 
 private:
     std::string model_path_;
@@ -78,6 +83,5 @@ private:
     std::vector<Detection> postProcess(const cv::Mat& frame, 
                                      const std::vector<cv::Mat>& outputs);
     void updateTrackedObjects(const std::vector<Detection>& detections);
-    bool isTargetClass(const std::string& class_name) const;
     void logObjectEvents(const std::vector<Detection>& current_detections);
 };

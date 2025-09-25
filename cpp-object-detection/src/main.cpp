@@ -10,6 +10,7 @@
 #include "webcam_interface.hpp"
 #include "object_detector.hpp"
 #include "performance_monitor.hpp"
+#include "parallel_frame_processor.hpp"
 
 // Global flag for clean shutdown
 std::atomic<bool> running{true};
@@ -76,12 +77,31 @@ int main(int argc, char* argv[]) {
         logger->info("Maximum processing rate: " + std::to_string(config.max_fps) + " fps");
         logger->info("Performance warning threshold: " + std::to_string(config.min_fps_warning_threshold) + " fps");
 
+        // Initialize parallel frame processor
+        int effective_threads = config.enable_parallel_processing ? config.processing_threads : 1;
+        auto frame_processor = std::make_shared<ParallelFrameProcessor>(
+            detector, logger, perf_monitor, effective_threads, config.max_frame_queue_size);
+
+        if (!frame_processor->initialize()) {
+            logger->error("Failed to initialize parallel frame processor");
+            return 1;
+        }
+
+        if (config.enable_parallel_processing) {
+            logger->info("Parallel processing enabled with " + std::to_string(config.processing_threads) + " threads");
+        } else {
+            logger->info("Sequential processing enabled (single-threaded)");
+        }
+
         // Main processing loop
         cv::Mat frame;
         auto last_heartbeat = std::chrono::steady_clock::now();
         auto heartbeat_interval = std::chrono::minutes(config.heartbeat_interval_minutes);
         auto frame_interval = std::chrono::milliseconds(1000 / config.max_fps);
         auto last_frame_time = std::chrono::steady_clock::now();
+        
+        // Queue to track pending frame processing futures
+        std::queue<std::future<ParallelFrameProcessor::FrameResult>> pending_frames;
 
         logger->info("Starting main processing loop...");
 
@@ -104,8 +124,34 @@ int main(int argc, char* argv[]) {
             // Start performance monitoring
             perf_monitor->startFrameProcessing();
 
-            // Process frame for object detection
-            detector->processFrame(frame);
+            // Submit frame for processing (parallel or sequential)
+            auto future = frame_processor->submitFrame(frame);
+            pending_frames.push(std::move(future));
+
+            // Process completed frames
+            while (!pending_frames.empty()) {
+                auto& front_future = pending_frames.front();
+                
+                // Check if the result is ready (non-blocking for parallel, immediate for sequential)
+                if (frame_processor->isParallelEnabled()) {
+                    // For parallel processing, only process if ready
+                    if (front_future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+                        break;
+                    }
+                }
+                
+                try {
+                    auto result = front_future.get();
+                    if (result.processed) {
+                        // Process detection results here if needed
+                        // Results are already logged by the frame processor
+                    }
+                } catch (const std::exception& e) {
+                    logger->error("Error processing frame result: " + std::string(e.what()));
+                }
+                
+                pending_frames.pop();
+            }
 
             // End performance monitoring
             perf_monitor->endFrameProcessing();
@@ -129,6 +175,21 @@ int main(int argc, char* argv[]) {
 
         // Cleanup
         logger->info("Shutting down gracefully...");
+        
+        // Shutdown frame processor first
+        frame_processor->shutdown();
+        
+        // Process any remaining frames
+        while (!pending_frames.empty()) {
+            try {
+                auto result = pending_frames.front().get();
+                // Process final results if needed
+            } catch (...) {
+                // Ignore errors during shutdown
+            }
+            pending_frames.pop();
+        }
+        
         webcam->release();
         logger->info("Object Detection Application stopped");
 

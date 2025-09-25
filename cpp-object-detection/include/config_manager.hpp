@@ -32,6 +32,8 @@ public:
         // Performance
         bool enable_gpu = false;
         int processing_threads = 1;
+        bool enable_parallel_processing = false;
+        int max_frame_queue_size = 10;
         
         // Debug
         bool verbose = false;

@@ -27,6 +27,7 @@ set(SOURCES
     src/config_manager.cpp
     src/logger.cpp
     src/performance_monitor.cpp
+    src/parallel_frame_processor.cpp
 )
 
 # Create executable
