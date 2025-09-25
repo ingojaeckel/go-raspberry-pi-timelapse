@@ -39,6 +39,8 @@ jobs:
           libopencv-dev \
           pkg-config \
           libgtest-dev \
+          lcov \
+          gcovr \
           ${{ matrix.packages }}
 
     - name: Build Google Test
@@ -53,7 +55,7 @@ jobs:
       run: |
         mkdir -p build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_flags }}
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON ${{ matrix.cmake_flags }}
 
     - name: Build application
       working-directory: cpp-object-detection/build
@@ -67,6 +69,73 @@ jobs:
         else
           echo "Unit tests not available for this configuration"
         fi
+
+    - name: Generate code coverage report
+      working-directory: cpp-object-detection/build
+      run: |
+        if [ -f "object_detection_tests" ]; then
+          # Generate coverage data
+          lcov --capture --directory . --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' '*/gtest/*' '*/gmock/*' --output-file coverage_filtered.info
+          lcov --list coverage_filtered.info
+          
+          # Generate HTML report
+          genhtml coverage_filtered.info --output-directory coverage_html
+          
+          # Generate summary for PR comment
+          lcov --summary coverage_filtered.info > coverage_summary.txt
+          
+          # Generate JSON report for badge
+          gcovr --json coverage.json --exclude '/usr/.*' --exclude '.*/gtest/.*' --exclude '.*/gmock/.*'
+          gcovr --json-summary coverage_summary.json --exclude '/usr/.*' --exclude '.*/gtest/.*' --exclude '.*/gmock/.*'
+          
+          echo "Coverage report generated successfully"
+        else
+          echo "Skipping coverage report - tests not available"
+        fi
+
+    - name: Upload coverage reports
+      if: matrix.arch == 'x86_64'  # Only upload for one architecture to avoid duplicates
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-reports
+        path: |
+          cpp-object-detection/build/coverage_html/
+          cpp-object-detection/build/coverage_summary.txt
+          cpp-object-detection/build/coverage.json
+          cpp-object-detection/build/coverage_summary.json
+        retention-days: 30
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request' && matrix.arch == 'x86_64'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = './cpp-object-detection/build/coverage_summary.txt';
+          
+          try {
+            if (fs.existsSync(path)) {
+              const coverage = fs.readFileSync(path, 'utf8');
+              const body = `## 📊 Code Coverage Report
+              
+              \`\`\`
+              ${coverage}
+              \`\`\`
+              
+              📁 [Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+          } catch (error) {
+            console.log('Coverage file not found or error reading it:', error);
+          }
 
     - name: Test executable
       working-directory: cpp-object-detection/build

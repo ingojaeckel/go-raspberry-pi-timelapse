@@ -1,11 +1,15 @@
 # Test configuration
 find_package(GTest REQUIRED)
+find_package(OpenCV REQUIRED)
 
 # Test sources
 set(TEST_SOURCES
     test_config_manager.cpp
     test_logger.cpp
     test_performance_monitor.cpp
+    test_webcam_interface.cpp
+    test_object_detector.cpp
+    test_parallel_frame_processor.cpp
 )
 
 # Create test executable
@@ -15,12 +19,14 @@ add_executable(object_detection_tests ${TEST_SOURCES})
 target_include_directories(object_detection_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${GTEST_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 # Link libraries
 target_link_libraries(object_detection_tests 
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
+    ${OpenCV_LIBS}
     pthread
 )
 
@@ -29,7 +35,27 @@ target_sources(object_detection_tests PRIVATE
     ../src/config_manager.cpp
     ../src/logger.cpp
     ../src/performance_monitor.cpp
+    ../src/webcam_interface.cpp
+    ../src/object_detector.cpp
+    ../src/parallel_frame_processor.cpp
 )
+
+# Code coverage support for tests
+if(ENABLE_COVERAGE)
+    target_compile_options(object_detection_tests PRIVATE --coverage -O0 -g)
+    target_link_libraries(object_detection_tests --coverage)
+    
+    # Add coverage target
+    add_custom_target(coverage
+        COMMAND lcov --directory . --capture --output-file coverage.info
+        COMMAND lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        COMMAND lcov --list coverage.info
+        COMMAND genhtml -o coverage coverage.info
+        DEPENDS object_detection_tests
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Generating code coverage report"
+    )
+endif()
 
 # Add tests to CTest
 add_test(NAME ObjectDetectionTests COMMAND object_detection_tests)

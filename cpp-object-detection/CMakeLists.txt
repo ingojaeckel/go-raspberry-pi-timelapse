@@ -48,6 +48,26 @@ target_compile_options(object_detection PRIVATE
     -march=native
 )
 
+# Code coverage support
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+if(ENABLE_COVERAGE)
+    message(STATUS "Code coverage enabled")
+    target_compile_options(object_detection PRIVATE --coverage -O0 -g)
+    target_link_libraries(object_detection --coverage)
+    
+    # Find gcov
+    find_program(GCOV_PATH gcov)
+    if(NOT GCOV_PATH)
+        message(FATAL_ERROR "gcov not found! Aborting...")
+    endif()
+    
+    # Find lcov
+    find_program(LCOV_PATH lcov)
+    if(NOT LCOV_PATH)
+        message(WARNING "lcov not found! Coverage reports will be limited...")
+    endif()
+endif()
+
 # Enable testing (optional)
 enable_testing()
 
