@@ -18,8 +18,12 @@ else()
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 endif()
 
-# Find required packages
-find_package(OpenCV REQUIRED)
+# Find required packages  
+# OpenCV 4.x uses opencv4 as package name
+find_package(OpenCV REQUIRED PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
+if(NOT OpenCV_FOUND)
+    find_package(opencv4 REQUIRED)
+endif()
 find_package(Threads REQUIRED)
 
 # Include directories
