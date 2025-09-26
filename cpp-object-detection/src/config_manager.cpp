@@ -15,13 +15,13 @@ void ConfigManager::setDefaults() {
     // This method exists for potential future customizations
 }
 
-bool ConfigManager::parseArgs(int argc, char* argv[]) {
+ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         
         if (arg == "--help" || arg == "-h") {
             printUsage(argv[0]);
-            return false;
+            return ParseResult::HELP_REQUESTED;
         }
         
         // Handle arguments with values
@@ -45,14 +45,14 @@ bool ConfigManager::parseArgs(int argc, char* argv[]) {
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
-            return false;
+            return ParseResult::LIST_REQUESTED;
         } else {
             std::cerr << "Unknown argument: " << arg << std::endl;
-            return false;
+            return ParseResult::PARSE_ERROR;
         }
     }
     
-    return true;
+    return ParseResult::SUCCESS;
 }
 
 bool ConfigManager::parseArgument(const std::string& arg, const std::string& value) {

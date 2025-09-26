@@ -19,14 +19,13 @@ add_executable(object_detection_tests ${TEST_SOURCES})
 # Include directories
 target_include_directories(object_detection_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${GTEST_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
 )
 
 # Link libraries
 target_link_libraries(object_detection_tests 
-    ${GTEST_LIBRARIES}
-    ${GTEST_MAIN_LIBRARIES}
+    GTest::gtest
+    GTest::gtest_main
     ${OpenCV_LIBS}
     pthread
 )

@@ -37,7 +37,7 @@ TEST_F(ConfigManagerTest, ParseValidArguments) {
     };
     int argc = sizeof(argv) / sizeof(argv[0]);
     
-    EXPECT_TRUE(config_manager->parseArgs(argc, const_cast<char**>(argv)));
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
     
     const auto& config = config_manager->getConfig();
     EXPECT_EQ(config.max_fps, 3);
@@ -54,7 +54,7 @@ TEST_F(ConfigManagerTest, InvalidMaxFps) {
     const char* argv[] = {"program", "--max-fps", "0"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     
-    config_manager->parseArgs(argc, const_cast<char**>(argv));
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
     EXPECT_FALSE(config_manager->validateConfig());
 }
 
@@ -62,7 +62,7 @@ TEST_F(ConfigManagerTest, InvalidConfidence) {
     const char* argv[] = {"program", "--min-confidence", "1.5"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     
-    config_manager->parseArgs(argc, const_cast<char**>(argv));
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
     EXPECT_FALSE(config_manager->validateConfig());
 }
 
@@ -70,5 +70,5 @@ TEST_F(ConfigManagerTest, HelpArgument) {
     const char* argv[] = {"program", "--help"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     
-    EXPECT_FALSE(config_manager->parseArgs(argc, const_cast<char**>(argv)));
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::HELP_REQUESTED);
 }

@@ -28,8 +28,15 @@ int main(int argc, char* argv[]) {
     try {
         // Parse configuration
         ConfigManager config_manager;
-        if (!config_manager.parseArgs(argc, argv)) {
-            config_manager.printUsage(argv[0]);
+        auto parse_result = config_manager.parseArgs(argc, argv);
+        
+        if (parse_result == ConfigManager::ParseResult::HELP_REQUESTED ||
+            parse_result == ConfigManager::ParseResult::LIST_REQUESTED) {
+            return 0;  // Success exit for help/list
+        }
+        
+        if (parse_result == ConfigManager::ParseResult::PARSE_ERROR) {
+            std::cerr << "Error parsing arguments. Use --help for usage information." << std::endl;
             return 1;
         }
 

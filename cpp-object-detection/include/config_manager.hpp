@@ -41,13 +41,20 @@ public:
         bool headless = true;
     };
 
+    enum class ParseResult {
+        SUCCESS,
+        HELP_REQUESTED,
+        LIST_REQUESTED,
+        PARSE_ERROR
+    };
+
     ConfigManager();
     ~ConfigManager();
 
     /**
      * Parse command line arguments and populate configuration
      */
-    bool parseArgs(int argc, char* argv[]);
+    ParseResult parseArgs(int argc, char* argv[]);
     
     /**
      * Get the current configuration

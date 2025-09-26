@@ -30,7 +30,7 @@ YoloV5SmallModel::YoloV5SmallModel(std::shared_ptr<Logger> logger)
 }
 
 bool YoloV5SmallModel::initialize(const std::string& model_path,
-                                 const std::string& config_path,
+                                 const std::string& /* config_path */,
                                  const std::string& classes_path,
                                  double confidence_threshold) {
     if (initialized_) {
@@ -307,7 +307,7 @@ YoloV5LargeModel::YoloV5LargeModel(std::shared_ptr<Logger> logger)
 }
 
 bool YoloV5LargeModel::initialize(const std::string& model_path,
-                                 const std::string& config_path,
+                                 const std::string& /* config_path */,
                                  const std::string& classes_path,
                                  double confidence_threshold) {
     if (initialized_) {
