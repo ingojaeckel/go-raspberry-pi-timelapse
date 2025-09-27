@@ -221,9 +221,9 @@ cd cpp-object-detection
 3. **Download a YOLO model (required for object detection):**
 ```bash
 # Use curl on macOS or wget on Linux
-curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 # OR
-wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 ```
 
 ### Cross-Platform Builds

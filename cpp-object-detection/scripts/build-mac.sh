@@ -55,7 +55,7 @@ MODEL_DIR="$PROJECT_ROOT/models"
 if [ ! -f "$MODEL_DIR/yolov5s.onnx" ]; then
     echo -e "${YELLOW}Warning: No YOLO model found at $MODEL_DIR/yolov5s.onnx${NC}"
     echo -e "${YELLOW}Download a model to use the application:${NC}"
-    echo -e "${YELLOW}  curl -L -o $MODEL_DIR/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx${NC}"
+    echo -e "${YELLOW}  curl -L -o $MODEL_DIR/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx${NC}"
 fi
 
 echo -e "${GREEN}Usage: $BUILD_DIR/object_detection --help${NC}"

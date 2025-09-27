@@ -204,9 +204,9 @@ jobs:
           #!/bin/bash
           echo "Downloading YOLOv5s model..."
           if command -v curl >/dev/null; then
-            curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+            curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
           elif command -v wget >/dev/null; then
-            wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+            wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
           else
             echo "Please install curl or wget to download the model"
             exit 1
