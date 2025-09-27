@@ -1,5 +1,25 @@
 name: Build
-on: [push]
+on:
+  push:
+    paths:
+      - 'admin/**'
+      - 'conf/**'
+      - 'files/**'
+      - 'rest/**'
+      - 'timelapse/**'
+      - 'main.go'
+      - 'go.*'
+      - '.github/workflows/go.yml'
+  pull_request:
+    paths:
+      - 'admin/**'
+      - 'conf/**'
+      - 'files/**'
+      - 'rest/**'
+      - 'timelapse/**'
+      - 'main.go'
+      - 'go.*'
+      - '.github/workflows/go.yml'
 jobs:
   build:
     name: Build

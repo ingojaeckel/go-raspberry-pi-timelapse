@@ -5,3 +5,9 @@
 go-raspberry-pi-timelapse
 timelapse-pictures/
 timelapse-settings.db
+
+# C++ build artifacts
+cpp-object-detection/build/
+cpp-object-detection/models/*.onnx
+cpp-object-detection/models/*.weights
+cpp-object-detection/models/*.yaml
