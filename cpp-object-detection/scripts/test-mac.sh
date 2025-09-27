@@ -24,6 +24,13 @@ cd "$BUILD_DIR"
 
 # Check for Google Test
 echo -e "${YELLOW}Checking for Google Test...${NC}"
+# First check if pkg-config is available
+if ! command -v pkg-config &> /dev/null; then
+    echo -e "${RED}Error: pkg-config not found. Please install pkg-config.${NC}"
+    echo -e "${YELLOW}macOS: brew install pkg-config${NC}"
+    exit 1
+fi
+
 if ! pkg-config --exists gtest; then
     echo -e "${RED}Warning: Google Test not found. Installing...${NC}"
     # Try to install gtest on macOS

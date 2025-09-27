@@ -54,6 +54,28 @@ else
     exit 1
 fi
 
+echo -e "${YELLOW}Testing macOS scripts pkg-config dependency checks...${NC}"
+if grep -q "command -v pkg-config" "$SCRIPT_DIR/build-mac.sh"; then
+    echo -e "${GREEN}✓ build-mac.sh checks for pkg-config availability${NC}"
+else
+    echo -e "${RED}✗ build-mac.sh missing pkg-config check${NC}"
+    exit 1
+fi
+
+if grep -q "brew install pkg-config" "$SCRIPT_DIR/build-mac.sh"; then
+    echo -e "${GREEN}✓ build-mac.sh suggests pkg-config installation${NC}"
+else
+    echo -e "${RED}✗ build-mac.sh missing pkg-config installation suggestion${NC}"
+    exit 1
+fi
+
+if grep -q "command -v pkg-config" "$SCRIPT_DIR/test-mac.sh"; then
+    echo -e "${GREEN}✓ test-mac.sh checks for pkg-config availability${NC}"
+else
+    echo -e "${RED}✗ test-mac.sh missing pkg-config check${NC}"
+    exit 1
+fi
+
 echo -e "${YELLOW}Testing CMakeLists.txt macOS support...${NC}"
 if grep -q "if(APPLE)" "$PROJECT_ROOT/CMakeLists.txt"; then
     echo -e "${GREEN}✓ CMakeLists.txt contains macOS-specific configuration${NC}"

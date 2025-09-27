@@ -20,15 +20,9 @@ endif()
 
 # Find required packages  
 # OpenCV 4.x uses opencv4 as package name
-if(APPLE)
-    # macOS with Homebrew - find OpenCV without specific paths
-    find_package(OpenCV REQUIRED)
-else()
-    # Linux - try specific Ubuntu path first, then fallback
-    find_package(OpenCV REQUIRED PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
-    if(NOT OpenCV_FOUND)
-        find_package(opencv4 REQUIRED)
-    endif()
+find_package(OpenCV REQUIRED PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
+if(NOT OpenCV_FOUND)
+    find_package(opencv4 REQUIRED)
 endif()
 find_package(Threads REQUIRED)
 

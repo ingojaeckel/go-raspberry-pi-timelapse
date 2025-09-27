@@ -21,6 +21,13 @@ cd "$BUILD_DIR"
 # Check for required dependencies
 echo -e "${YELLOW}Checking dependencies...${NC}"
 
+# Check for pkg-config
+if ! command -v pkg-config &> /dev/null; then
+    echo -e "${RED}Error: pkg-config not found. Please install pkg-config.${NC}"
+    echo -e "${YELLOW}macOS: brew install pkg-config${NC}"
+    exit 1
+fi
+
 # Check for OpenCV
 if ! pkg-config --exists opencv4; then
     echo -e "${RED}Error: OpenCV 4 not found. Please install OpenCV development libraries.${NC}"
