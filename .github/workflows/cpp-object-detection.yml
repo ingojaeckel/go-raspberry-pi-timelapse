@@ -22,6 +22,11 @@ jobs:
             cmake_flags: ""
             packages: ""
             platform: linux
+          - os: macos-latest
+            arch: x86_64
+            cmake_flags: ""
+            packages: ""
+            platform: macos
 
     runs-on: ${{ matrix.os }}
 
@@ -43,6 +48,18 @@ jobs:
             gcovr \
             ${{ matrix.packages }}
 
+      - name: Install dependencies (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          brew update
+          brew install \
+            cmake \
+            opencv \
+            pkg-config \
+            googletest \
+            lcov \
+            gcovr
+
       - name: Build Google Test (Linux)
         if: matrix.platform == 'linux'
         run: |
@@ -60,7 +77,12 @@ jobs:
 
       - name: Build application
         working-directory: cpp-object-detection/build
-        run: make -j$(nproc)
+        run: |
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            make -j$(sysctl -n hw.ncpu)
+          else
+            make -j$(nproc)
+          fi
 
       - name: Run unit tests
         working-directory: cpp-object-detection/build
@@ -105,6 +127,9 @@ jobs:
           - os: ubuntu-latest
             arch: x86_64
             platform: linux
+          - os: macos-latest
+            arch: x86_64
+            platform: macos
 
     steps:
       - name: Checkout code
@@ -122,25 +147,48 @@ jobs:
           # Install OpenCV for dynamic linking (static linking can be custom built)
           sudo apt-get install -y libopencv-dev
 
+      - name: Install dependencies (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          brew update
+          brew install \
+            cmake \
+            opencv \
+            pkg-config
+
       - name: Configure for static linking
         working-directory: cpp-object-detection
         run: |
           mkdir -p build-static
           cd build-static
 
-          # Linux x86_64 configuration
-          cmake .. -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            # Linux x86_64 configuration
+            cmake .. -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
+          else
+            # macOS configuration (dynamic linking, no static options)
+            cmake .. -DCMAKE_BUILD_TYPE=Release
+          fi
 
       - name: Build static executable
         working-directory: cpp-object-detection/build-static
-        run: make -j$(nproc)
+        run: |
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            make -j$(sysctl -n hw.ncpu)
+          else
+            make -j$(nproc)
+          fi
 
       - name: Test static executable
         working-directory: cpp-object-detection/build-static
         run: |
           ./object_detection --help
-          ldd ./object_detection || true  # Show dependencies (should be minimal)
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            otool -L ./object_detection || true  # Show dependencies on macOS
+          else
+            ldd ./object_detection || true  # Show dependencies on Linux (should be minimal)
+          fi
 
       - name: Create release package
         working-directory: cpp-object-detection
@@ -155,12 +203,12 @@ jobs:
           cat << 'EOF' > release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/download_model.sh
           #!/bin/bash
           echo "Downloading YOLOv5s model..."
-          if command -v wget >/dev/null; then
-            wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
-          elif command -v curl >/dev/null; then
+          if command -v curl >/dev/null; then
             curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+          elif command -v wget >/dev/null; then
+            wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
           else
-            echo "Please install wget or curl to download the model"
+            echo "Please install curl or wget to download the model"
             exit 1
           fi
           echo "Model downloaded successfully!"
