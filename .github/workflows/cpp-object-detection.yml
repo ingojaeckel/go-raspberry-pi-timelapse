@@ -22,11 +22,6 @@ jobs:
             cmake_flags: ""
             packages: ""
             platform: linux
-          - os: macos-13
-            arch: x86_64
-            cmake_flags: ""
-            packages: ""
-            platform: macos
 
     runs-on: ${{ matrix.os }}
 
@@ -47,12 +42,6 @@ jobs:
             lcov \
             gcovr \
             ${{ matrix.packages }}
-
-      - name: Install dependencies (macOS)
-        if: matrix.platform == 'macos'
-        run: |
-          brew update
-          brew install cmake opencv pkg-config googletest lcov gcovr
 
       - name: Build Google Test (Linux)
         if: matrix.platform == 'linux'
@@ -116,9 +105,6 @@ jobs:
           - os: ubuntu-latest
             arch: x86_64
             platform: linux
-          - os: macos-13
-            arch: x86_64
-            platform: macos
 
     steps:
       - name: Checkout code
@@ -136,26 +122,15 @@ jobs:
           # Install OpenCV for dynamic linking (static linking can be custom built)
           sudo apt-get install -y libopencv-dev
 
-      - name: Install dependencies (macOS)
-        if: matrix.platform == 'macos'
-        run: |
-          brew update
-          brew install cmake opencv pkg-config
-
       - name: Configure for static linking
         working-directory: cpp-object-detection
         run: |
           mkdir -p build-static
           cd build-static
 
-          if [ "${{ matrix.platform }}" = "macos" ]; then
-            # macOS configuration
-            cmake .. -DCMAKE_BUILD_TYPE=Release
-          else
-            # Linux x86_64 configuration
-            cmake .. -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
-          fi
+          # Linux x86_64 configuration
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
 
       - name: Build static executable
         working-directory: cpp-object-detection/build-static
@@ -165,11 +140,7 @@ jobs:
         working-directory: cpp-object-detection/build-static
         run: |
           ./object_detection --help
-          if [ "${{ matrix.platform }}" = "linux" ]; then
-            ldd ./object_detection || true  # Show dependencies (should be minimal)
-          else
-            otool -L ./object_detection || true  # Show dependencies on macOS
-          fi
+          ldd ./object_detection || true  # Show dependencies (should be minimal)
 
       - name: Create release package
         working-directory: cpp-object-detection
