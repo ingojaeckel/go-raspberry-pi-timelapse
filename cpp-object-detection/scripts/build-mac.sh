@@ -52,7 +52,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 
 # Build
 echo -e "${YELLOW}Building...${NC}"
-make -j$(sysctl -n hw.ncpu)
+make -j$(sysctl -n hw.ncpu) all
 
 echo -e "${GREEN}Build completed successfully!${NC}"
 echo -e "${GREEN}Executable: $BUILD_DIR/object_detection${NC}"
