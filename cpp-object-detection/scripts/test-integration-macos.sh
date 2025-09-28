@@ -84,6 +84,13 @@ else
     exit 1
 fi
 
+if grep -q "find_package(OpenCV REQUIRED)" "$PROJECT_ROOT/CMakeLists.txt" && grep -A5 "if(APPLE)" "$PROJECT_ROOT/CMakeLists.txt" | grep -q "find_package(OpenCV REQUIRED)"; then
+    echo -e "${GREEN}✓ CMakeLists.txt uses simple OpenCV find for macOS${NC}"
+else
+    echo -e "${RED}✗ CMakeLists.txt missing proper macOS OpenCV configuration${NC}"
+    exit 1
+fi
+
 echo -e "${YELLOW}Testing README macOS documentation...${NC}"
 if grep -q "macOS" "$PROJECT_ROOT/README.md" && grep -q "build-mac.sh" "$PROJECT_ROOT/README.md"; then
     echo -e "${GREEN}✓ README.md contains macOS build instructions${NC}"
