@@ -71,6 +71,14 @@ if(APPLE)
         -pedantic
         -mtune=native  # Use mtune instead of march on macOS for better compatibility
     )
+    # Add camera usage description for macOS permissions
+    add_compile_definitions(
+        "CAMERA_USAGE_DESCRIPTION=\"This app needs camera access for object detection\""
+    )
+    set_target_properties(object_detection PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist
+    )
 else()
     # Linux-specific optimizations
     target_compile_options(object_detection PRIVATE 
