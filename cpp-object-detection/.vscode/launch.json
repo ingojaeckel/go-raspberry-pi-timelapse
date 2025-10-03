@@ -6,7 +6,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/object_detection",
-            "args": ["--help"],
+            "args": ["--verbose"],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}/build",
             "environment": [],
