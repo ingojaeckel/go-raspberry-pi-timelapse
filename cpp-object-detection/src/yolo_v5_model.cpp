@@ -195,16 +195,24 @@ bool YoloV5SmallModel::loadModel(const std::string& model_path) {
             return false;
         }
 
-        // Try to use GPU if available
+        // Select backend based on platform and available hardware
+#ifdef __APPLE__
+        // macOS doesn't support CUDA in OpenCV DNN
+        logger_->info("YOLOv5s using CPU backend for inference (macOS)");
+        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+#else
+        // Try to use GPU if available on other platforms
         try {
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
             logger_->info("YOLOv5s using CUDA backend for GPU acceleration");
         } catch (const std::exception& e) {
-            logger_->info("YOLOv5s using CPU backend for inference");
+            logger_->info("YOLOv5s using CPU backend for inference: " + std::string(e.what()));
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
         }
+#endif
 
         logger_->debug("YOLOv5s neural network loaded successfully");
         return true;
@@ -472,16 +480,24 @@ bool YoloV5LargeModel::loadModel(const std::string& model_path) {
             return false;
         }
 
-        // Try to use GPU if available
+        // Select backend based on platform and available hardware
+#ifdef __APPLE__
+        // macOS doesn't support CUDA in OpenCV DNN
+        logger_->info("YOLOv5l using CPU backend for inference (macOS)");
+        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+#else
+        // Try to use GPU if available on other platforms
         try {
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
             logger_->info("YOLOv5l using CUDA backend for GPU acceleration");
         } catch (const std::exception& e) {
-            logger_->info("YOLOv5l using CPU backend for inference");
+            logger_->info("YOLOv5l using CPU backend for inference: " + std::string(e.what()));
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
         }
+#endif
 
         logger_->debug("YOLOv5l neural network loaded successfully");
         return true;
