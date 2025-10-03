@@ -30,8 +30,8 @@ if [ -f "$MODEL_FILE" ]; then
 fi
 
 # Download YOLOv5s model
-echo -e "${YELLOW}Downloading YOLOv5s ONNX model (~28MB)...${NC}"
-MODEL_URL="https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx"
+echo -e "${YELLOW}Downloading YOLOv5s ONNX model (~16MB)...${NC}"
+MODEL_URL="https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx"
 
 if command -v wget &> /dev/null; then
     wget -O "$MODEL_FILE" "$MODEL_URL"
