@@ -195,7 +195,13 @@ jobs:
         working-directory: cpp-object-detection
         run: |
           mkdir -p release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}
-          cp build-static/object_detection release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
+
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            cp ./object_detection.app/Contents/MacOS/object_detection release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
+          else
+            cp build-static/object_detection release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
+          fi
+
           cp README.md release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
           cp -r models release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
           cp -r scripts release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
@@ -225,7 +231,7 @@ jobs:
         with:
           name: object-detection-${{ matrix.platform }}-${{ matrix.arch }}-release
           path: cpp-object-detection/release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
-          retention-days: 90
+          retention-days: 7
 
   integration-test:
     name: Integration Tests
@@ -251,28 +257,46 @@ jobs:
           # Test configuration validation
           cd build
 
-          # Test valid configurations
-          ./object_detection --max-fps 1 --min-confidence 0.9 --help
-          ./object_detection --camera-id 0 --verbose --help
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            ./object_detection.app/Contents/MacOS/object_detection --max-fps 1 --min-confidence 0.9 --help
+            # Test valid configurations
+            ./object_detection.app/Contents/MacOS/object_detection --camera-id 0 --verbose --help
 
-          # Test invalid configurations (should fail)
-          ./object_detection --max-fps 0 || echo "Correctly rejected invalid max-fps"
-          ./object_detection --min-confidence 1.5 || echo "Correctly rejected invalid confidence"
-          ./object_detection --camera-id -1 || echo "Correctly rejected invalid camera-id"
+            # Test invalid configurations (should fail)
+            ./object_detection.app/Contents/MacOS/object_detection --max-fps 0 || echo "Correctly rejected invalid max-fps"
+            ./object_detection.app/Contents/MacOS/object_detection --min-confidence 1.5 || echo "Correctly rejected invalid confidence"
+            ./object_detection.app/Contents/MacOS/object_detection --camera-id -1 || echo "Correctly rejected invalid camera-id"
+          else
+            ./object_detection --max-fps 1 --min-confidence 0.9 --help
+            # Test valid configurations
+            ./object_detection --camera-id 0 --verbose --help
+
+            # Test invalid configurations (should fail)
+            ./object_detection --max-fps 0 || echo "Correctly rejected invalid max-fps"
+            ./object_detection --min-confidence 1.5 || echo "Correctly rejected invalid confidence"
+            ./object_detection --camera-id -1 || echo "Correctly rejected invalid camera-id"
+          fi
 
       - name: Test mock camera scenario
         working-directory: cpp-object-detection/build
         run: |
           # Test with non-existent camera (should fail gracefully)
-          timeout 10s ./object_detection --camera-id 999 --verbose || true
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            timeout 10s ./object_detection.app/Contents/MacOS/object_detection --camera-id 999 --verbose || true
+          else
+            timeout 10s ./object_detection --camera-id 999 --verbose || true
+          fi
 
       - name: Verify log output format
         working-directory: cpp-object-detection/build
         run: |
           # Run briefly and check if log file is created with proper format
           LOG_FILE="/tmp/test_integration.log"
-          timeout 5s ./object_detection --log-file "$LOG_FILE" --camera-id 999 || true
-
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            timeout 5s ./object_detection.app/Contents/MacOS/object_detection --log-file "$LOG_FILE" --camera-id 999 || true
+          else
+            timeout 5s ./object_detection --log-file "$LOG_FILE" --camera-id 999 || true
+          fi
           if [ -f "$LOG_FILE" ]; then
             echo "Log file created successfully"
             echo "Log contents:"
