@@ -2,7 +2,11 @@
 
 ## 🎯 Feature Overview
 
-This implementation adds comprehensive real-time debug information overlay to the cpp-object-detection viewfinder, displaying performance metrics, detection statistics, and system information to aid in development and debugging.
+This implementation adds comprehensive real-time debug information overlay to the cpp-object-detection viewfinder and network stream, displaying performance metrics, detection statistics, and system information to aid in development and debugging.
+
+**The debug overlay is now available in both:**
+1. **Local viewfinder** (when using `--show-preview`) - toggleable with SPACE key
+2. **Network stream** (when using `--enable-streaming`) - always visible for remote monitoring
 
 ## ✅ Requirements Fulfilled
 
@@ -35,10 +39,10 @@ All requirements from the issue have been implemented:
 
 ### Data Flow
 ```
-Application → Gather Stats → ViewfinderWindow → Display Overlay
-    ↓              ↓               ↓                    ↓
-  start_time   ObjectDetector  showFrameWithStats  drawDebugInfo
-               PerformanceMonitor
+Application → Gather Stats → ViewfinderWindow/NetworkStreamer → Display Overlay
+    ↓              ↓                    ↓                               ↓
+  start_time   ObjectDetector   showFrameWithStats          drawDebugInfo
+               PerformanceMonitor updateFrameWithStats
                FrameProcessor
 ```
 
@@ -60,21 +64,24 @@ Application → Gather Stats → ViewfinderWindow → Display Overlay
 ## 📁 Files Modified
 
 ### Source Code (src/)
-- `application.cpp` - Integration of statistics gathering
+- `application.cpp` - Integration of statistics gathering for both viewfinder and network stream
 - `object_detector.cpp` - Statistics tracking and retrieval
 - `parallel_frame_processor.cpp` - Image save counter
-- `viewfinder_window.cpp` - Debug overlay rendering
+- `viewfinder_window.cpp` - Debug overlay rendering (local display)
+- `network_streamer.cpp` - Debug overlay rendering (network stream)
 
 ### Headers (include/)
 - `application_context.hpp` - Start time and resolution fields
 - `object_detector.hpp` - Statistics methods and members
 - `parallel_frame_processor.hpp` - Image counter getter
 - `viewfinder_window.hpp` - Stats display methods
+- `network_streamer.hpp` - Stats display methods for network stream
 
 ### Tests (tests/)
 - `test_object_detector.cpp` - 3 new tests
 - `test_parallel_frame_processor.cpp` - 1 new test
 - `test_viewfinder_window.cpp` - 1 new test
+- `test_network_streamer.cpp` - 1 new test for stats display
 
 ### Documentation
 - `CHANGES_SUMMARY.md` - Detailed changes overview
@@ -107,13 +114,25 @@ Application → Gather Stats → ViewfinderWindow → Display Overlay
 └──────────────────────────────────────┘
 ```
 
-Press **SPACE** to toggle overlay on/off
+Press **SPACE** to toggle overlay on/off (viewfinder only)
+
+**Note:** Network stream always shows debug overlay for remote monitoring
 
 ## 🎮 Usage
 
-### Enable Viewfinder
+### Enable Viewfinder (Local Display)
 ```bash
 ./object_detection --show-preview
+```
+
+### Enable Network Stream (Remote Access)
+```bash
+./object_detection --enable-streaming
+```
+
+### Enable Both
+```bash
+./object_detection --show-preview --enable-streaming
 ```
 
 ### Keyboard Controls

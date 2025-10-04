@@ -36,6 +36,24 @@ public:
     void updateFrame(const cv::Mat& frame, const std::vector<Detection>& detections);
     
     /**
+     * Update the current frame with statistics overlay
+     */
+    void updateFrameWithStats(const cv::Mat& frame, 
+                             const std::vector<Detection>& detections,
+                             double current_fps,
+                             double avg_processing_time_ms,
+                             int total_objects_detected,
+                             int total_images_saved,
+                             const std::chrono::steady_clock::time_point& start_time,
+                             const std::vector<std::pair<std::string, int>>& top_objects,
+                             int camera_width,
+                             int camera_height,
+                             int camera_id,
+                             const std::string& camera_name,
+                             int detection_width,
+                             int detection_height);
+    
+    /**
      * Stop the streaming server
      */
     void stop();
@@ -69,6 +87,19 @@ private:
     void handleClient(int client_socket);
     std::vector<uchar> encodeFrameAsJpeg(const cv::Mat& frame);
     cv::Mat drawBoundingBoxes(const cv::Mat& frame, const std::vector<Detection>& detections);
+    void drawDebugInfo(cv::Mat& frame,
+                      double current_fps,
+                      double avg_processing_time_ms,
+                      int total_objects_detected,
+                      int total_images_saved,
+                      const std::chrono::steady_clock::time_point& start_time,
+                      const std::vector<std::pair<std::string, int>>& top_objects,
+                      int camera_width,
+                      int camera_height,
+                      int camera_id,
+                      const std::string& camera_name,
+                      int detection_width,
+                      int detection_height);
     cv::Scalar getColorForClass(const std::string& class_name) const;
     std::string getLocalIpAddress() const;
 };

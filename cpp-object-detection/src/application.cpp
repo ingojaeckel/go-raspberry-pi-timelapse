@@ -228,7 +228,28 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                     
                     // Update network streamer if enabled
                     if (ctx.config.enable_streaming && ctx.network_streamer) {
-                        ctx.network_streamer->updateFrame(ctx.frame, result.detections);
+                        // Get statistics for display (same as viewfinder)
+                        auto top_objects = ctx.detector->getTopDetectedObjects(10);
+                        int total_objects = ctx.detector->getTotalObjectsDetected();
+                        int total_images = ctx.frame_processor->getTotalImagesSaved();
+                        std::string camera_name = "";
+                        
+                        ctx.network_streamer->updateFrameWithStats(
+                            ctx.frame,
+                            result.detections,
+                            ctx.perf_monitor->getCurrentFPS(),
+                            ctx.perf_monitor->getAverageProcessingTime(),
+                            total_objects,
+                            total_images,
+                            ctx.start_time,
+                            top_objects,
+                            ctx.config.frame_width,
+                            ctx.config.frame_height,
+                            ctx.config.camera_id,
+                            camera_name,
+                            ctx.detection_width,
+                            ctx.detection_height
+                        );
                     }
                 }
             } catch (const std::exception& e) {
