@@ -36,8 +36,11 @@ struct ApplicationContext {
     cv::Mat frame;
     std::chrono::steady_clock::time_point last_heartbeat;
     std::chrono::steady_clock::time_point last_frame_time;
+    std::chrono::steady_clock::time_point start_time;
     std::chrono::milliseconds heartbeat_interval;
     std::chrono::milliseconds frame_interval;
+    int detection_width;
+    int detection_height;
 };
 
 // Function declarations for main.cpp helper functions

@@ -65,6 +65,11 @@ public:
      * Get current queue size
      */
     size_t getQueueSize() const;
+    
+    /**
+     * Get total number of images saved since start
+     */
+    int getTotalImagesSaved() const;
 
 private:
     std::shared_ptr<ObjectDetector> detector_;
@@ -79,6 +84,7 @@ private:
     std::chrono::steady_clock::time_point last_photo_time_;
     std::mutex photo_mutex_;
     static constexpr int PHOTO_INTERVAL_SECONDS = 10;
+    int total_images_saved_;
     
     // Threading infrastructure
     std::vector<std::thread> worker_threads_;

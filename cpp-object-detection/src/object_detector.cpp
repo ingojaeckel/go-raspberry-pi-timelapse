@@ -18,7 +18,7 @@ ObjectDetector::ObjectDetector(const std::string& model_path,
     : model_path_(model_path), config_path_(config_path), classes_path_(classes_path),
       confidence_threshold_(confidence_threshold), detection_scale_factor_(detection_scale_factor),
       logger_(logger), model_type_(model_type),
-      initialized_(false) {
+      initialized_(false), total_objects_detected_(0) {
 }
 
 ObjectDetector::~ObjectDetector() = default;
@@ -217,6 +217,10 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             new_tracker.frames_since_detection = 0;
             new_tracker.is_new = true;  // Mark as newly entered
             tracked_objects_.push_back(new_tracker);
+            
+            // Update statistics
+            total_objects_detected_++;
+            object_type_counts_[detection.class_name]++;
         }
     }
     
@@ -275,4 +279,26 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
     
     // Note: Exit detection would require more sophisticated tracking
     // For now, we focus on entry and movement detection which are more reliable
+}
+
+int ObjectDetector::getTotalObjectsDetected() const {
+    return total_objects_detected_;
+}
+
+std::vector<std::pair<std::string, int>> ObjectDetector::getTopDetectedObjects(int top_n) const {
+    // Convert map to vector for sorting
+    std::vector<std::pair<std::string, int>> sorted_objects(object_type_counts_.begin(), object_type_counts_.end());
+    
+    // Sort by count in descending order
+    std::sort(sorted_objects.begin(), sorted_objects.end(),
+              [](const auto& a, const auto& b) {
+                  return a.second > b.second;
+              });
+    
+    // Return top N objects
+    if (sorted_objects.size() > static_cast<size_t>(top_n)) {
+        sorted_objects.resize(top_n);
+    }
+    
+    return sorted_objects;
 }
