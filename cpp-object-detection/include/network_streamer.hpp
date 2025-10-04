@@ -51,7 +51,9 @@ public:
                              int camera_id,
                              const std::string& camera_name,
                              int detection_width,
-                             int detection_height);
+                             int detection_height,
+                             bool night_mode_active = false,
+                             const cv::Mat& preprocessed_frame = cv::Mat());
     
     /**
      * Stop the streaming server

@@ -216,7 +216,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.config.camera_id,
                             camera_name,
                             ctx.detection_width,
-                            ctx.detection_height
+                            ctx.detection_height,
+                            result.night_mode_active,
+                            result.preprocessed_frame
                         );
                         
                         // Check if user wants to close the viewfinder
@@ -248,7 +250,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.config.camera_id,
                             camera_name,
                             ctx.detection_width,
-                            ctx.detection_height
+                            ctx.detection_height,
+                            result.night_mode_active,
+                            result.preprocessed_frame
                         );
                     }
                 }

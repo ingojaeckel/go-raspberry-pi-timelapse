@@ -457,15 +457,18 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
     FrameResult result;
     result.capture_time = start_time;
     result.processed = true;
+    result.night_mode_active = false;
     
     try {
         // Check if we're in night mode
         bool night_mode = isNightMode(frame);
+        result.night_mode_active = night_mode;
         
         // Preprocess frame for detection if in night mode
         cv::Mat detection_frame = frame;
         if (night_mode) {
             detection_frame = preprocessForNight(frame);
+            result.preprocessed_frame = detection_frame.clone();  // Store for viewfinder/streaming
             logger_->debug("Applied night mode preprocessing for detection");
         }
         
