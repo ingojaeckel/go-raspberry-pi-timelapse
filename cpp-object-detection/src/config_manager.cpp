@@ -48,6 +48,7 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             return ParseResult::LIST_REQUESTED;
         } else {
             std::cerr << "Unknown argument: " << arg << std::endl;
+            std::cerr.flush();
             return ParseResult::PARSE_ERROR;
         }
     }
@@ -93,6 +94,7 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
         return true;
     } catch (const std::exception& e) {
         std::cerr << "Invalid value for " << arg << ": " << value << std::endl;
+        std::cerr.flush();
         return false;
     }
 }
@@ -146,6 +148,9 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  - macOS x86_64 (Intel-based Macs)\n"
               << "  - Headless operation (no X11 required on Linux)\n"
               << "  - USB webcams (Logitech C920 recommended)\n\n";
+    
+    // Explicit flush for macOS compatibility
+    std::cout.flush();
 }
 
 bool ConfigManager::validateConfig() const {
@@ -199,6 +204,7 @@ bool ConfigManager::validateConfig() const {
 
 void ConfigManager::listCameras() const {
     std::cout << "Scanning for available cameras...\n" << std::endl;
+    std::cout.flush();
     
     auto cameras = WebcamInterface::listAvailableCameras();
     
@@ -221,4 +227,7 @@ void ConfigManager::listCameras() const {
         std::cout << "To use a specific camera, use: --camera-id <ID>" << std::endl;
         std::cout << "Example: ./object_detection --camera-id 0" << std::endl;
     }
+    
+    // Explicit flush for macOS compatibility
+    std::cout.flush();
 }

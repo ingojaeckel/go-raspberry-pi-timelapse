@@ -20,9 +20,18 @@ endif()
 
 # Find required packages  
 # OpenCV 4.x uses opencv4 as package name
-find_package(OpenCV REQUIRED PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
-if(NOT OpenCV_FOUND)
-    find_package(opencv4 REQUIRED)
+if(APPLE)
+    # macOS with Homebrew - find OpenCV without specific paths
+    find_package(OpenCV REQUIRED)
+else()
+    # Linux - try multiple approaches to find OpenCV
+    find_package(OpenCV QUIET)
+    if(NOT OpenCV_FOUND)
+        find_package(OpenCV REQUIRED PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
+    endif()
+    if(NOT OpenCV_FOUND)
+        find_package(opencv4 REQUIRED)
+    endif()
 endif()
 find_package(Threads REQUIRED)
 
@@ -33,6 +42,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # Source files
 set(SOURCES
     src/main.cpp
+    src/application.cpp
     src/webcam_interface.cpp
     src/object_detector.cpp
     src/config_manager.cpp
@@ -61,6 +71,14 @@ if(APPLE)
         -Wextra 
         -pedantic
         -mtune=native  # Use mtune instead of march on macOS for better compatibility
+    )
+    # Add camera usage description for macOS permissions
+    add_compile_definitions(
+        "CAMERA_USAGE_DESCRIPTION=\"This app needs camera access for object detection\""
+    )
+    set_target_properties(object_detection PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist
     )
 else()
     # Linux-specific optimizations
