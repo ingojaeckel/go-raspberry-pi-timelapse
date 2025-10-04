@@ -12,6 +12,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Real-time viewfinder** - optional on-screen preview with detection bounding boxes and performance statistics (--show-preview)
   - **Debug overlay** with performance metrics, detection counts, uptime, and top detected objects
   - **Toggle overlay** with SPACE key for minimal screen coverage
+- **Network streaming** - MJPEG HTTP streaming to view feed on any device on local network (--enable-streaming)
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
 - **Structured logging** with timestamps and detailed position tracking
@@ -174,7 +175,7 @@ public:
 
 4. **Object Detector (`object_detector.hpp/cpp`)**
    - Object detection orchestrator using pluggable models
-   - Target class filtering (person, vehicles, animals)
+   - Target class filtering (person, vehicles, animals, furniture, books)
    - **Object tracking and permanence model**:
      - Tracks objects frame-to-frame based on position and type
      - Distinguishes between new objects entering frame vs. tracked objects moving
@@ -340,7 +341,35 @@ OPTIONS:
   --enable-gpu                   Enable GPU acceleration if available
   --no-headless                  Disable headless mode (show GUI windows)
   --show-preview                 Show real-time viewfinder with detection bounding boxes
+  --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)
+  --streaming-port N             Port for HTTP streaming server (default: 8080)
 ```
+
+### Network Streaming
+
+Stream live video with object detection bounding boxes to any device on your local network. Compatible with web browsers, VLC, and other standard video players.
+
+```bash
+# Enable network streaming on default port 8080
+./object_detection --enable-streaming
+
+# Use custom port
+./object_detection --enable-streaming --streaming-port 9000
+
+# Combine with other features
+./object_detection --enable-streaming --show-preview --model-type yolov5l
+```
+
+**Accessing the stream:**
+- The application will display the streaming URL when it starts
+- Open the URL in any web browser: `http://<ip-address>:8080/stream`
+- Or open in VLC: Media → Open Network Stream → enter the URL
+
+**Example URLs:**
+- `http://192.168.1.100:8080/stream`
+- `http://10.0.0.5:9000/stream`
+
+For detailed information about network streaming, see [NETWORK_STREAMING_FEATURE.md](NETWORK_STREAMING_FEATURE.md).
 
 ### CPU Rate Limiting
 
@@ -392,6 +421,18 @@ The application includes an **analysis rate limiting feature** to reduce CPU usa
 **Development mode with real-time preview:**
 ```bash
 ./object_detection --show-preview --max-fps 10
+```
+
+**Network streaming for remote viewing:**
+```bash
+# Stream to devices on same network
+./object_detection --enable-streaming
+
+# Custom streaming port
+./object_detection --enable-streaming --streaming-port 9000
+
+# Streaming with high-accuracy model
+./object_detection --enable-streaming --model-type yolov5l --min-confidence 0.7
 ```
 
 ## Webcam Setup
@@ -637,7 +678,7 @@ ssh user@target-system 'tail -f /var/log/object_detection.log'
 1. **Update target classes in `object_detector.cpp`:**
 ```cpp
 std::vector<std::string> ObjectDetector::getTargetClasses() {
-    return {"person", "car", "truck", "bus", "motorcycle", "bicycle", "cat", "dog", "bird"};
+    return {"person", "car", "truck", "bus", "motorcycle", "bicycle", "cat", "dog", "bird", "bear", "chair", "book"};
 }
 ```
 

@@ -120,6 +120,19 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.logger->info("Real-time viewfinder enabled - press 'q' or ESC to stop");
     }
 
+    // Initialize network streamer if streaming is enabled
+    if (ctx.config.enable_streaming) {
+        ctx.network_streamer = std::make_shared<NetworkStreamer>(ctx.logger, ctx.config.streaming_port);
+        if (!ctx.network_streamer->initialize()) {
+            ctx.logger->error("Failed to initialize network streamer");
+            return false;
+        }
+        if (!ctx.network_streamer->start()) {
+            ctx.logger->error("Failed to start network streamer");
+            return false;
+        }
+    }
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
     ctx.start_time = std::chrono::steady_clock::now();
@@ -212,6 +225,11 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             running = false;
                         }
                     }
+                    
+                    // Update network streamer if enabled
+                    if (ctx.config.enable_streaming && ctx.network_streamer) {
+                        ctx.network_streamer->updateFrame(ctx.frame, result.detections);
+                    }
                 }
             } catch (const std::exception& e) {
                 ctx.logger->error("Error processing frame result: " + std::string(e.what()));
@@ -273,6 +291,11 @@ void performGracefulShutdown(ApplicationContext& ctx) {
     // Close viewfinder if it was open
     if (ctx.viewfinder) {
         ctx.viewfinder->close();
+    }
+    
+    // Stop network streamer if it was running
+    if (ctx.network_streamer) {
+        ctx.network_streamer->stop();
     }
     
     ctx.webcam->release();
