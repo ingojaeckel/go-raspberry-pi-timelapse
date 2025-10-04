@@ -46,6 +46,8 @@ The application supports multiple detection models with different speed/accuracy
 
 ## Architecture
 
+> **📖 For comprehensive architecture documentation including sequence diagrams, state machines, and detailed component interactions, see [ARCHITECTURE.md](ARCHITECTURE.md)**
+
 ### System Design
 
 ```
