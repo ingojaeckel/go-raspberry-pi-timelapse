@@ -712,10 +712,17 @@ std::vector<std::string> ObjectDetector::getTargetClasses() {
 # Install 32-bit build tools
 sudo apt-get install -y gcc-multilib g++-multilib
 
+# For 32-bit OpenCV (required for building)
+sudo dpkg --add-architecture i386
+sudo apt-get update
+sudo apt-get install -y libopencv-dev:i386
+
 # Build 32-bit executable
 cd cpp-object-detection
 ./scripts/build-linux-386.sh
 ```
+
+> **Note:** 32-bit OpenCV libraries (`libopencv-dev:i386`) may not be available in all Ubuntu versions. If you encounter installation issues, you'll need to build on a native 32-bit system or use an older Ubuntu version that provides 32-bit packages.
 
 **Hardware Constraints:**
 
