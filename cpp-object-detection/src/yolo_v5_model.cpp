@@ -126,7 +126,7 @@ ModelMetrics YoloV5SmallModel::getMetrics() const {
 }
 
 std::vector<std::string> YoloV5SmallModel::getSupportedClasses() const {
-    return getTargetClasses();
+    return class_names_;
 }
 
 bool YoloV5SmallModel::isInitialized() const {
@@ -445,7 +445,7 @@ ModelMetrics YoloV5LargeModel::getMetrics() const {
 }
 
 std::vector<std::string> YoloV5LargeModel::getSupportedClasses() const {
-    return getTargetClasses();
+    return class_names_;
 }
 
 bool YoloV5LargeModel::isInitialized() const {

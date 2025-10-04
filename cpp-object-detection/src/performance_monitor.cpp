@@ -32,7 +32,10 @@ void PerformanceMonitor::endFrameProcessing() {
     
     updateFPS();
     
-    logger_->debug("Frame processed in " + std::to_string(processing_time_ms) + " ms");
+    if (total_frames_processed_ % 100 == 0) {
+        // only print every 100 frames to reduce log spam
+        logger_->debug("Frame processed in " + std::to_string(processing_time_ms) + " ms");
+    }
 }
 
 double PerformanceMonitor::getCurrentFPS() const {

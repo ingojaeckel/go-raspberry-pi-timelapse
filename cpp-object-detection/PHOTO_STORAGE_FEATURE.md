@@ -8,7 +8,7 @@ This feature automatically saves photos with bounding boxes when objects are det
 
 ### 1. Photo Recording on Detection ✅
 - Photos are automatically saved when target objects enter the frame
-- Supports detection of: person, car, truck, bus, motorcycle, bicycle, cat, dog
+- Supports detection of: person, car, truck, bus, motorcycle, bicycle, cat, dog, bird, bear, chair, book
 
 ### 2. Timestamped Filenames ✅
 **Format:** `YYYY-MM-DD HHMMSS [objects] detected.jpg`
@@ -31,8 +31,12 @@ Each detected object has a rectangle drawn around it with:
 | Person | Green | (0, 255, 0) |
 | Cat | Red | (0, 0, 255) |
 | Dog | Blue | (255, 0, 0) |
+| Bird | Cyan | (255, 255, 0) |
+| Bear | Dark Cyan/Teal | (0, 128, 128) |
 | Car, Truck, Bus | Yellow | (0, 255, 255) |
 | Motorcycle, Bicycle | Magenta | (255, 0, 255) |
+| Chair | Purple | (128, 0, 128) |
+| Book | Orange | (255, 128, 0) |
 | Other objects | White | (255, 255, 255) |
 
 ### 5. Center Coordinates Logging ✅

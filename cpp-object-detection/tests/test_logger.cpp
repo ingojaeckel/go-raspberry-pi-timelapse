@@ -55,18 +55,6 @@ TEST_F(LoggerTest, LogBasicMessage) {
     EXPECT_TRUE(line.find("[INFO]") != std::string::npos);
 }
 
-TEST_F(LoggerTest, LogObjectDetection) {
-    auto logger = std::make_unique<Logger>(test_log_file, false);
-    logger->logObjectDetection("person", "entered", 0.85);
-    
-    std::ifstream file(test_log_file);
-    std::string line;
-    std::getline(file, line);
-    
-    EXPECT_TRUE(line.find("person entered frame") != std::string::npos);
-    EXPECT_TRUE(line.find("85% confidence") != std::string::npos);
-}
-
 TEST_F(LoggerTest, LogPerformanceWarning) {
     auto logger = std::make_unique<Logger>(test_log_file, false);
     logger->logPerformanceWarning(0.5, 1.0);

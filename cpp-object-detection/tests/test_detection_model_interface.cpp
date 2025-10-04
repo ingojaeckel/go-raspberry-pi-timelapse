@@ -48,7 +48,12 @@ public:
     }
     
     std::vector<std::string> getSupportedClasses() const override {
-        return getTargetClasses();
+        // Return a subset of COCO classes for testing
+        return {
+            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
+            "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
+            "bird", "cat", "dog", "horse", "sheep", "cow"
+        };
     }
     
     bool isInitialized() const override {
