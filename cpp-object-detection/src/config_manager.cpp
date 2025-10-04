@@ -70,6 +70,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->log_file = value;
         } else if (arg == "--heartbeat-interval") {
             config_->heartbeat_interval_minutes = std::stoi(value);
+        } else if (arg == "--summary-interval") {
+            config_->summary_interval_minutes = std::stoi(value);
         } else if (arg == "--camera-id") {
             config_->camera_id = std::stoi(value);
         } else if (arg == "--frame-width") {
@@ -123,6 +125,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --min-fps-warning N            FPS threshold for performance warnings (default: 1)\n"
               << "  --log-file FILE                Log file path (default: object_detection.log)\n"
               << "  --heartbeat-interval N         Heartbeat log interval in minutes (default: 10)\n"
+              << "  --summary-interval N           Detection summary interval in minutes (default: 60)\n"
               << "  --camera-id N                  Camera device ID (default: 0)\n"
               << "  --frame-width N                Frame width in pixels (default: 1280)\n"
               << "  --frame-height N               Frame height in pixels (default: 720)\n"
@@ -189,6 +192,11 @@ bool ConfigManager::validateConfig() const {
     
     if (config_->heartbeat_interval_minutes <= 0) {
         std::cerr << "Invalid heartbeat_interval_minutes: " << config_->heartbeat_interval_minutes << std::endl;
+        return false;
+    }
+    
+    if (config_->summary_interval_minutes <= 0) {
+        std::cerr << "Invalid summary_interval_minutes: " << config_->summary_interval_minutes << std::endl;
         return false;
     }
     
