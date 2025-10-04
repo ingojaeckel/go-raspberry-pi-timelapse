@@ -2,7 +2,14 @@
 
 ## Overview
 
-The network streaming feature allows you to view the live video feed with real-time object detection bounding boxes from any device on your local network. The stream uses the MJPEG (Motion JPEG) format over HTTP, which is compatible with standard web browsers, VLC media player, and other widely available applications.
+The network streaming feature allows you to view the live video feed with real-time object detection bounding boxes and comprehensive debug information from any device on your local network. The stream uses the MJPEG (Motion JPEG) format over HTTP, which is compatible with standard web browsers, VLC media player, and other widely available applications.
+
+**New:** The network stream now displays the same performance statistics and debug information as the local viewfinder, including:
+- Current FPS and average processing time
+- Total objects detected and images saved
+- Application uptime
+- Top 10 most frequently detected objects
+- Camera and detection resolution information
 
 ## Requirements
 
