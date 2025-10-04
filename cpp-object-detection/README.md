@@ -23,17 +23,24 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 
 ## Object Tracking and Permanence Model
 
-The application implements a simple but effective object tracking system that maintains object identity across frames:
+The application implements an enhanced object tracking system that maintains object identity across frames with position history:
 
 ### How It Works
 
 1. **Position-Based Tracking**: Objects are tracked using their center (x, y) coordinates and object type (e.g., "cat", "person")
-2. **Movement Detection**: When an object of the same type is detected in a subsequent frame:
+2. **🆕 Position History**: Maintains up to 10 recent positions for each tracked object to analyze movement patterns
+3. **🆕 Closest-Match Algorithm**: Finds the best matching object when multiple candidates exist within threshold
+4. **Movement Detection**: When an object of the same type is detected in a subsequent frame:
    - If distance from previous position < 100 pixels → Same object (has moved)
    - If distance from previous position > 100 pixels → Different object (new entry)
-3. **Smart Logging**: 
+5. **🆕 Movement Pattern Analysis**: 
+   - Calculates average step size from position history
+   - Tracks overall displacement and path length
+   - Provides detailed movement statistics in debug mode
+6. **Smart Logging**: 
    - New objects: `"new cat entered frame at (320, 240)"`
    - Moved objects: `"cat seen earlier moved from (320, 240) -> (325, 245)"`
+   - 🆕 Debug mode: Detailed distance calculations and movement patterns
 
 ### Configuration
 
@@ -42,16 +49,27 @@ The tracking behavior is controlled by these parameters in the code:
 - **MAX_MOVEMENT_DISTANCE**: 100 pixels - Maximum distance an object can move between frames and still be considered the same object
 - **Movement threshold**: 5 pixels - Minimum movement to log (avoids noise from detection jitter)
 - **Tracking timeout**: 30 frames - Objects not seen for 30 frames are removed from tracking
+- **🆕 MAX_POSITION_HISTORY**: 10 positions - Number of recent positions to track for movement analysis
 
 ### Example Scenario
 
 ```
 Frame 1: Detect "cat" at (100, 100) → Log: "new cat entered frame at (100, 100)"
 Frame 2: Detect "cat" at (105, 102) → Log: "cat seen earlier moved from (100, 100) -> (105, 102)"
+        Debug: "Movement pattern: 2 positions tracked, avg step: 5.4 px"
 Frame 3: Detect "cat" at (300, 100) → Log: "new cat entered frame at (300, 100)" (too far, likely different cat)
 ```
 
-This simple model assumes objects don't teleport across the frame and provides basic permanence tracking suitable for monitoring applications.
+**🆕 Enhanced Debug Output** (with `--verbose` flag):
+```
+[DEBUG] Processing detection: cat at (105, 102)
+[DEBUG]   Distance to existing cat at (100, 100): 5.4 pixels
+[DEBUG]   Matched to existing cat (distance: 5.4 pixels)
+[DEBUG] Movement analysis: 2 positions in history, average step: 5.4 pixels
+[DEBUG] Logging movement: cat moved 5.4 pixels [avg step: 5.4 px, overall path: 5.4 px]
+```
+
+For complete details on movement detection improvements, see [MOVEMENT_DETECTION_IMPROVEMENTS.md](MOVEMENT_DETECTION_IMPROVEMENTS.md).
 
 ## Model Selection
 
@@ -173,12 +191,16 @@ public:
 4. **Object Detector (`object_detector.hpp/cpp`)**
    - Object detection orchestrator using pluggable models
    - Target class filtering (person, vehicles, animals)
-   - **Object tracking and permanence model**:
+   - **🆕 Enhanced object tracking and permanence model**:
      - Tracks objects frame-to-frame based on position and type
+     - Maintains position history (up to 10 recent positions) for movement pattern analysis
      - Distinguishes between new objects entering frame vs. tracked objects moving
      - Uses configurable distance threshold (100 pixels) for movement detection
+     - Improved closest-match algorithm for accurate object association
+     - Comprehensive debug logging for distance calculations and movement patterns
      - Logs "new [object] entered frame at (x, y)" for new detections
-     - Logs "[object] moved from (x1, y1) -> (x2, y2)" for tracked movement
+     - Logs "[object] moved from (x1, y1) -> (x2, y2)" with movement statistics
+     - See [MOVEMENT_DETECTION_IMPROVEMENTS.md](MOVEMENT_DETECTION_IMPROVEMENTS.md) for details
    - Model switching and performance monitoring
 
 5. **🆕 Detection Model Interface (`detection_model_interface.hpp`)**
