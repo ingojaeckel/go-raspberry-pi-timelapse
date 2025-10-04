@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <deque>
 #include "logger.hpp"
 #include "detection_model_interface.hpp"
 
@@ -19,9 +20,13 @@ public:
         std::string object_type;
         cv::Point2f center;
         cv::Point2f previous_center;  // Track previous position for movement detection
+        std::deque<cv::Point2f> position_history;  // Track path of object movement
         bool was_present_last_frame;
         int frames_since_detection;
         bool is_new;  // Flag to indicate if this is a newly entered object
+        
+        // Constants for movement history tracking
+        static constexpr size_t MAX_POSITION_HISTORY = 10;  // Keep last 10 positions
     };
 
     ObjectDetector(const std::string& model_path,
