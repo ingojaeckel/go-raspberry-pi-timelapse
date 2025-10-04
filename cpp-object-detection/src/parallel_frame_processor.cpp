@@ -13,7 +13,7 @@ ParallelFrameProcessor::ParallelFrameProcessor(std::shared_ptr<ObjectDetector> d
                                              const std::string& output_dir)
     : detector_(detector), logger_(logger), perf_monitor_(perf_monitor),
       num_threads_(num_threads), max_queue_size_(max_queue_size), output_dir_(output_dir),
-      shutdown_requested_(false), frames_in_progress_(0) {
+      shutdown_requested_(false), frames_in_progress_(0), total_images_saved_(0) {
     last_photo_time_ = std::chrono::steady_clock::now() - std::chrono::seconds(PHOTO_INTERVAL_SECONDS);
 }
 
@@ -171,19 +171,73 @@ void ParallelFrameProcessor::workerThread() {
     logger_->debug("Worker thread exiting");
 }
 
-void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections) {
+void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections, const std::shared_ptr<ObjectDetector>& detector) {
     std::lock_guard<std::mutex> lock(photo_mutex_);
+    
+    // Count current object types
+    std::map<std::string, int> current_object_counts;
+    for (const auto& detection : detections) {
+        current_object_counts[detection.class_name]++;
+    }
+    
+    // Check if there are new object types or new instances
+    bool has_new_objects = false;
+    bool has_new_types = false;
+    
+    // Check for new types
+    for (const auto& [type, count] : current_object_counts) {
+        if (last_saved_object_counts_.find(type) == last_saved_object_counts_.end()) {
+            has_new_types = true;
+            logger_->info("New object type detected: " + type);
+            break;
+        }
+    }
+    
+    // Check for new instances of existing types (more objects of same type)
+    if (!has_new_types) {
+        for (const auto& [type, count] : current_object_counts) {
+            auto it = last_saved_object_counts_.find(type);
+            if (it != last_saved_object_counts_.end() && count > it->second) {
+                has_new_objects = true;
+                logger_->info("New instance of " + type + " detected (count: " + 
+                             std::to_string(it->second) + " -> " + std::to_string(count) + ")");
+                break;
+            }
+        }
+    }
+    
+    // Also check if any tracked object is marked as new
+    if (!has_new_types && !has_new_objects && detector) {
+        const auto& tracked = detector->getTrackedObjects();
+        for (const auto& obj : tracked) {
+            if (obj.is_new && obj.frames_since_detection == 0) {
+                has_new_objects = true;
+                logger_->info("Newly entered " + obj.object_type + " detected by tracker");
+                break;
+            }
+        }
+    }
     
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_photo_time_);
     
-    // Only save photo if enough time has passed (10 second interval)
-    if (elapsed.count() < PHOTO_INTERVAL_SECONDS) {
+    // Save photo if:
+    // 1. New types or new instances detected (immediate save, bypass 10s limit)
+    // 2. OR enough time has passed (10 second interval) for stationary objects
+    bool should_save_immediately = has_new_types || has_new_objects;
+    bool enough_time_passed = elapsed.count() >= PHOTO_INTERVAL_SECONDS;
+    
+    if (!should_save_immediately && !enough_time_passed) {
         return;
     }
     
-    // Update last photo time
+    if (should_save_immediately) {
+        logger_->info("Saving photo immediately due to new objects/types detected");
+    }
+    
+    // Update last photo time and object counts
     last_photo_time_ = now;
+    last_saved_object_counts_ = current_object_counts;
     
     // Create a copy of the frame to draw on
     cv::Mat annotated_frame = frame.clone();
@@ -220,6 +274,7 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
     // Save the image
     if (cv::imwrite(filepath, annotated_frame)) {
         logger_->info("Saved detection photo: " + filepath);
+        total_images_saved_++;
     } else {
         logger_->error("Failed to save detection photo: " + filepath);
     }
@@ -311,9 +366,14 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
             }
         }
         
+        // Update object tracking before saving photo
+        if (!target_detections.empty()) {
+            detector_->updateTracking(target_detections);
+        }
+        
         // Save photo with bounding boxes if we have target detections
         if (!target_detections.empty()) {
-            saveDetectionPhoto(frame, target_detections);
+            saveDetectionPhoto(frame, target_detections, detector_);
         }
         
     } catch (const std::exception& e) {
@@ -322,4 +382,8 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
     }
     
     return result;
+}
+
+int ParallelFrameProcessor::getTotalImagesSaved() const {
+    return total_images_saved_;
 }

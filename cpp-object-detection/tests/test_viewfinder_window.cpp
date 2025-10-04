@@ -62,3 +62,43 @@ TEST_F(ViewfinderWindowTest, ShouldCloseReturnsTrue) {
     // Without initialization, should return true
     EXPECT_TRUE(viewfinder->shouldClose());
 }
+
+TEST_F(ViewfinderWindowTest, ShowFrameWithStatsWithoutInitialization) {
+    // Create a test frame
+    cv::Mat test_frame(480, 640, CV_8UC3, cv::Scalar(0, 0, 255));
+    
+    // Create test detections
+    std::vector<Detection> detections;
+    Detection det;
+    det.class_name = "cat";
+    det.confidence = 0.92;
+    det.bbox = cv::Rect(50, 50, 150, 150);
+    detections.push_back(det);
+    
+    // Create top objects list
+    std::vector<std::pair<std::string, int>> top_objects = {
+        {"cat", 5},
+        {"person", 3},
+        {"dog", 2}
+    };
+    
+    auto start_time = std::chrono::steady_clock::now();
+    
+    // Should not crash when showing frame with stats without initialization
+    EXPECT_NO_THROW(viewfinder->showFrameWithStats(
+        test_frame, 
+        detections,
+        15.5,  // FPS
+        45.2,  // avg processing time
+        10,    // total objects detected
+        3,     // total images saved
+        start_time,
+        top_objects,
+        640,   // camera width
+        480,   // camera height
+        0,     // camera ID
+        "Test Camera",
+        320,   // detection width
+        240    // detection height
+    ));
+}
