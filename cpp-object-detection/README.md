@@ -203,16 +203,27 @@ cd cpp-object-detection
 ```
 
 2. **Build the application:**
+
+**Cross-platform (auto-detects OS):**
 ```bash
 ./scripts/build.sh
 ```
 
+**Platform-specific scripts:**
+```bash
+# Linux
+./scripts/build.sh
+
+# macOS (Intel)
+./scripts/build-mac.sh
+```
+
 3. **Download a YOLO model (required for object detection):**
 ```bash
-# Use wget on Linux or curl on macOS/Linux
-wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+# Use curl on macOS or wget on Linux
+curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 # OR
-curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 ```
 
 ### Cross-Platform Builds
@@ -356,12 +367,22 @@ sudo usermod -a -G video $USER
 
 ### Automated Tests
 
+**Cross-platform (auto-detects OS):**
 ```bash
 # Run all tests
 ./scripts/test.sh
+```
+
+**Platform-specific scripts:**
+```bash
+# Linux
+./scripts/test.sh
+
+# macOS (Intel)  
+./scripts/test-mac.sh
 
 # Unit tests only
-cd build && make object_detection_tests && ./object_detection_tests
+cd build && make object_detection_tests && ./tests/object_detection_tests
 ```
 
 ### Manual E2E Testing

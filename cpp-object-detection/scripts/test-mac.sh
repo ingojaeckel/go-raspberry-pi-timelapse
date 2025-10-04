@@ -7,7 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Running C++ Object Detection Tests${NC}"
+echo -e "${GREEN}Running C++ Object Detection Tests (macOS)${NC}"
 
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -17,31 +17,27 @@ BUILD_DIR="$PROJECT_ROOT/build"
 # Build first if needed
 if [ ! -d "$BUILD_DIR" ] || [ ! -f "$BUILD_DIR/object_detection" ]; then
     echo -e "${YELLOW}Build directory not found, building first...${NC}"
-    "$SCRIPT_DIR/build.sh"
+    "$SCRIPT_DIR/build-mac.sh"
 fi
 
 cd "$BUILD_DIR"
 
 # Check for Google Test
 echo -e "${YELLOW}Checking for Google Test...${NC}"
+# First check if pkg-config is available
+if ! command -v pkg-config &> /dev/null; then
+    echo -e "${RED}Error: pkg-config not found. Please install pkg-config.${NC}"
+    echo -e "${YELLOW}macOS: brew install pkg-config${NC}"
+    exit 1
+fi
+
 if ! pkg-config --exists gtest; then
     echo -e "${RED}Warning: Google Test not found. Installing...${NC}"
-    # Try to install gtest based on platform
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        if command -v brew &> /dev/null; then
-            brew install googletest
-        else
-            echo -e "${RED}Error: Please install Google Test manually with 'brew install googletest'${NC}"
-            exit 1
-        fi
-    elif command -v apt-get &> /dev/null; then
-        sudo apt-get update && sudo apt-get install -y libgtest-dev cmake
-        cd /usr/src/gtest
-        sudo cmake . && sudo make
-        sudo cp lib/*.a /usr/lib
-        cd "$BUILD_DIR"
+    # Try to install gtest on macOS
+    if command -v brew &> /dev/null; then
+        brew install googletest
     else
-        echo -e "${RED}Error: Please install Google Test manually${NC}"
+        echo -e "${RED}Error: Please install Google Test manually with 'brew install googletest'${NC}"
         exit 1
     fi
 fi
@@ -55,11 +51,8 @@ if [ -f "$PROJECT_ROOT/tests/CMakeLists.txt" ]; then
     if [ -f "./tests/object_detection_tests" ]; then
         ./tests/object_detection_tests
         echo -e "${GREEN}All unit tests passed!${NC}"
-    elif [ -f "./object_detection_tests" ]; then
-        ./object_detection_tests
-        echo -e "${GREEN}All unit tests passed!${NC}"
     else
-        echo -e "${RED}Test executable not found${NC}"
+        echo -e "${RED}Test executable not found at expected location${NC}"
         exit 1
     fi
 else
