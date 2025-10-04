@@ -100,11 +100,12 @@ int main(int argc, char* argv[]) {
         logger->info("Minimum confidence threshold: " + std::to_string(config.min_confidence));
         logger->info("Maximum processing rate: " + std::to_string(config.max_fps) + " fps");
         logger->info("Performance warning threshold: " + std::to_string(config.min_fps_warning_threshold) + " fps");
+        logger->info("Detection photos will be saved to: " + config.output_dir);
 
         // Initialize parallel frame processor
         int effective_threads = config.enable_parallel_processing ? config.processing_threads : 1;
         auto frame_processor = std::make_shared<ParallelFrameProcessor>(
-            detector, logger, perf_monitor, effective_threads, config.max_frame_queue_size);
+            detector, logger, perf_monitor, effective_threads, config.max_frame_queue_size, config.output_dir);
 
         if (!frame_processor->initialize()) {
             logger->error("Failed to initialize parallel frame processor");

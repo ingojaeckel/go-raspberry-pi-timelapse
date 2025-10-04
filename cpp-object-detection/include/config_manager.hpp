@@ -29,6 +29,7 @@ public:
         std::string config_path = "models/yolov5s.yaml";
         std::string classes_path = "models/coco.names";
         std::string model_type = "yolov5s";  // Model type: yolov5s, yolov5l, yolov8n, yolov8m
+        std::string output_dir = "detections";  // Directory to store detection photos
         
         // Performance
         bool enable_gpu = false;

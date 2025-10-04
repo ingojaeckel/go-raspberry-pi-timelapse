@@ -85,6 +85,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->processing_threads = std::stoi(value);
         } else if (arg == "--max-frame-queue") {
             config_->max_frame_queue_size = std::stoi(value);
+        } else if (arg == "--output-dir") {
+            config_->output_dir = value;
         } else {
             return false;
         }

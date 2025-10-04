@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <future>
+#include <chrono>
 #include "object_detector.hpp"
 #include "logger.hpp"
 #include "performance_monitor.hpp"
@@ -29,7 +30,8 @@ public:
                           std::shared_ptr<Logger> logger,
                           std::shared_ptr<PerformanceMonitor> perf_monitor,
                           int num_threads = 1,
-                          size_t max_queue_size = 10);
+                          size_t max_queue_size = 10,
+                          const std::string& output_dir = "detections");
     
     ~ParallelFrameProcessor();
 
@@ -71,6 +73,12 @@ private:
     
     int num_threads_;
     size_t max_queue_size_;
+    std::string output_dir_;
+    
+    // Photo storage rate limiting
+    std::chrono::steady_clock::time_point last_photo_time_;
+    std::mutex photo_mutex_;
+    static constexpr int PHOTO_INTERVAL_SECONDS = 10;
     
     // Threading infrastructure
     std::vector<std::thread> worker_threads_;
@@ -85,4 +93,9 @@ private:
     
     // Process a single frame (thread-safe)
     FrameResult processFrameInternal(const cv::Mat& frame);
+    
+    // Helper methods for photo storage
+    void saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections);
+    cv::Scalar getColorForClass(const std::string& class_name) const;
+    std::string generateFilename(const std::vector<Detection>& detections) const;
 };
