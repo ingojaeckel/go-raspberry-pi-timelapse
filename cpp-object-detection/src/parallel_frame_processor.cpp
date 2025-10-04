@@ -239,43 +239,73 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
     last_photo_time_ = now;
     last_saved_object_counts_ = current_object_counts;
     
-    // Create a copy of the frame to draw on
-    cv::Mat annotated_frame = frame.clone();
+    // Check if we're in night mode
+    bool night_mode = isNightMode(frame);
     
-    // Draw bounding boxes for each detection
-    for (const auto& detection : detections) {
-        cv::Scalar color = getColorForClass(detection.class_name);
+    // Helper lambda to annotate a frame with bounding boxes
+    auto annotateFrame = [&](const cv::Mat& input_frame) -> cv::Mat {
+        cv::Mat annotated = input_frame.clone();
         
-        // Draw rectangle around the object
-        cv::rectangle(annotated_frame, detection.bbox, color, 2);
+        // Draw bounding boxes for each detection
+        for (const auto& detection : detections) {
+            cv::Scalar color = getColorForClass(detection.class_name);
+            
+            // Draw rectangle around the object
+            cv::rectangle(annotated, detection.bbox, color, 2);
+            
+            // Draw label with class name and confidence
+            std::string label = detection.class_name + " " + 
+                               std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
+            int baseline;
+            cv::Size text_size = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+            
+            // Draw label background
+            cv::Point text_origin(detection.bbox.x, detection.bbox.y - 5);
+            cv::rectangle(annotated, 
+                         cv::Point(text_origin.x, text_origin.y - text_size.height - 2),
+                         cv::Point(text_origin.x + text_size.width, text_origin.y + 2),
+                         color, cv::FILLED);
+            
+            // Draw label text
+            cv::putText(annotated, label, text_origin, 
+                       cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+        }
         
-        // Draw label with class name and confidence
-        std::string label = detection.class_name + " " + 
-                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
-        int baseline;
-        cv::Size text_size = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-        
-        // Draw label background
-        cv::Point text_origin(detection.bbox.x, detection.bbox.y - 5);
-        cv::rectangle(annotated_frame, 
-                     cv::Point(text_origin.x, text_origin.y - text_size.height - 2),
-                     cv::Point(text_origin.x + text_size.width, text_origin.y + 2),
-                     color, cv::FILLED);
-        
-        // Draw label text
-        cv::putText(annotated_frame, label, text_origin, 
-                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+        return annotated;
+    };
+    
+    // Generate base filename with timestamp and detected objects
+    std::string base_filename = generateFilename(detections);
+    
+    // Save original frame with bounding boxes
+    cv::Mat annotated_original = annotateFrame(frame);
+    std::string original_filepath = output_dir_ + "/" + base_filename;
+    
+    if (cv::imwrite(original_filepath, annotated_original)) {
+        logger_->info("Saved detection photo: " + original_filepath);
+    } else {
+        logger_->error("Failed to save detection photo: " + original_filepath);
     }
     
-    // Generate filename with timestamp and detected objects
-    std::string filename = generateFilename(detections);
-    std::string filepath = output_dir_ + "/" + filename;
-    
-    // Save the image
-    if (cv::imwrite(filepath, annotated_frame)) {
-        logger_->info("Saved detection photo: " + filepath);
-    } else {
-        logger_->error("Failed to save detection photo: " + filepath);
+    // If in night mode, also save preprocessed version
+    if (night_mode) {
+        cv::Mat preprocessed_frame = preprocessForNight(frame);
+        cv::Mat annotated_preprocessed = annotateFrame(preprocessed_frame);
+        
+        // Insert "night-enhanced" before the file extension
+        std::string preprocessed_filename = base_filename;
+        size_t ext_pos = preprocessed_filename.rfind(".jpg");
+        if (ext_pos != std::string::npos) {
+            preprocessed_filename.insert(ext_pos, " night-enhanced");
+        }
+        
+        std::string preprocessed_filepath = output_dir_ + "/" + preprocessed_filename;
+        
+        if (cv::imwrite(preprocessed_filepath, annotated_preprocessed)) {
+            logger_->info("Saved night-enhanced detection photo: " + preprocessed_filepath);
+        } else {
+            logger_->error("Failed to save night-enhanced detection photo: " + preprocessed_filepath);
+        }
     }
 }
 
@@ -336,6 +366,88 @@ std::string ParallelFrameProcessor::generateFilename(const std::vector<Detection
     return timestamp.str() + " " + object_str.str() + ".jpg";
 }
 
+bool ParallelFrameProcessor::isNightTime() const {
+    // Get current time
+    auto now = std::chrono::system_clock::now();
+    auto time_t_now = std::chrono::system_clock::to_time_t(now);
+    std::tm tm_now;
+    localtime_r(&time_t_now, &tm_now);
+    
+    int hour = tm_now.tm_hour;
+    
+    // Consider night time between 8 PM (20:00) and 6 AM (6:00)
+    return hour >= 20 || hour < 6;
+}
+
+double ParallelFrameProcessor::calculateBrightness(const cv::Mat& frame) const {
+    if (frame.empty()) {
+        return 0.0;
+    }
+    
+    // Convert to grayscale for brightness calculation
+    cv::Mat gray;
+    if (frame.channels() == 3) {
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = frame;
+    }
+    
+    // Calculate average brightness (0-255)
+    cv::Scalar mean_scalar = cv::mean(gray);
+    return mean_scalar[0];
+}
+
+bool ParallelFrameProcessor::isNightMode(const cv::Mat& frame) const {
+    // Check both time of day and darkness level
+    bool is_night_time = isNightTime();
+    double brightness = calculateBrightness(frame);
+    
+    // Consider it night mode if:
+    // 1. It's night time (20:00-6:00), OR
+    // 2. Brightness is very low (< 50 out of 255, about 20%)
+    bool is_dark = brightness < 50.0;
+    
+    if (is_night_time || is_dark) {
+        logger_->debug("Night mode detected - time: " + std::string(is_night_time ? "yes" : "no") + 
+                      ", brightness: " + std::to_string(static_cast<int>(brightness)));
+        return true;
+    }
+    
+    return false;
+}
+
+cv::Mat ParallelFrameProcessor::preprocessForNight(const cv::Mat& frame) const {
+    if (frame.empty()) {
+        return frame;
+    }
+    
+    // Use CLAHE (Contrast Limited Adaptive Histogram Equalization) for better night-time enhancement
+    // This is more effective than simple histogram equalization as it prevents over-amplification of noise
+    
+    cv::Mat lab_image;
+    cv::cvtColor(frame, lab_image, cv::COLOR_BGR2Lab);
+    
+    // Split the LAB image into L, A, and B channels
+    std::vector<cv::Mat> lab_planes(3);
+    cv::split(lab_image, lab_planes);
+    
+    // Apply CLAHE to the L channel (lightness)
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+    clahe->setClipLimit(2.0);  // Limit contrast enhancement to prevent over-amplification
+    clahe->setTilesGridSize(cv::Size(8, 8));  // Grid size for local histogram equalization
+    clahe->apply(lab_planes[0], lab_planes[0]);
+    
+    // Merge the channels back
+    cv::Mat enhanced_lab;
+    cv::merge(lab_planes, enhanced_lab);
+    
+    // Convert back to BGR
+    cv::Mat enhanced_frame;
+    cv::cvtColor(enhanced_lab, enhanced_frame, cv::COLOR_Lab2BGR);
+    
+    return enhanced_frame;
+}
+
 ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal(const cv::Mat& frame) {
     auto start_time = std::chrono::high_resolution_clock::now();
     
@@ -344,8 +456,18 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
     result.processed = true;
     
     try {
-        // Perform object detection
-        result.detections = detector_->detectObjects(frame);
+        // Check if we're in night mode
+        bool night_mode = isNightMode(frame);
+        
+        // Preprocess frame for detection if in night mode
+        cv::Mat detection_frame = frame;
+        if (night_mode) {
+            detection_frame = preprocessForNight(frame);
+            logger_->debug("Applied night mode preprocessing for detection");
+        }
+        
+        // Perform object detection on the preprocessed frame (if night) or original (if day)
+        result.detections = detector_->detectObjects(detection_frame);
         
         // Filter for target classes and log detections
         std::vector<Detection> target_detections;

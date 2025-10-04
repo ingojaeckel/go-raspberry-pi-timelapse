@@ -102,4 +102,10 @@ private:
     void saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections, const std::shared_ptr<ObjectDetector>& detector);
     cv::Scalar getColorForClass(const std::string& class_name) const;
     std::string generateFilename(const std::vector<Detection>& detections) const;
+    
+    // Night mode detection and preprocessing
+    bool isNightTime() const;
+    double calculateBrightness(const cv::Mat& frame) const;
+    bool isNightMode(const cv::Mat& frame) const;
+    cv::Mat preprocessForNight(const cv::Mat& frame) const;
 };
