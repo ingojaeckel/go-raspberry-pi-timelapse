@@ -36,6 +36,7 @@ public:
         int processing_threads = 1;
         bool enable_parallel_processing = false;
         int max_frame_queue_size = 10;
+        double analysis_rate_limit = 1.0;  // Maximum images to analyze per second (default: 1)
         
         // Debug
         bool verbose = false;
