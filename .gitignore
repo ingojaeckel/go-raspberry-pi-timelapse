@@ -8,6 +8,7 @@ timelapse-settings.db
 
 # C++ build artifacts
 cpp-object-detection/build/
+cpp-object-detection/build-*/
 cpp-object-detection/_codeql_build_dir/
 cpp-object-detection/models/*.onnx
 cpp-object-detection/models/*.weights
