@@ -10,6 +10,9 @@ on:
       - 'cpp-object-detection/**'
       - '.github/workflows/cpp-object-detection.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build-test:
     name: Build and Test
