@@ -88,8 +88,18 @@ else()
         -Wall 
         -Wextra 
         -pedantic
-        -march=native
     )
+    
+    # Architecture-specific optimizations for Linux
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "i386" OR CMAKE_SYSTEM_PROCESSOR MATCHES "i686")
+        # 32-bit x86 - use conservative optimizations for compatibility
+        message(STATUS "Building for 32-bit x86 (${CMAKE_SYSTEM_PROCESSOR})")
+        target_compile_options(object_detection PRIVATE -mtune=generic)
+    else()
+        # 64-bit or other architectures - use native optimizations
+        message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}")
+        target_compile_options(object_detection PRIVATE -march=native)
+    endif()
 endif()
 
 # Code coverage support
