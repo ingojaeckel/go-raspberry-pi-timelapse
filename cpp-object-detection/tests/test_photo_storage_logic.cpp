@@ -220,3 +220,26 @@ TEST_F(PhotoStorageLogicTest, VerifyObjectTrackerStructure) {
     EXPECT_EQ(tracker.frames_since_detection, 0);
     EXPECT_TRUE(tracker.is_new);
 }
+
+TEST_F(PhotoStorageLogicTest, FirstDetectionAlwaysSaves) {
+    // Verify that the first detection always triggers a save
+    // This happens because last_saved_object_counts_ is initially empty,
+    // so any detection will be considered a "new type"
+    
+    std::vector<Detection> detections;
+    Detection det;
+    det.class_name = "car";
+    det.confidence = 0.9;
+    det.bbox = cv::Rect(100, 100, 100, 80);
+    det.class_id = 1;
+    detections.push_back(det);
+    
+    detector->updateTracking(detections);
+    auto tracked = detector->getTrackedObjects();
+    
+    // First detection should be marked as new
+    EXPECT_EQ(tracked.size(), 1);
+    EXPECT_TRUE(tracked[0].is_new);
+    EXPECT_EQ(tracked[0].object_type, "car");
+}
+
