@@ -52,10 +52,27 @@ detected cat at coordinates: (320, 240) with confidence 87%
 Saved detection photo: detections/2025-10-04 143022 person cat detected.jpg
 ```
 
-### 6. Rate Limiting (10 seconds) ✅
-- Maximum of 1 photo saved every 10 seconds
-- Prevents disk space exhaustion
+### 6. Smart Photo Storage ✅
+Photos are saved intelligently based on detected changes:
+
+**Immediate Save (bypasses 10s limit):**
+- When a new object type enters the frame (e.g., person detected when only car was present)
+- When a new instance of existing type appears (e.g., 2nd car enters when 1 car was already present)
+
+**Rate-Limited Save (10 second interval):**
+- When same stationary objects remain in frame with no changes
+- Prevents disk space exhaustion from redundant photos
+
+**Implementation:**
+- Tracks object counts by type from last saved photo
+- Compares current detections with previous state
+- Uses object tracking to detect new entries
 - Thread-safe implementation using mutex protection
+
+**Benefits:**
+- Immediate response to meaningful changes in scene
+- Reduced storage of redundant photos
+- Better capture of dynamic events
 
 ## Architecture
 
@@ -79,13 +96,19 @@ Saved detection photo: detections/2025-10-04 143022 person cat detected.jpg
 ### Processing Flow
 
 ```
-Frame Capture → Object Detection → Target Filtering → Photo Storage (if rate limit passed)
+Frame Capture → Object Detection → Target Filtering → Update Object Tracking
+                                                      ↓
+                                  Check for New Objects/Types
+                                                      ↓
+                      Photo Storage Decision (immediate OR rate-limited)
                                                       ↓
                                   Draw Bounding Boxes + Labels
                                                       ↓
                                   Generate Timestamped Filename
                                                       ↓
                                   Save to Output Directory
+                                                      ↓
+                                  Update Saved Object Counts
                                                       ↓
                                   Log Success/Failure
 ```
@@ -155,10 +178,55 @@ detections/                          # Default output directory
 [INFO] On Fri 04 Oct at 2:00:15PM PT, Detection photos will be saved to: detections
 [INFO] On Fri 04 Oct at 2:00:16PM PT, Created output directory: detections
 [INFO] On Fri 04 Oct at 2:00:20PM PT, detected person at coordinates: (640, 360) with confidence 92%
+[INFO] On Fri 04 Oct at 2:00:20PM PT, New object type detected: person
+[INFO] On Fri 04 Oct at 2:00:20PM PT, Saving photo immediately due to new objects/types detected
 [INFO] On Fri 04 Oct at 2:00:20PM PT, Saved detection photo: detections/2025-10-04 140020 person detected.jpg
 [INFO] On Fri 04 Oct at 2:00:25PM PT, detected cat at coordinates: (320, 240) with confidence 87%
+[INFO] On Fri 04 Oct at 2:00:25PM PT, New object type detected: cat
+[INFO] On Fri 04 Oct at 2:00:25PM PT, Saving photo immediately due to new objects/types detected
+[INFO] On Fri 04 Oct at 2:00:25PM PT, Saved detection photo: detections/2025-10-04 140025 person cat detected.jpg
 [INFO] On Fri 04 Oct at 2:00:30PM PT, detected person at coordinates: (650, 370) with confidence 94%
-[INFO] On Fri 04 Oct at 2:00:30PM PT, Saved detection photo: detections/2025-10-04 140030 person detected.jpg
+[INFO] On Fri 04 Oct at 2:00:30PM PT, detected cat at coordinates: (325, 245) with confidence 89%
+# No photo saved - same objects, within 10s interval
+[INFO] On Fri 04 Oct at 2:00:35PM PT, detected person at coordinates: (655, 375) with confidence 93%
+[INFO] On Fri 04 Oct at 2:00:35PM PT, detected cat at coordinates: (330, 250) with confidence 88%
+[INFO] On Fri 04 Oct at 2:00:35PM PT, Saved detection photo: detections/2025-10-04 140035 person cat detected.jpg
+# Photo saved after 10s with stationary objects
+[INFO] On Fri 04 Oct at 2:00:40PM PT, detected person at coordinates: (660, 380) with confidence 91%
+[INFO] On Fri 04 Oct at 2:00:40PM PT, detected cat at coordinates: (335, 255) with confidence 87%
+[INFO] On Fri 04 Oct at 2:00:40PM PT, detected car at coordinates: (400, 300) with confidence 85%
+[INFO] On Fri 04 Oct at 2:00:40PM PT, New object type detected: car
+[INFO] On Fri 04 Oct at 2:00:40PM PT, Saving photo immediately due to new objects/types detected
+[INFO] On Fri 04 Oct at 2:00:40PM PT, Saved detection photo: detections/2025-10-04 140040 person cat car detected.jpg
+```
+
+### Smart Photo Storage Scenarios
+
+**Scenario 1: New Object Type Enters**
+```
+Time: 0s  - Car detected → Photo saved immediately (new type)
+Time: 3s  - Car still present → No photo (same objects, < 10s)
+Time: 7s  - Person enters → Photo saved immediately (new type: person)
+Time: 9s  - Car + Person → No photo (same objects, < 10s)
+Time: 17s - Car + Person → Photo saved (10s passed since last photo)
+```
+
+**Scenario 2: New Instance of Same Type**
+```
+Time: 0s  - 1 car detected → Photo saved immediately (new type)
+Time: 5s  - 1 car still present → No photo (same count, < 10s)
+Time: 8s  - 2 cars detected → Photo saved immediately (new instance)
+Time: 12s - 2 cars still present → No photo (same count, < 10s)
+Time: 18s - 2 cars still present → Photo saved (10s passed since last photo)
+```
+
+**Scenario 3: Stationary Objects**
+```
+Time: 0s  - Car detected → Photo saved immediately (new type)
+Time: 5s  - Same car → No photo (< 10s)
+Time: 10s - Same car → Photo saved (10s interval)
+Time: 15s - Same car → No photo (< 10s)
+Time: 20s - Same car → Photo saved (10s interval)
 ```
 
 ### Photo Contents
@@ -188,17 +256,56 @@ Example visualization:
 
 ## Technical Details
 
-### Rate Limiting Implementation
+### Smart Photo Storage Implementation
 ```cpp
-// Thread-safe 10-second interval check
-std::lock_guard<std::mutex> lock(photo_mutex_);
-auto now = std::chrono::steady_clock::now();
-auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_photo_time_);
-
-if (elapsed.count() < PHOTO_INTERVAL_SECONDS) {
-    return;  // Skip this photo
+// Count current object types
+std::map<std::string, int> current_object_counts;
+for (const auto& detection : detections) {
+    current_object_counts[detection.class_name]++;
 }
-last_photo_time_ = now;
+
+// Check for new types
+bool has_new_types = false;
+for (const auto& [type, count] : current_object_counts) {
+    if (last_saved_object_counts_.find(type) == last_saved_object_counts_.end()) {
+        has_new_types = true;
+        break;
+    }
+}
+
+// Check for new instances of existing types
+bool has_new_objects = false;
+for (const auto& [type, count] : current_object_counts) {
+    auto it = last_saved_object_counts_.find(type);
+    if (it != last_saved_object_counts_.end() && count > it->second) {
+        has_new_objects = true;
+        break;
+    }
+}
+
+// Save photo if new changes detected OR 10s interval passed
+bool should_save_immediately = has_new_types || has_new_objects;
+bool enough_time_passed = elapsed.count() >= PHOTO_INTERVAL_SECONDS;
+
+if (should_save_immediately || enough_time_passed) {
+    // Save photo and update tracking state
+    last_saved_object_counts_ = current_object_counts;
+    last_photo_time_ = now;
+}
+```
+
+### Object Tracking Integration
+```cpp
+// Update tracking before photo decision
+detector_->updateTracking(target_detections);
+
+// Check tracker for newly entered objects
+const auto& tracked = detector->getTrackedObjects();
+for (const auto& obj : tracked) {
+    if (obj.is_new && obj.frames_since_detection == 0) {
+        has_new_objects = true;  // Trigger immediate save
+    }
+}
 ```
 
 ### Bounding Box Drawing
