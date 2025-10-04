@@ -27,6 +27,24 @@ public:
     void showFrame(const cv::Mat& frame, const std::vector<Detection>& detections);
     
     /**
+     * Display a frame with bounding boxes and debug information
+     */
+    void showFrameWithStats(const cv::Mat& frame, 
+                           const std::vector<Detection>& detections,
+                           double current_fps,
+                           double avg_processing_time_ms,
+                           int total_objects_detected,
+                           int total_images_saved,
+                           const std::chrono::steady_clock::time_point& start_time,
+                           const std::vector<std::pair<std::string, int>>& top_objects,
+                           int camera_width,
+                           int camera_height,
+                           int camera_id,
+                           const std::string& camera_name,
+                           int detection_width,
+                           int detection_height);
+    
+    /**
      * Check if the window should be closed (user pressed a key)
      */
     bool shouldClose();
@@ -40,9 +58,25 @@ private:
     std::shared_ptr<Logger> logger_;
     std::string window_name_;
     bool initialized_;
+    bool show_debug_info_;
     
     // Draw bounding boxes on frame
     cv::Mat drawBoundingBoxes(const cv::Mat& frame, const std::vector<Detection>& detections);
+    
+    // Draw debug information overlay
+    void drawDebugInfo(cv::Mat& frame,
+                      double current_fps,
+                      double avg_processing_time_ms,
+                      int total_objects_detected,
+                      int total_images_saved,
+                      const std::chrono::steady_clock::time_point& start_time,
+                      const std::vector<std::pair<std::string, int>>& top_objects,
+                      int camera_width,
+                      int camera_height,
+                      int camera_id,
+                      const std::string& camera_name,
+                      int detection_width,
+                      int detection_height);
     
     // Get color for different object classes
     cv::Scalar getColorForClass(const std::string& class_name) const;

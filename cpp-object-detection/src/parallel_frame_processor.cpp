@@ -13,7 +13,7 @@ ParallelFrameProcessor::ParallelFrameProcessor(std::shared_ptr<ObjectDetector> d
                                              const std::string& output_dir)
     : detector_(detector), logger_(logger), perf_monitor_(perf_monitor),
       num_threads_(num_threads), max_queue_size_(max_queue_size), output_dir_(output_dir),
-      shutdown_requested_(false), frames_in_progress_(0) {
+      shutdown_requested_(false), frames_in_progress_(0), total_images_saved_(0) {
     last_photo_time_ = std::chrono::steady_clock::now() - std::chrono::seconds(PHOTO_INTERVAL_SECONDS);
 }
 
@@ -281,8 +281,11 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
     cv::Mat annotated_original = annotateFrame(frame);
     std::string original_filepath = output_dir_ + "/" + base_filename;
     
+
+    // Save the image
     if (cv::imwrite(original_filepath, annotated_original)) {
         logger_->info("Saved detection photo: " + original_filepath);
+        total_images_saved_++;
     } else {
         logger_->error("Failed to save detection photo: " + original_filepath);
     }
@@ -503,4 +506,8 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
     }
     
     return result;
+}
+
+int ParallelFrameProcessor::getTotalImagesSaved() const {
+    return total_images_saved_;
 }

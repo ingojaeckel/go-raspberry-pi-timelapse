@@ -135,9 +135,14 @@ bool initializeComponents(ApplicationContext& ctx) {
 
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
+    ctx.start_time = std::chrono::steady_clock::now();
     ctx.heartbeat_interval = std::chrono::minutes(ctx.config.heartbeat_interval_minutes);
     ctx.frame_interval = std::chrono::milliseconds(1000 / ctx.config.max_fps);
     ctx.last_frame_time = std::chrono::steady_clock::now();
+    
+    // Store detection resolution (scaled from camera resolution)
+    ctx.detection_width = static_cast<int>(ctx.config.frame_width * ctx.config.detection_scale_factor);
+    ctx.detection_height = static_cast<int>(ctx.config.frame_height * ctx.config.detection_scale_factor);
 
     return true;
 }
@@ -189,7 +194,30 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                     
                     // Display in viewfinder if enabled
                     if (ctx.config.show_preview && ctx.viewfinder) {
-                        ctx.viewfinder->showFrame(ctx.frame, result.detections);
+                        // Get statistics for display
+                        auto top_objects = ctx.detector->getTopDetectedObjects(10);
+                        int total_objects = ctx.detector->getTotalObjectsDetected();
+                        int total_images = ctx.frame_processor->getTotalImagesSaved();
+                        
+                        // Get camera name (empty string if not available)
+                        std::string camera_name = "";  // Could be extended to get actual camera name
+                        
+                        ctx.viewfinder->showFrameWithStats(
+                            ctx.frame, 
+                            result.detections,
+                            ctx.perf_monitor->getCurrentFPS(),
+                            ctx.perf_monitor->getAverageProcessingTime(),
+                            total_objects,
+                            total_images,
+                            ctx.start_time,
+                            top_objects,
+                            ctx.config.frame_width,
+                            ctx.config.frame_height,
+                            ctx.config.camera_id,
+                            camera_name,
+                            ctx.detection_width,
+                            ctx.detection_height
+                        );
                         
                         // Check if user wants to close the viewfinder
                         if (ctx.viewfinder->shouldClose()) {
@@ -200,7 +228,28 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                     
                     // Update network streamer if enabled
                     if (ctx.config.enable_streaming && ctx.network_streamer) {
-                        ctx.network_streamer->updateFrame(ctx.frame, result.detections);
+                        // Get statistics for display (same as viewfinder)
+                        auto top_objects = ctx.detector->getTopDetectedObjects(10);
+                        int total_objects = ctx.detector->getTotalObjectsDetected();
+                        int total_images = ctx.frame_processor->getTotalImagesSaved();
+                        std::string camera_name = "";
+                        
+                        ctx.network_streamer->updateFrameWithStats(
+                            ctx.frame,
+                            result.detections,
+                            ctx.perf_monitor->getCurrentFPS(),
+                            ctx.perf_monitor->getAverageProcessingTime(),
+                            total_objects,
+                            total_images,
+                            ctx.start_time,
+                            top_objects,
+                            ctx.config.frame_width,
+                            ctx.config.frame_height,
+                            ctx.config.camera_id,
+                            camera_name,
+                            ctx.detection_width,
+                            ctx.detection_height
+                        );
                     }
                 }
             } catch (const std::exception& e) {

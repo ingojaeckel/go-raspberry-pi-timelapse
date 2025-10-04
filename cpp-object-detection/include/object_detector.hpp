@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
+#include <map>
 #include <memory>
 #include "logger.hpp"
 #include "detection_model_interface.hpp"
@@ -74,6 +75,16 @@ public:
     static std::vector<ModelMetrics> getAvailableModels();
     
     /**
+     * Get total number of objects detected since start
+     */
+    int getTotalObjectsDetected() const;
+    
+    /**
+     * Get top N most frequently detected objects with counts
+     */
+    std::vector<std::pair<std::string, int>> getTopDetectedObjects(int top_n = 10) const;
+     
+    /*
      * Get currently tracked objects
      */
     const std::vector<ObjectTracker>& getTrackedObjects() const { return tracked_objects_; }
@@ -98,6 +109,10 @@ private:
     std::vector<ObjectTracker> tracked_objects_;
     
     bool initialized_;
+    
+    // Statistics tracking
+    int total_objects_detected_;
+    std::map<std::string, int> object_type_counts_;
     
     void updateTrackedObjects(const std::vector<Detection>& detections);
     void logObjectEvents(const std::vector<Detection>& current_detections);
