@@ -13,6 +13,7 @@
 #include "performance_monitor.hpp"
 #include "parallel_frame_processor.hpp"
 #include "detection_model_interface.hpp"
+#include "viewfinder_window.hpp"
 
 /**
  * Context structure to hold shared application state
@@ -28,6 +29,7 @@ struct ApplicationContext {
     std::shared_ptr<WebcamInterface> webcam;
     std::shared_ptr<ObjectDetector> detector;
     std::shared_ptr<ParallelFrameProcessor> frame_processor;
+    std::shared_ptr<ViewfinderWindow> viewfinder;
     
     // Processing state
     std::queue<std::future<ParallelFrameProcessor::FrameResult>> pending_frames;

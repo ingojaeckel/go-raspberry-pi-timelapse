@@ -42,6 +42,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->enable_parallel_processing = true;
         } else if (arg == "--no-headless") {
             config_->headless = false;
+        } else if (arg == "--show-preview") {
+            config_->show_preview = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -130,7 +132,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --enable-parallel              Enable parallel frame processing\n"
               << "  --max-frame-queue N            Maximum frames in processing queue (default: 10)\n"
               << "  --enable-gpu                   Enable GPU acceleration if available\n"
-              << "  --no-headless                  Disable headless mode (show GUI windows)\n\n"
+              << "  --no-headless                  Disable headless mode (show GUI windows)\n"
+              << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"
@@ -142,6 +145,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  " << program_name << " --camera-id 1 --verbose --log-file /tmp/detection.log\n"
               << "  " << program_name << " --model-type yolov5l --max-fps 2  # High accuracy mode\n"
               << "  " << program_name << " --model-type yolov5s --processing-threads 4  # Fast parallel mode\n"
+              << "  " << program_name << " --show-preview  # Development mode with real-time viewfinder\n"
               << "SUPPORTED PLATFORMS:\n"
               << "  - Linux x86_64 (Intel Core i7, AMD Ryzen 5 3600)\n"
               << "  - Linux 386 (Intel Pentium M)\n"

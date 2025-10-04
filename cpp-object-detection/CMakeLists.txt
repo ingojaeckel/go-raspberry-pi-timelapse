@@ -51,6 +51,7 @@ set(SOURCES
     src/parallel_frame_processor.cpp
     src/detection_model_factory.cpp
     src/yolo_v5_model.cpp
+    src/viewfinder_window.cpp
 )
 
 # Create executable

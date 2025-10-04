@@ -110,6 +110,16 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.logger->info("Sequential processing enabled (single-threaded)");
     }
 
+    // Initialize viewfinder if preview is enabled
+    if (ctx.config.show_preview) {
+        ctx.viewfinder = std::make_shared<ViewfinderWindow>(ctx.logger);
+        if (!ctx.viewfinder->initialize()) {
+            ctx.logger->error("Failed to initialize viewfinder window");
+            return false;
+        }
+        ctx.logger->info("Real-time viewfinder enabled - press 'q' or ESC to stop");
+    }
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
     ctx.heartbeat_interval = std::chrono::minutes(ctx.config.heartbeat_interval_minutes);
@@ -162,6 +172,17 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                 if (result.processed) {
                     // Process detection results here if needed
                     // Results are already logged by the frame processor
+                    
+                    // Display in viewfinder if enabled
+                    if (ctx.config.show_preview && ctx.viewfinder) {
+                        ctx.viewfinder->showFrame(ctx.frame, result.detections);
+                        
+                        // Check if user wants to close the viewfinder
+                        if (ctx.viewfinder->shouldClose()) {
+                            ctx.logger->info("Viewfinder closed by user - stopping application");
+                            running = false;
+                        }
+                    }
                 }
             } catch (const std::exception& e) {
                 ctx.logger->error("Error processing frame result: " + std::string(e.what()));
@@ -206,6 +227,11 @@ void performGracefulShutdown(ApplicationContext& ctx) {
             // Ignore errors during shutdown
         }
         ctx.pending_frames.pop();
+    }
+    
+    // Close viewfinder if it was open
+    if (ctx.viewfinder) {
+        ctx.viewfinder->close();
     }
     
     ctx.webcam->release();

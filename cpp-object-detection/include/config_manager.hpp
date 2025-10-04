@@ -40,6 +40,7 @@ public:
         // Debug
         bool verbose = false;
         bool headless = true;
+        bool show_preview = false;  // Real-time viewfinder with bounding boxes
     };
 
     enum class ParseResult {
