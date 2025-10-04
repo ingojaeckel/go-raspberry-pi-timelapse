@@ -437,7 +437,7 @@ cv::Mat ParallelFrameProcessor::preprocessForNight(const cv::Mat& frame) const {
     
     // Apply CLAHE to the L channel (lightness) with increased enhancement for extremely dark images
     cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
-    clahe->setClipLimit(4.0);  // Increased from 2.0 to 4.0 for stronger enhancement
+    clahe->setClipLimit(20.0);
     clahe->setTilesGridSize(cv::Size(8, 8));  // Grid size for local histogram equalization
     clahe->apply(lab_planes[0], lab_planes[0]);
     
