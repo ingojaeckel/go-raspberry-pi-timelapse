@@ -7,6 +7,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Real-time object detection** from USB webcam input
 - **720p resolution support** with configurable frame rates
 - **Headless operation** - no X11 required
+- **Real-time viewfinder** - optional on-screen preview with detection bounding boxes (--show-preview)
 - **Object tracking** for people, vehicles, and small animals (cat/dog/fox)
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
@@ -294,6 +295,7 @@ OPTIONS:
   --processing-threads N         Number of processing threads (default: 1)
   --enable-gpu                   Enable GPU acceleration if available
   --no-headless                  Disable headless mode (show GUI windows)
+  --show-preview                 Show real-time viewfinder with detection bounding boxes
 ```
 
 ### Examples
@@ -316,6 +318,11 @@ OPTIONS:
 **Custom logging:**
 ```bash
 ./object_detection --log-file /var/log/security_detection.log --heartbeat-interval 30
+```
+
+**Development mode with real-time preview:**
+```bash
+./object_detection --show-preview --max-fps 10
 ```
 
 ## Webcam Setup

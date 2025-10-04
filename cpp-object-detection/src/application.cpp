@@ -92,11 +92,12 @@ bool initializeComponents(ApplicationContext& ctx) {
     ctx.logger->info("Minimum confidence threshold: " + std::to_string(ctx.config.min_confidence));
     ctx.logger->info("Maximum processing rate: " + std::to_string(ctx.config.max_fps) + " fps");
     ctx.logger->info("Performance warning threshold: " + std::to_string(ctx.config.min_fps_warning_threshold) + " fps");
+    ctx.logger->info("Detection photos will be saved to: " + ctx.config.output_dir);
 
     // Initialize parallel frame processor
     int effective_threads = ctx.config.enable_parallel_processing ? ctx.config.processing_threads : 1;
     ctx.frame_processor = std::make_shared<ParallelFrameProcessor>(
-        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size);
+        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, ctx.config.output_dir);
 
     if (!ctx.frame_processor->initialize()) {
         ctx.logger->error("Failed to initialize parallel frame processor");
@@ -107,6 +108,16 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.logger->info("Parallel processing enabled with " + std::to_string(ctx.config.processing_threads) + " threads");
     } else {
         ctx.logger->info("Sequential processing enabled (single-threaded)");
+    }
+
+    // Initialize viewfinder if preview is enabled
+    if (ctx.config.show_preview) {
+        ctx.viewfinder = std::make_shared<ViewfinderWindow>(ctx.logger);
+        if (!ctx.viewfinder->initialize()) {
+            ctx.logger->error("Failed to initialize viewfinder window");
+            return false;
+        }
+        ctx.logger->info("Real-time viewfinder enabled - press 'q' or ESC to stop");
     }
 
     // Initialize timing variables
@@ -161,6 +172,17 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                 if (result.processed) {
                     // Process detection results here if needed
                     // Results are already logged by the frame processor
+                    
+                    // Display in viewfinder if enabled
+                    if (ctx.config.show_preview && ctx.viewfinder) {
+                        ctx.viewfinder->showFrame(ctx.frame, result.detections);
+                        
+                        // Check if user wants to close the viewfinder
+                        if (ctx.viewfinder->shouldClose()) {
+                            ctx.logger->info("Viewfinder closed by user - stopping application");
+                            running = false;
+                        }
+                    }
                 }
             } catch (const std::exception& e) {
                 ctx.logger->error("Error processing frame result: " + std::string(e.what()));
@@ -205,6 +227,11 @@ void performGracefulShutdown(ApplicationContext& ctx) {
             // Ignore errors during shutdown
         }
         ctx.pending_frames.pop();
+    }
+    
+    // Close viewfinder if it was open
+    if (ctx.viewfinder) {
+        ctx.viewfinder->close();
     }
     
     ctx.webcam->release();

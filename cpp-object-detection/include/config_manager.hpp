@@ -29,6 +29,7 @@ public:
         std::string config_path = "models/yolov5s.yaml";
         std::string classes_path = "models/coco.names";
         std::string model_type = "yolov5s";  // Model type: yolov5s, yolov5l, yolov8n, yolov8m
+        std::string output_dir = "detections";  // Directory to store detection photos
         double detection_scale_factor = 0.5;  // Scale factor for detection (0.5 = 50% reduction, 75% fewer pixels)
         
         // Performance
@@ -40,6 +41,7 @@ public:
         // Debug
         bool verbose = false;
         bool headless = true;
+        bool show_preview = false;  // Real-time viewfinder with bounding boxes
     };
 
     enum class ParseResult {

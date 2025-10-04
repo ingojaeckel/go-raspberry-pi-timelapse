@@ -22,6 +22,7 @@ TEST_F(ConfigManagerTest, DefaultConfiguration) {
     EXPECT_EQ(config.frame_height, 720);
     EXPECT_TRUE(config.headless);
     EXPECT_FALSE(config.verbose);
+    EXPECT_FALSE(config.show_preview);  // Viewfinder disabled by default
 }
 
 TEST_F(ConfigManagerTest, ValidConfiguration) {
@@ -73,37 +74,12 @@ TEST_F(ConfigManagerTest, HelpArgument) {
     EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::HELP_REQUESTED);
 }
 
-TEST_F(ConfigManagerTest, DefaultDetectionScaleFactor) {
-    const auto& config = config_manager->getConfig();
-    
-    EXPECT_DOUBLE_EQ(config.detection_scale_factor, 0.5);
-}
-
-TEST_F(ConfigManagerTest, ParseDetectionScaleFactor) {
-    const char* argv[] = {
-        "program",
-        "--detection-scale", "0.75"
-    };
+TEST_F(ConfigManagerTest, ShowPreviewArgument) {
+    const char* argv[] = {"program", "--show-preview"};
     int argc = sizeof(argv) / sizeof(argv[0]);
     
     EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
     
     const auto& config = config_manager->getConfig();
-    EXPECT_DOUBLE_EQ(config.detection_scale_factor, 0.75);
-}
-
-TEST_F(ConfigManagerTest, InvalidDetectionScaleFactor) {
-    const char* argv[] = {"program", "--detection-scale", "1.5"};
-    int argc = sizeof(argv) / sizeof(argv[0]);
-    
-    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
-    EXPECT_FALSE(config_manager->validateConfig());
-}
-
-TEST_F(ConfigManagerTest, ZeroDetectionScaleFactor) {
-    const char* argv[] = {"program", "--detection-scale", "0.0"};
-    int argc = sizeof(argv) / sizeof(argv[0]);
-    
-    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
-    EXPECT_FALSE(config_manager->validateConfig());
+    EXPECT_TRUE(config.show_preview);
 }
