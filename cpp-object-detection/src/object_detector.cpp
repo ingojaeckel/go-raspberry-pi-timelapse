@@ -161,8 +161,10 @@ std::vector<ModelMetrics> ObjectDetector::getAvailableModels() {
 }
 
 void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detections) {
-    // Simple tracking: mark objects as present/absent
-    // This is a basic implementation - could be enhanced with proper object tracking
+    // Object tracking and permanence model:
+    // - Track objects frame-to-frame based on (x, y) position and object type
+    // - Determine if detected object is "new" (entered frame) or "moved" (was near this position before)
+    // - Use MAX_MOVEMENT_DISTANCE threshold to decide: if distance > threshold, consider it a new object
     
     // Mark all current objects as not seen this frame
     for (auto& tracked : tracked_objects_) {
@@ -179,15 +181,16 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             detection.bbox.y + detection.bbox.height / 2.0f
         );
         
-        // Try to match with existing tracked objects
+        // Try to match with existing tracked objects of the same type
         for (auto& tracked : tracked_objects_) {
             if (tracked.object_type == detection.class_name) {
-                // Simple distance-based matching (could be improved)
+                // Calculate distance from previously tracked position
                 float distance = cv::norm(tracked.center - detection_center);
                 
                 // Check if this detection is close enough to be the same object
+                // If distance is within threshold, assume it's the same object that moved
                 if (distance < MAX_MOVEMENT_DISTANCE) {
-                    // Store previous position before updating
+                    // Store previous position before updating (for movement logging)
                     tracked.previous_center = tracked.center;
                     tracked.center = detection_center;
                     tracked.was_present_last_frame = true;
@@ -199,7 +202,10 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             }
         }
         
-        // Add new object if not found
+        // Add new object if not found within threshold distance
+        // This means either:
+        // 1. First time seeing this object type, OR
+        // 2. Object of this type is too far from any previously tracked position (likely a different object)
         if (!found_existing) {
             ObjectTracker new_tracker;
             new_tracker.object_type = detection.class_name;
