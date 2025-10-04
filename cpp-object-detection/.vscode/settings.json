@@ -1,0 +1,19 @@
+{
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.intelliSenseMode": "macos-clang-x64",
+    "cmake.configureOnOpen": false,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "files.associations": {
+        "*.hpp": "cpp",
+        "*.cpp": "cpp"
+    },
+    "editor.formatOnSave": false,
+    "C_Cpp.errorSquiggles": "enabled",
+    "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "auto",
+    "lldb.dereferencePointers": true,
+    "lldb.launch.expressions": "native"
+}

@@ -9,6 +9,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Headless operation** - no X11 required
 - **Object tracking and permanence** - Distinguishes new objects from moving objects
 - **Position-based tracking** for people, vehicles, and small animals (cat/dog/fox)
+- **Real-time viewfinder** - optional on-screen preview with detection bounding boxes (--show-preview)
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
 - **Structured logging** with timestamps and detailed position tracking
@@ -241,16 +242,27 @@ cd cpp-object-detection
 ```
 
 2. **Build the application:**
+
+**Cross-platform (auto-detects OS):**
 ```bash
 ./scripts/build.sh
 ```
 
+**Platform-specific scripts:**
+```bash
+# Linux
+./scripts/build.sh
+
+# macOS (Intel)
+./scripts/build-mac.sh
+```
+
 3. **Download a YOLO model (required for object detection):**
 ```bash
-# Use wget on Linux or curl on macOS/Linux
-wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+# Use curl on macOS or wget on Linux
+curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 # OR
-curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.onnx
+wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 ```
 
 ### Cross-Platform Builds
@@ -319,6 +331,7 @@ OPTIONS:
   --processing-threads N         Number of processing threads (default: 1)
   --enable-gpu                   Enable GPU acceleration if available
   --no-headless                  Disable headless mode (show GUI windows)
+  --show-preview                 Show real-time viewfinder with detection bounding boxes
 ```
 
 ### Examples
@@ -336,6 +349,11 @@ OPTIONS:
 **Custom logging:**
 ```bash
 ./object_detection --log-file /var/log/security_detection.log --heartbeat-interval 30
+```
+
+**Development mode with real-time preview:**
+```bash
+./object_detection --show-preview --max-fps 10
 ```
 
 ## Webcam Setup
@@ -394,12 +412,22 @@ sudo usermod -a -G video $USER
 
 ### Automated Tests
 
+**Cross-platform (auto-detects OS):**
 ```bash
 # Run all tests
 ./scripts/test.sh
+```
+
+**Platform-specific scripts:**
+```bash
+# Linux
+./scripts/test.sh
+
+# macOS (Intel)  
+./scripts/test-mac.sh
 
 # Unit tests only
-cd build && make object_detection_tests && ./object_detection_tests
+cd build && make object_detection_tests && ./tests/object_detection_tests
 ```
 
 ### Manual E2E Testing

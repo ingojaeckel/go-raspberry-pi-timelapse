@@ -11,6 +11,7 @@ set(TEST_SOURCES
     test_object_detector.cpp
     test_parallel_frame_processor.cpp
     test_detection_model_interface.cpp
+    test_viewfinder_window.cpp
 )
 
 # Create test executable
@@ -40,6 +41,7 @@ target_sources(object_detection_tests PRIVATE
     ../src/parallel_frame_processor.cpp
     ../src/detection_model_factory.cpp
     ../src/yolo_v5_model.cpp
+    ../src/viewfinder_window.cpp
 )
 
 # Code coverage support for tests

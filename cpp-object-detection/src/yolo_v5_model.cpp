@@ -195,16 +195,24 @@ bool YoloV5SmallModel::loadModel(const std::string& model_path) {
             return false;
         }
 
-        // Try to use GPU if available
+        // Select backend based on platform and available hardware
+#ifdef __APPLE__
+        // macOS doesn't support CUDA in OpenCV DNN
+        logger_->info("YOLOv5s using CPU backend for inference (macOS)");
+        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+#else
+        // Try to use GPU if available on other platforms
         try {
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
             logger_->info("YOLOv5s using CUDA backend for GPU acceleration");
         } catch (const std::exception& e) {
-            logger_->info("YOLOv5s using CPU backend for inference");
+            logger_->info("YOLOv5s using CPU backend for inference: " + std::string(e.what()));
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
         }
+#endif
 
         logger_->debug("YOLOv5s neural network loaded successfully");
         return true;
@@ -239,6 +247,11 @@ std::vector<Detection> YoloV5SmallModel::postProcess(
     const int num_classes = output.size[2] - 5; // First 5 are x, y, w, h, confidence
     
     float* data = (float*)output.data;
+    
+    // Temporary storage for NMS
+    std::vector<cv::Rect> boxes;
+    std::vector<float> confidences;
+    std::vector<int> class_ids;
     
     for (int i = 0; i < num_detections; ++i) {
         float* detection = data + i * (num_classes + 5);
@@ -280,13 +293,30 @@ std::vector<Detection> YoloV5SmallModel::postProcess(
         float x2 = (center_x + width / 2) * frame.cols / INPUT_WIDTH;
         float y2 = (center_y + height / 2) * frame.rows / INPUT_HEIGHT;
         
-        Detection det;
-        det.bbox = cv::Rect(cv::Point(static_cast<int>(x1), static_cast<int>(y1)),
-                           cv::Point(static_cast<int>(x2), static_cast<int>(y2)));
-        det.confidence = final_confidence;
-        det.class_id = max_class_id;
-        det.class_name = class_names_[max_class_id];
+        cv::Rect bbox(cv::Point(static_cast<int>(x1), static_cast<int>(y1)),
+                      cv::Point(static_cast<int>(x2), static_cast<int>(y2)));
         
+        // Collect boxes for NMS
+        boxes.push_back(bbox);
+        confidences.push_back(final_confidence);
+        class_ids.push_back(max_class_id);
+    }
+    
+    // Apply Non-Maximum Suppression to eliminate overlapping boxes
+    std::vector<int> indices;
+    if (!boxes.empty()) {
+        // NMS threshold of 0.45 is standard for YOLO
+        // This means boxes with IoU > 0.45 (45% overlap) will be suppressed
+        cv::dnn::NMSBoxes(boxes, confidences, confidence_threshold_, 0.45f, indices);
+    }
+    
+    // Build final detections from NMS results
+    for (int idx : indices) {
+        Detection det;
+        det.bbox = boxes[idx];
+        det.confidence = confidences[idx];
+        det.class_id = class_ids[idx];
+        det.class_name = class_names_[class_ids[idx]];
         detections.push_back(det);
     }
     
@@ -472,16 +502,24 @@ bool YoloV5LargeModel::loadModel(const std::string& model_path) {
             return false;
         }
 
-        // Try to use GPU if available
+        // Select backend based on platform and available hardware
+#ifdef __APPLE__
+        // macOS doesn't support CUDA in OpenCV DNN
+        logger_->info("YOLOv5l using CPU backend for inference (macOS)");
+        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+#else
+        // Try to use GPU if available on other platforms
         try {
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
             logger_->info("YOLOv5l using CUDA backend for GPU acceleration");
         } catch (const std::exception& e) {
-            logger_->info("YOLOv5l using CPU backend for inference");
+            logger_->info("YOLOv5l using CPU backend for inference: " + std::string(e.what()));
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
         }
+#endif
 
         logger_->debug("YOLOv5l neural network loaded successfully");
         return true;
@@ -516,6 +554,11 @@ std::vector<Detection> YoloV5LargeModel::postProcess(
     const int num_classes = output.size[2] - 5;
     
     float* data = (float*)output.data;
+    
+    // Temporary storage for NMS
+    std::vector<cv::Rect> boxes;
+    std::vector<float> confidences;
+    std::vector<int> class_ids;
     
     for (int i = 0; i < num_detections; ++i) {
         float* detection = data + i * (num_classes + 5);
@@ -556,13 +599,30 @@ std::vector<Detection> YoloV5LargeModel::postProcess(
         float x2 = (center_x + width / 2) * frame.cols / INPUT_WIDTH;
         float y2 = (center_y + height / 2) * frame.rows / INPUT_HEIGHT;
         
-        Detection det;
-        det.bbox = cv::Rect(cv::Point(static_cast<int>(x1), static_cast<int>(y1)),
-                           cv::Point(static_cast<int>(x2), static_cast<int>(y2)));
-        det.confidence = final_confidence;
-        det.class_id = max_class_id;
-        det.class_name = class_names_[max_class_id];
+        cv::Rect bbox(cv::Point(static_cast<int>(x1), static_cast<int>(y1)),
+                      cv::Point(static_cast<int>(x2), static_cast<int>(y2)));
         
+        // Collect boxes for NMS
+        boxes.push_back(bbox);
+        confidences.push_back(final_confidence);
+        class_ids.push_back(max_class_id);
+    }
+    
+    // Apply Non-Maximum Suppression to eliminate overlapping boxes
+    std::vector<int> indices;
+    if (!boxes.empty()) {
+        // NMS threshold of 0.45 is standard for YOLO
+        // This means boxes with IoU > 0.45 (45% overlap) will be suppressed
+        cv::dnn::NMSBoxes(boxes, confidences, confidence_threshold_, 0.45f, indices);
+    }
+    
+    // Build final detections from NMS results
+    for (int idx : indices) {
+        Detection det;
+        det.bbox = boxes[idx];
+        det.confidence = confidences[idx];
+        det.class_id = class_ids[idx];
+        det.class_name = class_names_[class_ids[idx]];
         detections.push_back(det);
     }
     
