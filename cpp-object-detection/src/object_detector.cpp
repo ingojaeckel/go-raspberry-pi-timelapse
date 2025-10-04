@@ -271,18 +271,26 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
     }
     
     // Remove objects that haven't been seen for too long
-    auto removed_count = 0;
+    // First, log the objects that will be removed
+    for (const auto& tracker : tracked_objects_) {
+        if (tracker.frames_since_detection > 30) {
+            logger_->debug("Removing " + tracker.object_type + 
+                          " tracker (not seen for " + 
+                          std::to_string(tracker.frames_since_detection) + " frames)");
+        }
+    }
+    
+    // Count how many will be removed before erasing
+    auto removed_count = std::count_if(tracked_objects_.begin(), tracked_objects_.end(),
+                                       [](const ObjectTracker& tracker) {
+                                           return tracker.frames_since_detection > 30; // 30 frames threshold
+                                       });
+    
+    // Now remove them
     tracked_objects_.erase(
         std::remove_if(tracked_objects_.begin(), tracked_objects_.end(),
-                      [&removed_count, this](const ObjectTracker& tracker) {
-                          bool should_remove = tracker.frames_since_detection > 30; // 30 frames threshold
-                          if (should_remove) {
-                              logger_->debug("Removing " + tracker.object_type + 
-                                           " tracker (not seen for " + 
-                                           std::to_string(tracker.frames_since_detection) + " frames)");
-                              removed_count++;
-                          }
-                          return should_remove;
+                      [](const ObjectTracker& tracker) {
+                          return tracker.frames_since_detection > 30; // 30 frames threshold
                       }),
         tracked_objects_.end());
     
