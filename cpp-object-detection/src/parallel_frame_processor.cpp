@@ -435,11 +435,15 @@ cv::Mat ParallelFrameProcessor::preprocessForNight(const cv::Mat& frame) const {
     std::vector<cv::Mat> lab_planes(3);
     cv::split(lab_image, lab_planes);
     
-    // Apply CLAHE to the L channel (lightness)
+    // Apply CLAHE to the L channel (lightness) with increased enhancement for extremely dark images
     cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
-    clahe->setClipLimit(2.0);  // Limit contrast enhancement to prevent over-amplification
+    clahe->setClipLimit(4.0);  // Increased from 2.0 to 4.0 for stronger enhancement
     clahe->setTilesGridSize(cv::Size(8, 8));  // Grid size for local histogram equalization
     clahe->apply(lab_planes[0], lab_planes[0]);
+    
+    // Apply additional brightness boost to the L channel for extremely dark images
+    // This helps make objects visible enough for detection
+    lab_planes[0].convertTo(lab_planes[0], -1, 1.5, 30);  // alpha=1.5 (contrast), beta=30 (brightness)
     
     // Merge the channels back
     cv::Mat enhanced_lab;
