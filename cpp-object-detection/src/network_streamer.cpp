@@ -317,9 +317,9 @@ std::string NetworkStreamer::getLocalIpAddress() const {
             inet_ntop(AF_INET, &addr->sin_addr, addr_str, INET_ADDRSTRLEN);
             
             // Skip loopback
-            std::string addr(addr_str);
-            if (addr != "127.0.0.1") {
-                ip_address = addr;
+            std::string addr_string(addr_str);
+            if (addr_string != "127.0.0.1") {
+                ip_address = addr_string;
                 break;
             }
         }
