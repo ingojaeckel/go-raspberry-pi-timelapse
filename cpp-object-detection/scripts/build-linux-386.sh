@@ -40,24 +40,40 @@ echo -e "${GREEN}CMake found: $(cmake --version | head -n1)${NC}"
 
 # Check for 32-bit OpenCV libraries
 echo -e "${YELLOW}Checking for 32-bit OpenCV libraries...${NC}"
-if [ -d "/usr/lib/i386-linux-gnu" ]; then
-    if find /usr/lib/i386-linux-gnu -name "libopencv*.so*" 2>/dev/null | grep -q .; then
-        echo -e "${GREEN}32-bit OpenCV libraries found${NC}"
-    else
-        echo -e "${YELLOW}Warning: 32-bit OpenCV libraries not found in /usr/lib/i386-linux-gnu${NC}"
-        echo -e "${YELLOW}You may need to install: libopencv-dev:i386${NC}"
-        echo -e "${YELLOW}Note: This may require multiarch setup${NC}"
+OPENCV_FOUND=false
+for libdir in /usr/lib/i386-linux-gnu /usr/lib/i686-linux-gnu /usr/lib32; do
+    if [ -d "$libdir" ]; then
+        if find "$libdir" -name "libopencv*.so*" 2>/dev/null | grep -q .; then
+            echo -e "${GREEN}32-bit OpenCV libraries found in $libdir${NC}"
+            OPENCV_FOUND=true
+            break
+        fi
     fi
+done
+
+if [ "$OPENCV_FOUND" = false ]; then
+    echo -e "${YELLOW}Warning: 32-bit OpenCV libraries not found${NC}"
+    echo -e "${YELLOW}To install OpenCV for 32-bit:${NC}"
+    echo -e "${YELLOW}  1. Enable multiarch: sudo dpkg --add-architecture i386${NC}"
+    echo -e "${YELLOW}  2. Update packages: sudo apt-get update${NC}"
+    echo -e "${YELLOW}  3. Install OpenCV: sudo apt-get install libopencv-dev:i386${NC}"
+    echo -e "${YELLOW}Note: This build will likely fail without 32-bit OpenCV libraries${NC}"
 fi
 
 # Configure build for 32-bit
 echo -e "${YELLOW}Configuring 32-bit build...${NC}"
+
+# Set PKG_CONFIG_PATH to help find 32-bit libraries
+export PKG_CONFIG_PATH="/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/i686-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:$PKG_CONFIG_PATH"
+
 cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_SYSTEM_PROCESSOR=i386 \
     -DCMAKE_C_FLAGS="-m32" \
     -DCMAKE_CXX_FLAGS="-m32" \
-    -DCMAKE_EXE_LINKER_FLAGS="-m32 -static-libgcc -static-libstdc++"
+    -DCMAKE_EXE_LINKER_FLAGS="-m32 -static-libgcc -static-libstdc++" \
+    -DCMAKE_LIBRARY_PATH="/usr/lib/i386-linux-gnu;/usr/lib/i686-linux-gnu;/usr/lib32" \
+    -DCMAKE_INCLUDE_PATH="/usr/include/i386-linux-gnu;/usr/include/i686-linux-gnu"
 
 # Build
 echo -e "${YELLOW}Building...${NC}"

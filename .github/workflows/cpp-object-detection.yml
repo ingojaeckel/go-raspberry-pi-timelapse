@@ -340,12 +340,17 @@ jobs:
           mkdir -p build-linux-386
           cd build-linux-386
           
+          # Set PKG_CONFIG_PATH to help find 32-bit libraries
+          export PKG_CONFIG_PATH="/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/i686-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:$PKG_CONFIG_PATH"
+          
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_SYSTEM_PROCESSOR=i386 \
             -DCMAKE_C_FLAGS="-m32" \
             -DCMAKE_CXX_FLAGS="-m32" \
-            -DCMAKE_EXE_LINKER_FLAGS="-m32 -static-libgcc -static-libstdc++"
+            -DCMAKE_EXE_LINKER_FLAGS="-m32 -static-libgcc -static-libstdc++" \
+            -DCMAKE_LIBRARY_PATH="/usr/lib/i386-linux-gnu;/usr/lib/i686-linux-gnu;/usr/lib32" \
+            -DCMAKE_INCLUDE_PATH="/usr/include/i386-linux-gnu;/usr/include/i686-linux-gnu"
 
       - name: Build 32-bit application
         working-directory: cpp-object-detection/build-linux-386

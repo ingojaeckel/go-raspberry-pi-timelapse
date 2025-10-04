@@ -27,10 +27,29 @@ else()
     # Linux - try multiple approaches to find OpenCV
     find_package(OpenCV QUIET)
     if(NOT OpenCV_FOUND)
-        find_package(OpenCV REQUIRED PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
+        # Try x86_64 path first
+        find_package(OpenCV QUIET PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
     endif()
     if(NOT OpenCV_FOUND)
-        find_package(opencv4 REQUIRED)
+        # Try i386 path for 32-bit builds
+        find_package(OpenCV QUIET PATHS /usr/lib/i386-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
+    endif()
+    if(NOT OpenCV_FOUND)
+        # Try i686 path for 32-bit builds
+        find_package(OpenCV QUIET PATHS /usr/lib/i686-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
+    endif()
+    if(NOT OpenCV_FOUND)
+        # Try opencv4 package name
+        find_package(opencv4 QUIET)
+        if(opencv4_FOUND)
+            set(OpenCV_FOUND TRUE)
+        endif()
+    endif()
+    if(NOT OpenCV_FOUND)
+        message(FATAL_ERROR "OpenCV not found. Please install OpenCV development libraries:\n"
+                "  Ubuntu/Debian (64-bit): sudo apt-get install libopencv-dev\n"
+                "  Ubuntu/Debian (32-bit): sudo apt-get install libopencv-dev:i386\n"
+                "  CentOS/RHEL: sudo yum install opencv-devel")
     endif()
 endif()
 find_package(Threads REQUIRED)
