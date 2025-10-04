@@ -183,11 +183,11 @@ jobs:
       - name: Test static executable
         working-directory: cpp-object-detection/build-static
         run: |
-          ./object_detection --help
+          ./object_detection.app/Contents/MacOS/object_detection --help
           if [ "${{ matrix.platform }}" = "macos" ]; then
-            otool -L ./object_detection || true  # Show dependencies on macOS
+            otool -L ./object_detection.app/Contents/MacOS/object_detection || true  # Show dependencies on macOS
           else
-            ldd ./object_detection || true  # Show dependencies on Linux (should be minimal)
+            ldd ./object_detection.app/Contents/MacOS/object_detection || true  # Show dependencies on Linux (should be minimal)
           fi
 
       - name: Create release package
