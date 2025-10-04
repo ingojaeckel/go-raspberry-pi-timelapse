@@ -9,6 +9,7 @@
 #include <atomic>
 #include <future>
 #include <chrono>
+#include <map>
 #include "object_detector.hpp"
 #include "logger.hpp"
 #include "performance_monitor.hpp"
@@ -80,6 +81,9 @@ private:
     std::mutex photo_mutex_;
     static constexpr int PHOTO_INTERVAL_SECONDS = 10;
     
+    // Track object state from last saved photo
+    std::map<std::string, int> last_saved_object_counts_;
+    
     // Threading infrastructure
     std::vector<std::thread> worker_threads_;
     std::queue<std::pair<cv::Mat, std::promise<FrameResult>>> frame_queue_;
@@ -95,7 +99,7 @@ private:
     FrameResult processFrameInternal(const cv::Mat& frame);
     
     // Helper methods for photo storage
-    void saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections);
+    void saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections, const std::shared_ptr<ObjectDetector>& detector);
     cv::Scalar getColorForClass(const std::string& class_name) const;
     std::string generateFilename(const std::vector<Detection>& detections) const;
 };

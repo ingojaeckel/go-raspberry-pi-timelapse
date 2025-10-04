@@ -44,6 +44,10 @@ public:
         bool verbose = false;
         bool headless = true;
         bool show_preview = false;  // Real-time viewfinder with bounding boxes
+        
+        // Network streaming
+        bool enable_streaming = false;  // Enable MJPEG HTTP streaming
+        int streaming_port = 8080;      // Port for HTTP streaming server
     };
 
     enum class ParseResult {

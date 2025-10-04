@@ -44,6 +44,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->headless = false;
         } else if (arg == "--show-preview") {
             config_->show_preview = true;
+        } else if (arg == "--enable-streaming") {
+            config_->enable_streaming = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -96,6 +98,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->output_dir = value;
         } else if (arg == "--analysis-rate-limit") {
             config_->analysis_rate_limit = std::stod(value);
+        } else if (arg == "--streaming-port") {
+            config_->streaming_port = std::stoi(value);
         } else {
             return false;
         }
@@ -145,7 +149,9 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "                                 Lower values reduce CPU usage by adding sleep between analyses\n"
               << "  --enable-gpu                   Enable GPU acceleration if available\n"
               << "  --no-headless                  Disable headless mode (show GUI windows)\n"
-              << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n\n"
+              << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n"
+              << "  --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)\n"
+              << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"
@@ -158,6 +164,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  " << program_name << " --model-type yolov5l --max-fps 2  # High accuracy mode\n"
               << "  " << program_name << " --model-type yolov5s --processing-threads 4  # Fast parallel mode\n"
               << "  " << program_name << " --show-preview  # Development mode with real-time viewfinder\n"
+              << "  " << program_name << " --enable-streaming --streaming-port 8080  # Network streaming mode\n"
               << "SUPPORTED PLATFORMS:\n"
               << "  - Linux x86_64 (Intel Core i7, AMD Ryzen 5 3600)\n"
               << "  - Linux 386 (Intel Pentium M)\n"
@@ -222,6 +229,11 @@ bool ConfigManager::validateConfig() const {
     
     if (config_->analysis_rate_limit <= 0.0 || config_->analysis_rate_limit > 100.0) {
         std::cerr << "Invalid analysis_rate_limit: " << config_->analysis_rate_limit << " (must be 0.01-100)" << std::endl;
+        return false;
+    }
+    
+    if (config_->streaming_port <= 0 || config_->streaming_port > 65535) {
+        std::cerr << "Invalid streaming_port: " << config_->streaming_port << " (must be 1-65535)" << std::endl;
         return false;
     }
     
