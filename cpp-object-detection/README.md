@@ -17,6 +17,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **🆕 Pluggable Model Architecture** - Choose between multiple detection models
 - **🆕 Speed vs Accuracy Trade-offs** - Select optimal model for your use case
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
+- **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
 
 ## Model Selection
 
@@ -283,6 +284,7 @@ OPTIONS:
   -v, --verbose                  Enable verbose logging
   --max-fps N                    Maximum frames per second to process (default: 5)
   --min-confidence N             Minimum confidence threshold (0.0-1.0, default: 0.5)
+  --analysis-rate-limit N        Maximum images to analyze per second (default: 1.0)
   --min-fps-warning N            FPS threshold for performance warnings (default: 1)
   --log-file FILE                Log file path (default: object_detection.log)
   --heartbeat-interval N         Heartbeat log interval in minutes (default: 10)
@@ -296,11 +298,36 @@ OPTIONS:
   --show-preview                 Show real-time viewfinder with detection bounding boxes
 ```
 
+### CPU Rate Limiting
+
+The application includes an **analysis rate limiting feature** to reduce CPU usage and energy consumption:
+
+```bash
+# Default: analyze 1 image per second (low CPU usage)
+./object_detection
+
+# Analyze 10 images per second (higher CPU usage)
+./object_detection --analysis-rate-limit 10
+
+# Analyze 0.5 images per second (minimal CPU usage, every 2 seconds)
+./object_detection --analysis-rate-limit 0.5
+```
+
+**How it works:**
+- After each image analysis, the application calculates sleep time: `sleep_time = (1000ms / rate_limit) - processing_time`
+- Example: If analysis takes 50ms and rate limit is 1/sec → sleep 950ms
+- This allows the CPU to idle between analyses, reducing energy consumption by up to 95%
+
 ### Examples
+
+**Energy-efficient monitoring (low CPU):**
+```bash
+./object_detection --analysis-rate-limit 1 --min-confidence 0.7
+```
 
 **Low-power deployment:**
 ```bash
-./object_detection --max-fps 1 --min-confidence 0.8 --heartbeat-interval 5
+./object_detection --max-fps 1 --min-confidence 0.8 --heartbeat-interval 5 --analysis-rate-limit 0.5
 ```
 
 **High-accuracy monitoring:**
