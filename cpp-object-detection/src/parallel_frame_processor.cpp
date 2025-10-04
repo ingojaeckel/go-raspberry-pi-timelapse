@@ -406,11 +406,12 @@ bool ParallelFrameProcessor::isNightMode(const cv::Mat& frame) const {
     double brightness = calculateBrightness(frame);
     
     // Consider it night mode if:
-    // 1. It's night time (20:00-6:00), OR
-    // 2. Brightness is very low (< 50 out of 255, about 20%)
-    bool is_dark = brightness < 50.0;
+    // 1. It's night time (20:00-6:00), AND
+    // 2. Brightness is extremely low (< 15 out of 255, about 6%)
+    // This ensures CLAHE is only applied to nearly black images where nothing would be detected otherwise
+    bool is_extremely_dark = brightness < 15.0;
     
-    if (is_night_time || is_dark) {
+    if (is_night_time && is_extremely_dark) {
         logger_->debug("Night mode detected - time: " + std::string(is_night_time ? "yes" : "no") + 
                       ", brightness: " + std::to_string(static_cast<int>(brightness)));
         return true;

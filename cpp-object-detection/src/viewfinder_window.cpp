@@ -164,14 +164,17 @@ void ViewfinderWindow::showFrameWithStats(const cv::Mat& frame,
         // Draw bounding boxes on the frame
         cv::Mat annotated_frame = drawBoundingBoxes(display_frame, detections);
         
-        // Add night mode indicator in top-left corner if active
+        // Add night mode indicator in top-right corner if active
         if (night_mode_active) {
             std::string night_indicator = "NIGHT MODE";
             int baseline;
             cv::Size text_size = cv::getTextSize(night_indicator, cv::FONT_HERSHEY_SIMPLEX, 0.7, 2, &baseline);
             
+            // Position in top-right corner with padding
+            int padding = 10;
+            cv::Point text_origin(annotated_frame.cols - text_size.width - padding, 30);
+            
             // Draw background rectangle
-            cv::Point text_origin(10, 30);
             cv::rectangle(annotated_frame, 
                          cv::Point(text_origin.x - 5, text_origin.y - text_size.height - 5),
                          cv::Point(text_origin.x + text_size.width + 5, text_origin.y + 5),
