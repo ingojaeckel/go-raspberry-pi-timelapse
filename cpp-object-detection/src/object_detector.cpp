@@ -3,6 +3,11 @@
 #include <iostream>
 #include <algorithm>
 
+// Maximum distance (in pixels) an object can move between frames to be considered the same object
+// This assumes objects don't teleport across large portions of the frame
+// For 720p video at typical frame rates (5 fps), this allows for reasonable movement
+constexpr float MAX_MOVEMENT_DISTANCE = 100.0f;
+
 ObjectDetector::ObjectDetector(const std::string& model_path,
                               const std::string& config_path,
                               const std::string& classes_path,
@@ -162,8 +167,10 @@ std::vector<ModelMetrics> ObjectDetector::getAvailableModels() {
 }
 
 void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detections) {
-    // Simple tracking: mark objects as present/absent
-    // This is a basic implementation - could be enhanced with proper object tracking
+    // Object tracking and permanence model:
+    // - Track objects frame-to-frame based on (x, y) position and object type
+    // - Determine if detected object is "new" (entered frame) or "moved" (was near this position before)
+    // - Use MAX_MOVEMENT_DISTANCE threshold to decide: if distance > threshold, consider it a new object
     
     // Mark all current objects as not seen this frame
     for (auto& tracked : tracked_objects_) {
@@ -175,36 +182,44 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
     for (const auto& detection : detections) {
         bool found_existing = false;
         
-        // Try to match with existing tracked objects
+        cv::Point2f detection_center(
+            detection.bbox.x + detection.bbox.width / 2.0f,
+            detection.bbox.y + detection.bbox.height / 2.0f
+        );
+        
+        // Try to match with existing tracked objects of the same type
         for (auto& tracked : tracked_objects_) {
             if (tracked.object_type == detection.class_name) {
-                // Simple distance-based matching (could be improved)
-                cv::Point2f detection_center(
-                    detection.bbox.x + detection.bbox.width / 2.0f,
-                    detection.bbox.y + detection.bbox.height / 2.0f
-                );
-                
+                // Calculate distance from previously tracked position
                 float distance = cv::norm(tracked.center - detection_center);
-                if (distance < 100.0f) { // Threshold for same object
+                
+                // Check if this detection is close enough to be the same object
+                // If distance is within threshold, assume it's the same object that moved
+                if (distance < MAX_MOVEMENT_DISTANCE) {
+                    // Store previous position before updating (for movement logging)
+                    tracked.previous_center = tracked.center;
                     tracked.center = detection_center;
                     tracked.was_present_last_frame = true;
                     tracked.frames_since_detection = 0;
+                    tracked.is_new = false;  // Not new, it's been tracked
                     found_existing = true;
                     break;
                 }
             }
         }
         
-        // Add new object if not found
+        // Add new object if not found within threshold distance
+        // This means either:
+        // 1. First time seeing this object type, OR
+        // 2. Object of this type is too far from any previously tracked position (likely a different object)
         if (!found_existing) {
             ObjectTracker new_tracker;
             new_tracker.object_type = detection.class_name;
-            new_tracker.center = cv::Point2f(
-                detection.bbox.x + detection.bbox.width / 2.0f,
-                detection.bbox.y + detection.bbox.height / 2.0f
-            );
+            new_tracker.center = detection_center;
+            new_tracker.previous_center = detection_center;  // Same as current for new object
             new_tracker.was_present_last_frame = true;
             new_tracker.frames_since_detection = 0;
+            new_tracker.is_new = true;  // Mark as newly entered
             tracked_objects_.push_back(new_tracker);
         }
     }
@@ -218,26 +233,50 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
         tracked_objects_.end());
 }
 
+
 void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detections) {
-    // Log enter/exit events based on tracking
+    // Log enter/movement events based on tracking
     for (const auto& tracked : tracked_objects_) {
-        bool currently_present = std::any_of(current_detections.begin(), current_detections.end(),
-                                           [&tracked](const Detection& det) {
-                                               return det.class_name == tracked.object_type;
-                                           });
+        // Find the current detection for this tracked object
+        auto detection_it = std::find_if(current_detections.begin(), current_detections.end(),
+                                        [&tracked](const Detection& det) {
+                                            return det.class_name == tracked.object_type;
+                                        });
         
-        if (currently_present && tracked.frames_since_detection > 5) {
-            // Object entered (was absent for multiple frames, now present)
-            auto detection_it = std::find_if(current_detections.begin(), current_detections.end(),
-                                            [&tracked](const Detection& det) {
-                                                return det.class_name == tracked.object_type;
-                                            });
-            if (detection_it != current_detections.end()) {
-                logger_->logObjectDetection(tracked.object_type, "entered", detection_it->confidence);
+        // Check if object is currently present in this frame
+        bool currently_present = (detection_it != current_detections.end());
+        
+        if (currently_present && tracked.frames_since_detection == 0) {
+            // Object is present in this frame and was just updated
+            
+            if (tracked.is_new) {
+                // New object entered the frame
+                logger_->logObjectEntry(
+                    tracked.object_type,
+                    tracked.center.x,
+                    tracked.center.y,
+                    detection_it->confidence
+                );
+            } else {
+                // Object was seen before - check if it moved
+                float distance = cv::norm(tracked.center - tracked.previous_center);
+                
+                // Only log movement if the object actually moved a meaningful distance
+                // (avoid logging tiny movements due to detection jitter)
+                if (distance > 5.0f) {  // 5 pixel threshold to avoid logging noise
+                    logger_->logObjectMovement(
+                        tracked.object_type,
+                        tracked.previous_center.x,
+                        tracked.previous_center.y,
+                        tracked.center.x,
+                        tracked.center.y,
+                        detection_it->confidence
+                    );
+                }
             }
         }
     }
     
     // Note: Exit detection would require more sophisticated tracking
-    // For now, we focus on entry detection which is more reliable
+    // For now, we focus on entry and movement detection which are more reliable
 }

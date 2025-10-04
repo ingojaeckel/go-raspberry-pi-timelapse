@@ -131,6 +131,7 @@ bool initializeComponents(ApplicationContext& ctx) {
 
 void runMainProcessingLoop(ApplicationContext& ctx) {
     ctx.logger->info("Starting main processing loop...");
+    ctx.logger->info("Analysis rate limit: " + std::to_string(ctx.config.analysis_rate_limit) + " images/second");
 
     while (running) {
         auto loop_start = std::chrono::steady_clock::now();
@@ -207,8 +208,20 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
             ctx.last_heartbeat = now;
         }
 
-        // Small delay to prevent excessive CPU usage
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        // Apply rate limiting with evenly distributed sleep time
+        // Calculate required sleep time based on analysis rate limit and actual processing time
+        double target_interval_ms = 1000.0 / ctx.config.analysis_rate_limit;
+        double actual_processing_time_ms = ctx.perf_monitor->getLastProcessingTime();
+        double sleep_time_ms = target_interval_ms - actual_processing_time_ms;
+        
+        if (sleep_time_ms > 0) {
+            auto sleep_duration = std::chrono::milliseconds(static_cast<long>(sleep_time_ms));
+            ctx.logger->debug("Rate limiting: sleeping for " + std::to_string(sleep_time_ms) + " ms (processing took " + std::to_string(actual_processing_time_ms) + " ms, target interval: " + std::to_string(target_interval_ms) + " ms)");
+            std::this_thread::sleep_for(sleep_duration);
+        } else {
+            // Processing took longer than target interval - small delay to prevent excessive CPU usage
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
     }
 }
 

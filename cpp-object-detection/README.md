@@ -7,17 +7,51 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Real-time object detection** from USB webcam input
 - **720p resolution support** with configurable frame rates
 - **Headless operation** - no X11 required
+- **Object tracking and permanence** - Distinguishes new objects from moving objects
+- **Position-based tracking** for people, vehicles, and small animals (cat/dog/fox)
 - **Real-time viewfinder** - optional on-screen preview with detection bounding boxes (--show-preview)
-- **Object tracking** for people, vehicles, and small animals (cat/dog/fox)
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
-- **Structured logging** with timestamps and object enter/exit events
+- **Structured logging** with timestamps and detailed position tracking
 - **Configurable parameters** via command-line interface
 - **Static linking** for standalone deployment
 - **🆕 Pluggable Model Architecture** - Choose between multiple detection models
 - **🆕 Speed vs Accuracy Trade-offs** - Select optimal model for your use case
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
+- **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
 - **🆕 Detection Scale Factor** - In-memory image downscaling for 4x faster processing
+
+## Object Tracking and Permanence Model
+
+The application implements a simple but effective object tracking system that maintains object identity across frames:
+
+### How It Works
+
+1. **Position-Based Tracking**: Objects are tracked using their center (x, y) coordinates and object type (e.g., "cat", "person")
+2. **Movement Detection**: When an object of the same type is detected in a subsequent frame:
+   - If distance from previous position < 100 pixels → Same object (has moved)
+   - If distance from previous position > 100 pixels → Different object (new entry)
+3. **Smart Logging**: 
+   - New objects: `"new cat entered frame at (320, 240)"`
+   - Moved objects: `"cat seen earlier moved from (320, 240) -> (325, 245)"`
+
+### Configuration
+
+The tracking behavior is controlled by these parameters in the code:
+
+- **MAX_MOVEMENT_DISTANCE**: 100 pixels - Maximum distance an object can move between frames and still be considered the same object
+- **Movement threshold**: 5 pixels - Minimum movement to log (avoids noise from detection jitter)
+- **Tracking timeout**: 30 frames - Objects not seen for 30 frames are removed from tracking
+
+### Example Scenario
+
+```
+Frame 1: Detect "cat" at (100, 100) → Log: "new cat entered frame at (100, 100)"
+Frame 2: Detect "cat" at (105, 102) → Log: "cat seen earlier moved from (100, 100) -> (105, 102)"
+Frame 3: Detect "cat" at (300, 100) → Log: "new cat entered frame at (300, 100)" (too far, likely different cat)
+```
+
+This simple model assumes objects don't teleport across the frame and provides basic permanence tracking suitable for monitoring applications.
 
 ## Model Selection
 
@@ -47,6 +81,8 @@ The application supports multiple detection models with different speed/accuracy
 ```
 
 ## Architecture
+
+> **📖 For comprehensive architecture documentation including sequence diagrams, state machines, and detailed component interactions, see [ARCHITECTURE.md](ARCHITECTURE.md)**
 
 ### System Design
 
@@ -137,7 +173,12 @@ public:
 4. **Object Detector (`object_detector.hpp/cpp`)**
    - Object detection orchestrator using pluggable models
    - Target class filtering (person, vehicles, animals, furniture, books)
-   - Object tracking for enter/exit detection
+   - **Object tracking and permanence model**:
+     - Tracks objects frame-to-frame based on position and type
+     - Distinguishes between new objects entering frame vs. tracked objects moving
+     - Uses configurable distance threshold (100 pixels) for movement detection
+     - Logs "new [object] entered frame at (x, y)" for new detections
+     - Logs "[object] moved from (x1, y1) -> (x2, y2)" for tracked movement
    - Model switching and performance monitoring
 
 5. **🆕 Detection Model Interface (`detection_model_interface.hpp`)**
@@ -284,6 +325,7 @@ OPTIONS:
   -v, --verbose                  Enable verbose logging
   --max-fps N                    Maximum frames per second to process (default: 5)
   --min-confidence N             Minimum confidence threshold (0.0-1.0, default: 0.5)
+  --analysis-rate-limit N        Maximum images to analyze per second (default: 1.0)
   --min-fps-warning N            FPS threshold for performance warnings (default: 1)
   --log-file FILE                Log file path (default: object_detection.log)
   --heartbeat-interval N         Heartbeat log interval in minutes (default: 10)
@@ -298,11 +340,36 @@ OPTIONS:
   --show-preview                 Show real-time viewfinder with detection bounding boxes
 ```
 
+### CPU Rate Limiting
+
+The application includes an **analysis rate limiting feature** to reduce CPU usage and energy consumption:
+
+```bash
+# Default: analyze 1 image per second (low CPU usage)
+./object_detection
+
+# Analyze 10 images per second (higher CPU usage)
+./object_detection --analysis-rate-limit 10
+
+# Analyze 0.5 images per second (minimal CPU usage, every 2 seconds)
+./object_detection --analysis-rate-limit 0.5
+```
+
+**How it works:**
+- After each image analysis, the application calculates sleep time: `sleep_time = (1000ms / rate_limit) - processing_time`
+- Example: If analysis takes 50ms and rate limit is 1/sec → sleep 950ms
+- This allows the CPU to idle between analyses, reducing energy consumption by up to 95%
+
 ### Examples
+
+**Energy-efficient monitoring (low CPU):**
+```bash
+./object_detection --analysis-rate-limit 1 --min-confidence 0.7
+```
 
 **Low-power deployment:**
 ```bash
-./object_detection --max-fps 1 --min-confidence 0.8 --heartbeat-interval 5
+./object_detection --max-fps 1 --min-confidence 0.8 --heartbeat-interval 5 --analysis-rate-limit 0.5
 ```
 
 **High-accuracy monitoring:**
@@ -488,9 +555,24 @@ The application now supports in-memory image downscaling during object detection
 ## Logging Format
 
 ### Object Detection Events
+
+The logger now distinguishes between new objects entering the frame and tracked objects moving:
+
+**New Object Entry:**
+```
+[INFO] On Tue 23 Sep at 1:00:15PM PT, new person entered frame at (320, 240) (85% confidence)
+[INFO] On Tue 23 Sep at 1:00:45PM PT, new car entered frame at (450, 180) (92% confidence)
+```
+
+**Object Movement:**
+```
+[INFO] On Tue 23 Sep at 1:00:16PM PT, person seen earlier moved from (320, 240) -> (325, 242) (87% confidence)
+[INFO] On Tue 23 Sep at 1:00:47PM PT, car seen earlier moved from (450, 180) -> (470, 185) (91% confidence)
+```
+
+**Legacy Format (still supported):**
 ```
 [INFO] On Tue 23 Sep at 1:00:15PM PT, person entered frame (85% confidence)
-[INFO] On Tue 23 Sep at 1:00:45PM PT, car entered frame (92% confidence)
 ```
 
 ### Performance Logs
