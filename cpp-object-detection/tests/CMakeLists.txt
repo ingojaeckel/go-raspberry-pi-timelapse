@@ -13,6 +13,7 @@ set(TEST_SOURCES
     test_detection_model_interface.cpp
     test_viewfinder_window.cpp
     test_photo_storage_logic.cpp
+    test_network_streamer.cpp
 )
 
 # Create test executable
@@ -43,6 +44,7 @@ target_sources(object_detection_tests PRIVATE
     ../src/detection_model_factory.cpp
     ../src/yolo_v5_model.cpp
     ../src/viewfinder_window.cpp
+    ../src/network_streamer.cpp
 )
 
 # Code coverage support for tests
