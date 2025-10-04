@@ -173,7 +173,7 @@ public:
 
 4. **Object Detector (`object_detector.hpp/cpp`)**
    - Object detection orchestrator using pluggable models
-   - Target class filtering (person, vehicles, animals)
+   - Target class filtering (person, vehicles, animals, furniture, books)
    - **Object tracking and permanence model**:
      - Tracks objects frame-to-frame based on position and type
      - Distinguishes between new objects entering frame vs. tracked objects moving
@@ -676,7 +676,7 @@ ssh user@target-system 'tail -f /var/log/object_detection.log'
 1. **Update target classes in `object_detector.cpp`:**
 ```cpp
 std::vector<std::string> ObjectDetector::getTargetClasses() {
-    return {"person", "car", "truck", "bus", "motorcycle", "bicycle", "cat", "dog", "bird"};
+    return {"person", "car", "truck", "bus", "motorcycle", "bicycle", "cat", "dog", "bird", "bear", "chair", "book"};
 }
 ```
 

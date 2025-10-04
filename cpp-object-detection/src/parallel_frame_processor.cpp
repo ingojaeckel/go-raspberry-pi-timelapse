@@ -234,10 +234,18 @@ cv::Scalar ParallelFrameProcessor::getColorForClass(const std::string& class_nam
         return cv::Scalar(0, 0, 255);  // Red
     } else if (class_name == "dog") {
         return cv::Scalar(255, 0, 0);  // Blue
+    } else if (class_name == "bird") {
+        return cv::Scalar(255, 255, 0);  // Cyan
+    } else if (class_name == "bear") {
+        return cv::Scalar(0, 128, 128);  // Dark cyan/teal
     } else if (class_name == "car" || class_name == "truck" || class_name == "bus") {
         return cv::Scalar(0, 255, 255);  // Yellow
     } else if (class_name == "motorcycle" || class_name == "bicycle") {
         return cv::Scalar(255, 0, 255);  // Magenta
+    } else if (class_name == "chair") {
+        return cv::Scalar(128, 0, 128);  // Purple
+    } else if (class_name == "book") {
+        return cv::Scalar(255, 128, 0);  // Orange
     } else {
         return cv::Scalar(255, 255, 255);  // White for unknown
     }
