@@ -96,9 +96,13 @@ std::vector<std::string> ObjectDetector::getTargetClasses() {
         "bus", 
         "motorcycle",
         "bicycle",
-        "cat",         // Small animals
-        "dog"
-        // Note: "fox" is not in COCO dataset, but we can detect it as similar to cat/dog
+        "cat",         // Animals
+        "dog",
+        "bird",
+        "chair",       // Furniture and objects
+        "book"
+        // Note: "fox" and "painting" are not in COCO dataset
+        // Fox can sometimes be detected as cat/dog with lower confidence
     };
 }
 
