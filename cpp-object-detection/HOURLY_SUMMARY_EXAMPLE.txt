@@ -1,0 +1,85 @@
+Example Output of Hourly Summary Feature
+==========================================
+
+This shows what the summary output looks like when printed to stdout.
+
+Scenario: Various detections over a 1-hour period
+--------------------------------------------------
+
+Input Detections:
+- 00:00 - Car detected (stationary)
+- 00:01 - Car detected (stationary)  
+- 00:05 - Car detected (stationary)
+- 00:10 - Person detected (dynamic)
+- 00:30 - Cat detected (dynamic)
+- 00:31 - Dog detected (dynamic)
+- 00:50 - Person detected (dynamic)
+- 00:50 - Person detected (dynamic) [5 seconds later]
+- 00:51 - Car detected (stationary)
+- 00:55 - Car detected (stationary)
+- 01:00 - Car detected (stationary)
+
+Output Summary (printed to stdout):
+-----------------------------------
+
+========================================
+Detection Summary: 00:00-01:00
+========================================
+2x cars, 3x people, 1x cat, 1x dog were detected.
+
+Timeline:
+from 00:00-00:05 a car was detected
+at 00:10, a person was detected
+at 00:30, a cat was detected
+at 00:31, a dog was detected
+at 00:50, two people were detected
+from 00:51-01:00 a car was detected
+========================================
+
+Key Features Demonstrated:
+---------------------------
+
+1. Count Summary:
+   - Properly pluralized (cars, people, not persons)
+   - Shows total count per object type
+
+2. Timeline:
+   - Stationary objects fused into time ranges (e.g., "from 00:00-00:05")
+   - Dynamic objects shown at detection time (e.g., "at 00:10")
+   - Consecutive similar objects grouped (e.g., "two people")
+   - Chronological order maintained
+
+3. Formatting:
+   - Clear visual separators (========)
+   - Time range shown in header
+   - Readable 24-hour time format (HH:MM)
+
+Usage in Production:
+-------------------
+
+The summary is automatically printed:
+- Every hour by default (configurable with --summary-interval)
+- To stdout for easy capture and monitoring
+- After the time period ends
+- Events are cleared after printing to start fresh for next period
+
+Configuration:
+-------------
+
+# Use default 1-hour interval
+./object_detection
+
+# Custom interval (30 minutes)
+./object_detection --summary-interval 30
+
+# Custom interval (2 hours)
+./object_detection --summary-interval 120
+
+Integration:
+-----------
+
+The summary works alongside existing logging:
+- Regular log entries are still written to the log file
+- Heartbeat messages continue as configured
+- Performance monitoring continues
+- Summary is additive, not a replacement
