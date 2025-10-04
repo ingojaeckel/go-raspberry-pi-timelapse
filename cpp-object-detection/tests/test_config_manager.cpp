@@ -22,6 +22,7 @@ TEST_F(ConfigManagerTest, DefaultConfiguration) {
     EXPECT_EQ(config.frame_height, 720);
     EXPECT_TRUE(config.headless);
     EXPECT_FALSE(config.verbose);
+    EXPECT_FALSE(config.show_preview);  // Viewfinder disabled by default
 }
 
 TEST_F(ConfigManagerTest, ValidConfiguration) {
@@ -71,4 +72,14 @@ TEST_F(ConfigManagerTest, HelpArgument) {
     int argc = sizeof(argv) / sizeof(argv[0]);
     
     EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::HELP_REQUESTED);
+}
+
+TEST_F(ConfigManagerTest, ShowPreviewArgument) {
+    const char* argv[] = {"program", "--show-preview"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_TRUE(config.show_preview);
 }
