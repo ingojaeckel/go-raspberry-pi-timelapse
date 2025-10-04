@@ -87,6 +87,23 @@ sudo yum install -y cmake gcc-c++ opencv-devel pkgconfig
 
 ## Configuration
 
+### Analysis Rate Limiting
+
+The application includes a **rate limiting feature** to control CPU usage and energy consumption:
+
+- **Default behavior**: Analyzes 1 image per second with automatic sleep intervals
+- **How it works**: After analyzing each image, the application calculates the required sleep time based on:
+  - Target analysis rate (configurable via `--analysis-rate-limit`)
+  - Actual processing time for the previous image
+  - Evenly distributed sleep intervals to minimize CPU usage
+
+**Examples:**
+- If analysis takes 50ms and rate limit is 1 image/second → sleep 950ms
+- If analysis takes 50ms and rate limit is 10 images/second → sleep 50ms
+- If analysis takes 150ms and rate limit is 10 images/second → minimal sleep (processing already exceeds target)
+
+This ensures the CPU can idle between analyses, significantly reducing energy consumption without affecting detection quality.
+
 ### Command Line Options
 
 All configuration is done via command-line arguments:
@@ -97,22 +114,28 @@ All configuration is done via command-line arguments:
 Key Options:
   --max-fps N                Maximum processing rate (default: 5)
   --min-confidence N         Detection threshold (default: 0.5)
-  --camera-id N             Camera device ID (default: 0)
-  --log-file FILE           Log output location
-  --heartbeat-interval N    Status logging interval in minutes
-  --verbose                 Enable debug output
+  --analysis-rate-limit N    Maximum images to analyze per second (default: 1.0)
+  --camera-id N              Camera device ID (default: 0)
+  --log-file FILE            Log output location
+  --heartbeat-interval N     Status logging interval in minutes
+  --verbose                  Enable debug output
 ```
 
 ### Example Configurations
 
 **Low-power deployment:**
 ```bash
-./object_detection --max-fps 2 --min-confidence 0.8 --heartbeat-interval 15
+./object_detection --max-fps 2 --min-confidence 0.8 --heartbeat-interval 15 --analysis-rate-limit 1
+```
+
+**Energy-efficient monitoring (minimal CPU usage):**
+```bash
+./object_detection --analysis-rate-limit 0.5 --min-confidence 0.7
 ```
 
 **High-accuracy monitoring:**
 ```bash
-./object_detection --max-fps 8 --min-confidence 0.3 --verbose
+./object_detection --max-fps 8 --min-confidence 0.3 --verbose --analysis-rate-limit 5
 ```
 
 **Custom logging:**
@@ -298,17 +321,23 @@ ffmpeg -f v4l2 -i /dev/video0 -frames:v 1 test.jpg
 
 **For Intel Core i7 / AMD Ryzen systems:**
 ```bash
-./object_detection --max-fps 10 --processing-threads 2 --enable-gpu
+./object_detection --max-fps 10 --processing-threads 2 --enable-gpu --analysis-rate-limit 10
 ```
 
 **For Intel Pentium M (32-bit):**
 ```bash
-./object_detection --max-fps 1 --min-confidence 0.8 --frame-width 640 --frame-height 480
+./object_detection --max-fps 1 --min-confidence 0.8 --frame-width 640 --frame-height 480 --analysis-rate-limit 0.5
 ```
 
 **For headless servers:**
 ```bash
-./object_detection --headless --log-file /var/log/detection.log --heartbeat-interval 5
+./object_detection --headless --log-file /var/log/detection.log --heartbeat-interval 5 --analysis-rate-limit 2
+```
+
+**For low-CPU usage (energy efficient):**
+```bash
+./object_detection --analysis-rate-limit 1 --min-confidence 0.7
+# This will analyze 1 image per second with automatic sleep intervals to reduce CPU load
 ```
 
 ## Security Considerations

@@ -20,6 +20,7 @@ TEST_F(ConfigManagerTest, DefaultConfiguration) {
     EXPECT_EQ(config.camera_id, 0);
     EXPECT_EQ(config.frame_width, 1280);
     EXPECT_EQ(config.frame_height, 720);
+    EXPECT_DOUBLE_EQ(config.analysis_rate_limit, 1.0);
     EXPECT_TRUE(config.headless);
     EXPECT_FALSE(config.verbose);
     EXPECT_FALSE(config.show_preview);  // Viewfinder disabled by default
@@ -82,4 +83,39 @@ TEST_F(ConfigManagerTest, ShowPreviewArgument) {
     
     const auto& config = config_manager->getConfig();
     EXPECT_TRUE(config.show_preview);
+}
+
+TEST_F(ConfigManagerTest, AnalysisRateLimitArgument) {
+    const char* argv[] = {"program", "--analysis-rate-limit", "10.0"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_DOUBLE_EQ(config.analysis_rate_limit, 10.0);
+    EXPECT_TRUE(config_manager->validateConfig());
+}
+
+TEST_F(ConfigManagerTest, InvalidAnalysisRateLimitZero) {
+    const char* argv[] = {"program", "--analysis-rate-limit", "0"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    EXPECT_FALSE(config_manager->validateConfig());
+}
+
+TEST_F(ConfigManagerTest, InvalidAnalysisRateLimitTooHigh) {
+    const char* argv[] = {"program", "--analysis-rate-limit", "101"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    EXPECT_FALSE(config_manager->validateConfig());
+}
+
+TEST_F(ConfigManagerTest, InvalidAnalysisRateLimitNegative) {
+    const char* argv[] = {"program", "--analysis-rate-limit", "-1"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    EXPECT_FALSE(config_manager->validateConfig());
 }
