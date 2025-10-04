@@ -123,6 +123,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --classes-path FILE            Path to class names file (default: models/coco.names)\n"
               << "  --model-type TYPE              Detection model type (default: yolov5s)\n"
               << "                                 Available: yolov5s (fast), yolov5l (accurate), yolov8n, yolov8m\n"
+              << "  --output-dir DIR               Directory to save detection photos (default: detections)\n"
               << "  --processing-threads N         Number of processing threads (default: 1)\n"
               << "  --enable-parallel              Enable parallel frame processing\n"
               << "  --max-frame-queue N            Maximum frames in processing queue (default: 10)\n"
