@@ -2,6 +2,8 @@
 
 A standalone C++ executable for real-time object detection from webcam data at 720p resolution. This application features a pluggable model architecture that allows engineers to select different detection models based on their speed/accuracy requirements.
 
+**⚡ Optimized for Long-Term Operation**: This application is designed to run continuously for days, weeks, or months without manual intervention. See [LONG_TERM_OPERATION.md](LONG_TERM_OPERATION.md) for details on memory management, camera resilience, and resource monitoring.
+
 ## Features
 
 - **Real-time object detection** from USB webcam input
@@ -23,6 +25,12 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
 - **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
 - **🆕 Detection Scale Factor** - In-memory image downscaling for 4x faster processing
+- **🆕 Long-Term Operation Optimizations**:
+  - Bounded data structures to prevent memory leaks
+  - Automatic camera reconnection and keep-alive
+  - System resource monitoring (disk space, CPU temperature)
+  - Automatic cleanup of old detection photos
+  - Overflow protection for long-running counters
 
 ## Object Tracking and Permanence Model
 
