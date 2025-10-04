@@ -12,6 +12,7 @@ set(TEST_SOURCES
     test_parallel_frame_processor.cpp
     test_detection_model_interface.cpp
     test_viewfinder_window.cpp
+    test_photo_storage_logic.cpp
     test_network_streamer.cpp
 )
 

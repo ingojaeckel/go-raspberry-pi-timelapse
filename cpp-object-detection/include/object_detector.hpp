@@ -83,6 +83,18 @@ public:
      * Get top N most frequently detected objects with counts
      */
     std::vector<std::pair<std::string, int>> getTopDetectedObjects(int top_n = 10) const;
+     
+    /*
+     * Get currently tracked objects
+     */
+    const std::vector<ObjectTracker>& getTrackedObjects() const { return tracked_objects_; }
+    
+    /**
+     * Update object tracking with new detections
+     */
+    void updateTracking(const std::vector<Detection>& detections) {
+        updateTrackedObjects(detections);
+    }
 
 private:
     std::string model_path_;
