@@ -6,7 +6,7 @@ PerformanceMonitor::PerformanceMonitor(std::shared_ptr<Logger> logger,
                                       double min_fps_threshold)
     : logger_(logger), min_fps_threshold_(min_fps_threshold),
       total_frames_processed_(0), total_frames_captured_(0),
-      total_processing_time_ms_(0.0), current_fps_(0.0) {
+      total_processing_time_ms_(0.0), last_processing_time_ms_(0.0), current_fps_(0.0) {
     
     last_frame_time_ = std::chrono::high_resolution_clock::now();
     last_warning_time_ = std::chrono::high_resolution_clock::now();
@@ -27,6 +27,7 @@ void PerformanceMonitor::endFrameProcessing() {
     
     double processing_time_ms = processing_time.count() / 1000.0;
     total_processing_time_ms_ += processing_time_ms;
+    last_processing_time_ms_ = processing_time_ms;
     total_frames_processed_++;
     
     updateFPS();
@@ -45,6 +46,10 @@ double PerformanceMonitor::getAverageProcessingTime() const {
     return total_processing_time_ms_ / total_frames_processed_;
 }
 
+double PerformanceMonitor::getLastProcessingTime() const {
+    return last_processing_time_ms_;
+}
+
 void PerformanceMonitor::checkPerformanceThreshold() {
     if (current_fps_ < min_fps_threshold_ && shouldLogWarning()) {
         logger_->logPerformanceWarning(current_fps_, min_fps_threshold_);
@@ -56,6 +61,7 @@ void PerformanceMonitor::reset() {
     total_frames_processed_ = 0;
     total_frames_captured_ = 0;
     total_processing_time_ms_ = 0.0;
+    last_processing_time_ms_ = 0.0;
     current_fps_ = 0.0;
     last_frame_time_ = std::chrono::high_resolution_clock::now();
     last_warning_time_ = std::chrono::high_resolution_clock::now();

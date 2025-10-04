@@ -34,6 +34,11 @@ public:
     double getAverageProcessingTime() const;
     
     /**
+     * Get the last processing time (in milliseconds)
+     */
+    double getLastProcessingTime() const;
+    
+    /**
      * Check if performance is below threshold and log warning if needed
      */
     void checkPerformanceThreshold();
@@ -65,6 +70,7 @@ private:
     int total_frames_processed_;
     int total_frames_captured_;
     double total_processing_time_ms_;
+    double last_processing_time_ms_;
     double current_fps_;
     
     // Performance tracking

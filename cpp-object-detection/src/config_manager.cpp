@@ -92,6 +92,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->max_frame_queue_size = std::stoi(value);
         } else if (arg == "--output-dir") {
             config_->output_dir = value;
+        } else if (arg == "--analysis-rate-limit") {
+            config_->analysis_rate_limit = std::stod(value);
         } else {
             return false;
         }
@@ -136,6 +138,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --processing-threads N         Number of processing threads (default: 1)\n"
               << "  --enable-parallel              Enable parallel frame processing\n"
               << "  --max-frame-queue N            Maximum frames in processing queue (default: 10)\n"
+              << "  --analysis-rate-limit N        Maximum images to analyze per second (default: 1.0)\n"
+              << "                                 Lower values reduce CPU usage by adding sleep between analyses\n"
               << "  --enable-gpu                   Enable GPU acceleration if available\n"
               << "  --no-headless                  Disable headless mode (show GUI windows)\n"
               << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n\n"
@@ -205,6 +209,11 @@ bool ConfigManager::validateConfig() const {
     
     if (config_->max_frame_queue_size <= 0 || config_->max_frame_queue_size > 100) {
         std::cerr << "Invalid max_frame_queue_size: " << config_->max_frame_queue_size << " (must be 1-100)" << std::endl;
+        return false;
+    }
+    
+    if (config_->analysis_rate_limit <= 0.0 || config_->analysis_rate_limit > 100.0) {
+        std::cerr << "Invalid analysis_rate_limit: " << config_->analysis_rate_limit << " (must be 0.01-100)" << std::endl;
         return false;
     }
     
