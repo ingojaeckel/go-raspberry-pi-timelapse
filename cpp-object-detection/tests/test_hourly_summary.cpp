@@ -1,0 +1,135 @@
+#include <gtest/gtest.h>
+#include <fstream>
+#include <thread>
+#include <chrono>
+#include "logger.hpp"
+
+// Check if filesystem is available
+#if __has_include(<filesystem>)
+    #include <filesystem>
+    namespace fs = std::filesystem;
+#else
+    // Fallback for older systems
+    #include <cstdio>
+    namespace fs {
+        inline bool exists(const std::string& path) {
+            std::ifstream f(path.c_str());
+            return f.good();
+        }
+        inline bool remove(const std::string& path) {
+            return std::remove(path.c_str()) == 0;
+        }
+    }
+#endif
+
+class HourlySummaryTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        test_log_file = "/tmp/test_hourly_summary.log";
+        // Remove any existing test log file
+        fs::remove(test_log_file);
+    }
+
+    void TearDown() override {
+        // Clean up test log file
+        fs::remove(test_log_file);
+    }
+
+    std::string test_log_file;
+};
+
+TEST_F(HourlySummaryTest, RecordDetections) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Record some detections
+    logger->recordDetection("car", true);
+    logger->recordDetection("person", false);
+    logger->recordDetection("person", false);
+    logger->recordDetection("cat", false);
+    
+    // Manually trigger summary (even though time hasn't elapsed)
+    logger->printHourlySummary();
+    
+    // Summary should be printed to stdout
+    // We can't easily capture stdout in this test, but we can verify the method runs without crashing
+    SUCCEED();
+}
+
+TEST_F(HourlySummaryTest, StationaryObjectFusion) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Record a sequence with stationary objects
+    logger->recordDetection("car", true);  // Stationary car starts
+    logger->recordDetection("car", true);  // Car continues
+    logger->recordDetection("car", true);  // Car continues
+    logger->recordDetection("person", false);  // Dynamic person
+    logger->recordDetection("car", true);  // New stationary car period
+    
+    // Trigger summary
+    logger->printHourlySummary();
+    
+    SUCCEED();
+}
+
+TEST_F(HourlySummaryTest, CheckAndPrintSummaryByTime) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Record a detection
+    logger->recordDetection("person", false);
+    
+    // Check with 0 minute interval (should trigger immediately since some time has passed)
+    logger->checkAndPrintSummary(0);
+    
+    // Record another detection
+    logger->recordDetection("car", true);
+    
+    // Check with 60 minute interval (should not trigger)
+    logger->checkAndPrintSummary(60);
+    
+    SUCCEED();
+}
+
+TEST_F(HourlySummaryTest, MultipleObjectTypes) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Record various object types
+    logger->recordDetection("car", true);
+    logger->recordDetection("person", false);
+    logger->recordDetection("person", false);
+    logger->recordDetection("cat", false);
+    logger->recordDetection("dog", false);
+    logger->recordDetection("truck", true);
+    logger->recordDetection("truck", true);
+    
+    // Trigger summary
+    logger->printHourlySummary();
+    
+    SUCCEED();
+}
+
+TEST_F(HourlySummaryTest, EmptySummary) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Don't record any detections
+    
+    // Trigger summary (should handle empty case gracefully)
+    logger->printHourlySummary();
+    
+    SUCCEED();
+}
+
+TEST_F(HourlySummaryTest, ConsecutiveDynamicObjects) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Record multiple consecutive detections of the same type
+    logger->recordDetection("person", false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    logger->recordDetection("person", false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    logger->recordDetection("person", false);
+    
+    // Trigger summary - should group them as "multiple people"
+    logger->printHourlySummary();
+    
+    SUCCEED();
+}

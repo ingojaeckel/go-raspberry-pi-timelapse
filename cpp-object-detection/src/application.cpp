@@ -207,6 +207,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
             ctx.perf_monitor->logPerformanceReport();
             ctx.last_heartbeat = now;
         }
+        
+        // Check and print hourly summary
+        ctx.logger->checkAndPrintSummary(ctx.config.summary_interval_minutes);
 
         // Apply rate limiting with evenly distributed sleep time
         // Calculate required sleep time based on analysis rate limit and actual processing time

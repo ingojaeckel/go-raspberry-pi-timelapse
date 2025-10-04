@@ -253,6 +253,8 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                     tracked.center.y,
                     detection_it->confidence
                 );
+                // Record for hourly summary (new objects are typically moving/dynamic)
+                logger_->recordDetection(tracked.object_type, false);
             } else {
                 // Object was seen before - check if it moved
                 float distance = cv::norm(tracked.center - tracked.previous_center);
@@ -268,6 +270,11 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                         tracked.center.y,
                         detection_it->confidence
                     );
+                    // Record as dynamic object
+                    logger_->recordDetection(tracked.object_type, false);
+                } else {
+                    // Object is stationary (didn't move much)
+                    logger_->recordDetection(tracked.object_type, true);
                 }
             }
         }
