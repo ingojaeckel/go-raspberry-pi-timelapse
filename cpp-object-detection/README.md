@@ -20,6 +20,8 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
 - **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
 - **🆕 Detection Scale Factor** - In-memory image downscaling for 4x faster processing
+- **🆕 Night Mode Detection** - Automatic detection and optimization for low-light conditions
+- **🆕 Photo Storage with Bounding Boxes** - Save annotated detection photos with configurable rate limiting
 
 ## Object Tracking and Permanence Model
 
@@ -695,5 +697,13 @@ This application uses:
 - **OpenCV** for computer vision and camera interface
 - **YOLO** models for object detection (requires separate download)
 - **C++17** standard library
+
+## Additional Documentation
+
+- **[Night Mode Feature](NIGHT_MODE_FEATURE.md)** - Automatic night detection and photo optimization
+- **[Photo Storage Feature](PHOTO_STORAGE_FEATURE.md)** - Detection photo storage with bounding boxes
+- **[Architecture Overview](ARCHITECTURE.md)** - Component interaction and data flow
+- **[Viewfinder Feature](VIEWFINDER_FEATURE.md)** - Real-time detection preview
+- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment instructions
 
 Designed for deployment on Linux systems with USB webcam support.
