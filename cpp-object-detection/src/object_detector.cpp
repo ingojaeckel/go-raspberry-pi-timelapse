@@ -214,6 +214,13 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
         // 1. First time seeing this object type, OR
         // 2. Object of this type is too far from any previously tracked position (likely a different object)
         if (!found_existing) {
+            // Check if we're at the tracking limit
+            if (tracked_objects_.size() >= MAX_TRACKED_OBJECTS) {
+                logger_->warning("Maximum tracked objects limit (" + std::to_string(MAX_TRACKED_OBJECTS) + 
+                                ") reached. Cleaning up oldest objects.");
+                cleanupOldTrackedObjects();
+            }
+            
             ObjectTracker new_tracker;
             new_tracker.object_type = detection.class_name;
             new_tracker.center = detection_center;
@@ -223,9 +230,14 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             new_tracker.is_new = true;  // Mark as newly entered
             tracked_objects_.push_back(new_tracker);
             
-            // Update statistics
+            // Update statistics with bounded growth protection
             total_objects_detected_++;
             object_type_counts_[detection.class_name]++;
+            
+            // Limit object type counts map size
+            if (object_type_counts_.size() > MAX_OBJECT_TYPE_ENTRIES) {
+                limitObjectTypeCounts();
+            }
         }
     }
     
@@ -306,4 +318,49 @@ std::vector<std::pair<std::string, int>> ObjectDetector::getTopDetectedObjects(i
     }
     
     return sorted_objects;
+}
+
+void ObjectDetector::cleanupOldTrackedObjects() {
+    // Remove objects that haven't been seen recently, prioritizing older ones
+    // This is called when we hit the MAX_TRACKED_OBJECTS limit
+    if (tracked_objects_.empty()) {
+        return;
+    }
+    
+    // Sort by frames_since_detection (descending) to remove oldest first
+    std::sort(tracked_objects_.begin(), tracked_objects_.end(),
+              [](const ObjectTracker& a, const ObjectTracker& b) {
+                  return a.frames_since_detection > b.frames_since_detection;
+              });
+    
+    // Remove the oldest 20% or at least 10 objects
+    size_t to_remove = std::max(static_cast<size_t>(10), tracked_objects_.size() / 5);
+    to_remove = std::min(to_remove, tracked_objects_.size());
+    
+    logger_->debug("Cleaning up " + std::to_string(to_remove) + " old tracked objects");
+    tracked_objects_.erase(tracked_objects_.begin(), tracked_objects_.begin() + to_remove);
+}
+
+void ObjectDetector::limitObjectTypeCounts() {
+    // Keep only the most frequently detected object types
+    // This prevents the map from growing unbounded with rare detections
+    if (object_type_counts_.size() <= MAX_OBJECT_TYPE_ENTRIES) {
+        return;
+    }
+    
+    // Convert to vector and sort by count
+    std::vector<std::pair<std::string, int>> sorted_counts(object_type_counts_.begin(), 
+                                                            object_type_counts_.end());
+    std::sort(sorted_counts.begin(), sorted_counts.end(),
+              [](const std::pair<std::string, int>& a, const std::pair<std::string, int>& b) {
+                  return a.second > b.second;
+              });
+    
+    // Keep only top MAX_OBJECT_TYPE_ENTRIES
+    object_type_counts_.clear();
+    for (size_t i = 0; i < MAX_OBJECT_TYPE_ENTRIES && i < sorted_counts.size(); ++i) {
+        object_type_counts_[sorted_counts[i].first] = sorted_counts[i].second;
+    }
+    
+    logger_->debug("Limited object type counts to top " + std::to_string(MAX_OBJECT_TYPE_ENTRIES) + " types");
 }

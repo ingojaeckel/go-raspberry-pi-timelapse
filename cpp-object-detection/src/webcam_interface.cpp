@@ -1,11 +1,14 @@
 #include "webcam_interface.hpp"
 #include <sstream>
+#include <thread>
+#include <chrono>
 
 WebcamInterface::WebcamInterface(int camera_id, int width, int height, 
                                 std::shared_ptr<Logger> logger)
     : camera_id_(camera_id), width_(width), height_(height), 
-      logger_(logger), initialized_(false) {
+      logger_(logger), initialized_(false), consecutive_failures_(0) {
     capture_ = std::make_unique<cv::VideoCapture>();
+    last_keepalive_time_ = std::chrono::steady_clock::now();
 }
 
 WebcamInterface::~WebcamInterface() {
@@ -47,18 +50,27 @@ bool WebcamInterface::initialize() {
 bool WebcamInterface::captureFrame(cv::Mat& frame) {
     if (!initialized_ || !capture_->isOpened()) {
         logger_->error("Camera not initialized or not opened");
+        consecutive_failures_++;
         return false;
     }
 
     if (!capture_->read(frame)) {
         logger_->warning("Failed to read frame from camera");
+        consecutive_failures_++;
         return false;
     }
 
     if (frame.empty()) {
         logger_->warning("Captured frame is empty");
+        consecutive_failures_++;
         return false;
     }
+
+    // Reset failure count on successful capture
+    consecutive_failures_ = 0;
+    
+    // Perform periodic keep-alive to prevent USB camera standby
+    keepAlive();
 
     return true;
 }
@@ -199,4 +211,52 @@ std::vector<std::string> WebcamInterface::listAvailableCameras() {
     }
     
     return cameras;
+}
+
+bool WebcamInterface::healthCheck() {
+    // If we haven't had consecutive failures, camera is healthy
+    if (consecutive_failures_ < MAX_CONSECUTIVE_FAILURES) {
+        return true;
+    }
+    
+    logger_->warning("Camera health check failed - attempting recovery after " + 
+                    std::to_string(consecutive_failures_) + " consecutive failures");
+    
+    // Attempt to reconnect
+    return reconnect();
+}
+
+bool WebcamInterface::reconnect() {
+    logger_->info("Attempting to reconnect to camera " + std::to_string(camera_id_));
+    
+    // Release current connection
+    release();
+    
+    // Small delay before reconnecting
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    
+    // Try to reinitialize
+    if (initialize()) {
+        logger_->info("Successfully reconnected to camera");
+        consecutive_failures_ = 0;
+        return true;
+    }
+    
+    logger_->error("Failed to reconnect to camera");
+    return false;
+}
+
+void WebcamInterface::keepAlive() {
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_keepalive_time_);
+    
+    if (elapsed.count() >= KEEPALIVE_INTERVAL_SECONDS) {
+        // Perform a lightweight operation to keep camera active
+        // Query a camera property to prevent USB power-saving
+        if (capture_ && capture_->isOpened()) {
+            capture_->get(cv::CAP_PROP_FPS);  // Simple property query
+            logger_->debug("Camera keep-alive performed");
+        }
+        last_keepalive_time_ = now;
+    }
 }

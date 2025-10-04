@@ -15,6 +15,7 @@
 #include "detection_model_interface.hpp"
 #include "viewfinder_window.hpp"
 #include "network_streamer.hpp"
+#include "system_monitor.hpp"
 
 /**
  * Context structure to hold shared application state
@@ -32,6 +33,7 @@ struct ApplicationContext {
     std::shared_ptr<ParallelFrameProcessor> frame_processor;
     std::shared_ptr<ViewfinderWindow> viewfinder;
     std::shared_ptr<NetworkStreamer> network_streamer;
+    std::shared_ptr<SystemMonitor> system_monitor;
     
     // Processing state
     std::queue<std::future<ParallelFrameProcessor::FrameResult>> pending_frames;

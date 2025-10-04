@@ -53,6 +53,7 @@ set(SOURCES
     src/yolo_v5_model.cpp
     src/viewfinder_window.cpp
     src/network_streamer.cpp
+    src/system_monitor.cpp
 )
 
 # Create executable
