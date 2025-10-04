@@ -92,11 +92,12 @@ bool initializeComponents(ApplicationContext& ctx) {
     ctx.logger->info("Minimum confidence threshold: " + std::to_string(ctx.config.min_confidence));
     ctx.logger->info("Maximum processing rate: " + std::to_string(ctx.config.max_fps) + " fps");
     ctx.logger->info("Performance warning threshold: " + std::to_string(ctx.config.min_fps_warning_threshold) + " fps");
+    ctx.logger->info("Detection photos will be saved to: " + config.output_dir);
 
     // Initialize parallel frame processor
     int effective_threads = ctx.config.enable_parallel_processing ? ctx.config.processing_threads : 1;
     ctx.frame_processor = std::make_shared<ParallelFrameProcessor>(
-        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size);
+        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, config.output_dir);
 
     if (!ctx.frame_processor->initialize()) {
         ctx.logger->error("Failed to initialize parallel frame processor");
