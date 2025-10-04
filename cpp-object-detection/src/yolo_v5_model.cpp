@@ -26,23 +26,27 @@ const cv::Scalar YoloV5LargeModel::MEAN = cv::Scalar(0, 0, 0);
 // ============================================================================
 
 YoloV5SmallModel::YoloV5SmallModel(std::shared_ptr<Logger> logger)
-    : logger_(logger), confidence_threshold_(0.5), initialized_(false), avg_inference_time_ms_(65) {
+    : logger_(logger), confidence_threshold_(0.5), detection_scale_factor_(1.0), 
+      initialized_(false), avg_inference_time_ms_(65) {
 }
 
 bool YoloV5SmallModel::initialize(const std::string& model_path,
                                  const std::string& /* config_path */,
                                  const std::string& classes_path,
-                                 double confidence_threshold) {
+                                 double confidence_threshold,
+                                 double detection_scale_factor) {
     if (initialized_) {
         return true;
     }
 
     confidence_threshold_ = confidence_threshold;
+    detection_scale_factor_ = detection_scale_factor;
     
     logger_->info("Initializing YOLOv5 Small model...");
     logger_->debug("Model path: " + model_path);
     logger_->debug("Classes path: " + classes_path);
     logger_->debug("Confidence threshold: " + std::to_string(confidence_threshold_));
+    logger_->debug("Detection scale factor: " + std::to_string(detection_scale_factor_));
 
     // Load class names
     if (!loadClassNames(classes_path)) {
@@ -71,9 +75,17 @@ std::vector<Detection> YoloV5SmallModel::detect(const cv::Mat& frame) {
     std::vector<Detection> detections;
 
     try {
-        // Create blob from image
+        // Downscale frame if scale factor is less than 1.0
+        cv::Mat detection_frame = frame;
+        if (detection_scale_factor_ < 1.0) {
+            int new_width = static_cast<int>(frame.cols * detection_scale_factor_);
+            int new_height = static_cast<int>(frame.rows * detection_scale_factor_);
+            cv::resize(frame, detection_frame, cv::Size(new_width, new_height), 0, 0, cv::INTER_LINEAR);
+        }
+        
+        // Create blob from image (potentially downscaled)
         cv::Mat blob;
-        cv::dnn::blobFromImage(frame, blob, SCALE_FACTOR, 
+        cv::dnn::blobFromImage(detection_frame, blob, SCALE_FACTOR, 
                               cv::Size(INPUT_WIDTH, INPUT_HEIGHT), 
                               MEAN, true, false, CV_32F);
 
@@ -84,7 +96,7 @@ std::vector<Detection> YoloV5SmallModel::detect(const cv::Mat& frame) {
         std::vector<cv::Mat> outputs;
         net_.forward(outputs, net_.getUnconnectedOutLayersNames());
 
-        // Post-process the outputs
+        // Post-process the outputs (pass original frame for proper bbox scaling)
         detections = postProcess(frame, outputs);
 
     } catch (const cv::Exception& e) {
@@ -333,23 +345,27 @@ void YoloV5SmallModel::updateInferenceTime(int inference_time_ms) const {
 // ============================================================================
 
 YoloV5LargeModel::YoloV5LargeModel(std::shared_ptr<Logger> logger)
-    : logger_(logger), confidence_threshold_(0.5), initialized_(false), avg_inference_time_ms_(120) {
+    : logger_(logger), confidence_threshold_(0.5), detection_scale_factor_(1.0),
+      initialized_(false), avg_inference_time_ms_(120) {
 }
 
 bool YoloV5LargeModel::initialize(const std::string& model_path,
                                  const std::string& /* config_path */,
                                  const std::string& classes_path,
-                                 double confidence_threshold) {
+                                 double confidence_threshold,
+                                 double detection_scale_factor) {
     if (initialized_) {
         return true;
     }
 
     confidence_threshold_ = confidence_threshold;
+    detection_scale_factor_ = detection_scale_factor;
     
     logger_->info("Initializing YOLOv5 Large model...");
     logger_->debug("Model path: " + model_path);
     logger_->debug("Classes path: " + classes_path);
     logger_->debug("Confidence threshold: " + std::to_string(confidence_threshold_));
+    logger_->debug("Detection scale factor: " + std::to_string(detection_scale_factor_));
 
     // Load class names
     if (!loadClassNames(classes_path)) {
@@ -378,9 +394,17 @@ std::vector<Detection> YoloV5LargeModel::detect(const cv::Mat& frame) {
     std::vector<Detection> detections;
 
     try {
+        // Downscale frame if scale factor is less than 1.0
+        cv::Mat detection_frame = frame;
+        if (detection_scale_factor_ < 1.0) {
+            int new_width = static_cast<int>(frame.cols * detection_scale_factor_);
+            int new_height = static_cast<int>(frame.rows * detection_scale_factor_);
+            cv::resize(frame, detection_frame, cv::Size(new_width, new_height), 0, 0, cv::INTER_LINEAR);
+        }
+        
         // Create blob from image (larger input size for better accuracy)
         cv::Mat blob;
-        cv::dnn::blobFromImage(frame, blob, SCALE_FACTOR, 
+        cv::dnn::blobFromImage(detection_frame, blob, SCALE_FACTOR, 
                               cv::Size(INPUT_WIDTH, INPUT_HEIGHT), 
                               MEAN, true, false, CV_32F);
 
@@ -391,7 +415,7 @@ std::vector<Detection> YoloV5LargeModel::detect(const cv::Mat& frame) {
         std::vector<cv::Mat> outputs;
         net_.forward(outputs, net_.getUnconnectedOutLayersNames());
 
-        // Post-process the outputs
+        // Post-process the outputs (pass original frame for proper bbox scaling)
         detections = postProcess(frame, outputs);
 
     } catch (const cv::Exception& e) {
