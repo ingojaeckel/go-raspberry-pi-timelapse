@@ -104,10 +104,11 @@ std::vector<std::string> ObjectDetector::getTargetClasses() {
         "cat",         // Animals
         "dog",
         "bird",
+        "bear",        // Wild animals (closest to fox in COCO dataset)
         "chair",       // Furniture and objects
         "book"
-        // Note: "fox" and "painting" are not in COCO dataset
-        // Fox can sometimes be detected as cat/dog with lower confidence
+        // Note: "fox" is not in COCO dataset, using "bear" as closest wild animal equivalent
+        // Note: "painting" is not in COCO dataset
     };
 }
 

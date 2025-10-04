@@ -635,7 +635,7 @@ ssh user@target-system 'tail -f /var/log/object_detection.log'
 1. **Update target classes in `object_detector.cpp`:**
 ```cpp
 std::vector<std::string> ObjectDetector::getTargetClasses() {
-    return {"person", "car", "truck", "bus", "motorcycle", "bicycle", "cat", "dog", "bird", "chair", "book"};
+    return {"person", "car", "truck", "bus", "motorcycle", "bicycle", "cat", "dog", "bird", "bear", "chair", "book"};
 }
 ```
 

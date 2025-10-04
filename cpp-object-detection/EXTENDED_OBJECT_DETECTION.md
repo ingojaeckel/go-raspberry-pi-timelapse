@@ -20,14 +20,14 @@ The following object types are now monitored:
 - car, truck, bus, motorcycle, bicycle
 
 **Animals:**
-- cat, dog, bird *(new)*
+- cat, dog, bird *(new)*, bear *(new - fox equivalent)*
 
 **Furniture & Objects:**
 - chair *(new)*, book *(new)*
 
 **Notes:**
-- "fox" and "painting" requested but NOT available in COCO dataset (80 classes)
-- Fox may occasionally be detected as "cat" or "dog" with lower confidence
+- "fox" is not available in COCO dataset - using "bear" as the closest wild animal equivalent
+- "painting" is not available in COCO dataset
 - All classes listed above are part of the COCO dataset and fully supported
 
 ### 3. Bounding Box Drawing ✅
@@ -44,6 +44,7 @@ Each object type has a unique color for easy visual identification:
 | Cat | Red | (0, 0, 255) |
 | Dog | Blue | (255, 0, 0) |
 | Bird | Cyan | (255, 255, 0) |
+| Bear | Dark Cyan/Teal | (0, 128, 128) |
 | Car/Truck/Bus | Yellow | (0, 255, 255) |
 | Motorcycle/Bicycle | Magenta | (255, 0, 255) |
 | Chair | Purple | (128, 0, 128) |
@@ -135,9 +136,10 @@ The COCO dataset (used by YOLO models) contains 80 object classes. The following
 - ✅ bird (class 14)
 - ✅ cat (class 15)
 - ✅ dog (class 16)
+- ✅ bear (class 21) - *used as fox equivalent*
 - ✅ chair (class 56)
 - ✅ book (class 73)
 
 Not available in COCO:
-- ❌ fox (similar animals: cat, dog)
+- ❌ fox (using bear as closest wild animal equivalent)
 - ❌ painting (similar objects: potentially "picture" but not standard COCO class)

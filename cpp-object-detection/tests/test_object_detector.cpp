@@ -90,6 +90,7 @@ TEST_F(ObjectDetectorTest, GetTargetClasses) {
     bool has_dog = std::find(target_classes.begin(), target_classes.end(), "dog") != target_classes.end();
     bool has_cat = std::find(target_classes.begin(), target_classes.end(), "cat") != target_classes.end();
     bool has_bird = std::find(target_classes.begin(), target_classes.end(), "bird") != target_classes.end();
+    bool has_bear = std::find(target_classes.begin(), target_classes.end(), "bear") != target_classes.end();
     bool has_chair = std::find(target_classes.begin(), target_classes.end(), "chair") != target_classes.end();
     bool has_book = std::find(target_classes.begin(), target_classes.end(), "book") != target_classes.end();
     
@@ -98,6 +99,7 @@ TEST_F(ObjectDetectorTest, GetTargetClasses) {
     EXPECT_TRUE(has_dog);
     EXPECT_TRUE(has_cat);
     EXPECT_TRUE(has_bird);
+    EXPECT_TRUE(has_bear);
     EXPECT_TRUE(has_chair);
     EXPECT_TRUE(has_book);
 }
@@ -117,6 +119,7 @@ TEST_F(ObjectDetectorTest, IsTargetClass) {
     EXPECT_TRUE(detector->isTargetClass("cat"));
     EXPECT_TRUE(detector->isTargetClass("dog"));
     EXPECT_TRUE(detector->isTargetClass("bird"));
+    EXPECT_TRUE(detector->isTargetClass("bear"));
     EXPECT_TRUE(detector->isTargetClass("chair"));
     EXPECT_TRUE(detector->isTargetClass("book"));
     
