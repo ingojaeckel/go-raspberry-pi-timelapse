@@ -209,3 +209,15 @@ TEST_F(ParallelFrameProcessorTest, ThreadCountValidation) {
         processor->shutdown();
     }
 }
+TEST_F(ParallelFrameProcessorTest, GetTotalImagesSaved) {
+    // Test getting total images saved
+    auto processor = std::make_unique<ParallelFrameProcessor>(
+        detector, logger, perf_monitor, 1, 10);
+    
+    EXPECT_TRUE(processor->initialize());
+    
+    // Initially should be 0
+    EXPECT_EQ(processor->getTotalImagesSaved(), 0);
+    
+    processor->shutdown();
+}

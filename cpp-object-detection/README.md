@@ -9,7 +9,9 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Headless operation** - no X11 required
 - **Object tracking and permanence** - Distinguishes new objects from moving objects
 - **Position-based tracking** for people, vehicles, and small animals (cat/dog/fox)
-- **Real-time viewfinder** - optional on-screen preview with detection bounding boxes (--show-preview)
+- **Real-time viewfinder** - optional on-screen preview with detection bounding boxes and performance statistics (--show-preview)
+  - **Debug overlay** with performance metrics, detection counts, uptime, and top detected objects
+  - **Toggle overlay** with SPACE key for minimal screen coverage
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
 - **Structured logging** with timestamps and detailed position tracking

@@ -147,3 +147,37 @@ TEST_F(ObjectDetectorTest, ValidModelPaths) {
         EXPECT_NE(detector, nullptr);
     }
 }
+TEST_F(ObjectDetectorTest, GetTotalObjectsDetected) {
+    // Test getting total objects detected
+    auto detector = std::make_unique<ObjectDetector>(
+        model_path, config_path, classes_path, confidence_threshold, logger);
+    
+    // Initially should be 0
+    EXPECT_EQ(detector->getTotalObjectsDetected(), 0);
+}
+
+TEST_F(ObjectDetectorTest, GetTopDetectedObjects) {
+    // Test getting top detected objects
+    auto detector = std::make_unique<ObjectDetector>(
+        model_path, config_path, classes_path, confidence_threshold, logger);
+    
+    // Initially should be empty
+    auto top_objects = detector->getTopDetectedObjects(10);
+    EXPECT_TRUE(top_objects.empty());
+}
+
+TEST_F(ObjectDetectorTest, GetTopDetectedObjectsWithLimit) {
+    // Test getting top detected objects with different limits
+    auto detector = std::make_unique<ObjectDetector>(
+        model_path, config_path, classes_path, confidence_threshold, logger);
+    
+    // Test with different limits
+    auto top_5 = detector->getTopDetectedObjects(5);
+    auto top_10 = detector->getTopDetectedObjects(10);
+    auto top_20 = detector->getTopDetectedObjects(20);
+    
+    // All should be empty for uninitialized detector
+    EXPECT_TRUE(top_5.empty());
+    EXPECT_TRUE(top_10.empty());
+    EXPECT_TRUE(top_20.empty());
+}
