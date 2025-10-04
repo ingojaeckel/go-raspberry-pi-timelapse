@@ -300,8 +300,6 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
                              std::to_string(static_cast<int>(center.x)) + ", " + 
                              std::to_string(static_cast<int>(center.y)) + ") with confidence " + 
                              std::to_string(static_cast<int>(detection.confidence * 100)) + "%");
-                
-                logger_->logObjectDetection(detection.class_name, "detected", detection.confidence);
             }
         }
         
