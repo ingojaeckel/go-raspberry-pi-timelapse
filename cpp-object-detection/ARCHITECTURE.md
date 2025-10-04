@@ -182,6 +182,8 @@ The C++ Object Detection application is a real-time computer vision system desig
 - `ObjectDetector detector`: Detection orchestrator
 - `ParallelFrameProcessor frame_processor`: Processing pipeline
 - `PerformanceMonitor perf_monitor`: Performance tracking
+- `ViewfinderWindow viewfinder`: Real-time local preview (optional)
+- `NetworkStreamer network_streamer`: Network video streaming (optional)
 
 ### 3. ConfigManager (`config_manager.hpp/cpp`)
 
@@ -306,6 +308,99 @@ DetectionModelFactory::createModel(ModelType)
 - Average processing time per frame
 - Total frames processed
 - Performance warnings (when FPS drops below threshold)
+
+### 10. ViewfinderWindow (`viewfinder_window.hpp/cpp`)
+
+**Responsibilities:**
+- Real-time display of detection results
+- Drawing bounding boxes and labels
+- User interaction (keyboard input for closing)
+
+**Key Methods:**
+- `initialize()`: Creates OpenCV window
+- `showFrame()`: Displays frame with bounding boxes
+- `shouldClose()`: Checks for user quit request
+- `drawBoundingBoxes()`: Renders detection annotations
+
+**States:**
+```
+[Not Initialized] ──initialize()──► [Ready] ──showFrame()──► [Displaying]
+                                       │                        │
+                                       │◄───────────────────────┘
+                                       │
+                                       └──close()──► [Closed]
+```
+
+### 11. NetworkStreamer (`network_streamer.hpp/cpp`)
+
+**Responsibilities:**
+- MJPEG HTTP streaming over network
+- Multi-client connection handling
+- Frame encoding to JPEG
+- Network socket management
+
+**Key Methods:**
+- `initialize()`: Creates and binds TCP socket
+- `start()`: Starts server thread for accepting connections
+- `updateFrame()`: Updates current frame to stream
+- `stop()`: Closes connections and stops server
+- `getStreamingUrl()`: Returns HTTP URL for stream access
+
+**Key Features:**
+- Protocol: MJPEG over HTTP (multipart/x-mixed-replace)
+- Port: Configurable (default 8080)
+- Quality: 80% JPEG compression
+- Frame Rate: ~10 fps (configurable)
+- Accessibility: Compatible with browsers, VLC, ffplay
+
+**States:**
+```
+[Not Initialized] ──initialize()──► [Ready] ──start()──► [Listening]
+                                       │                     │
+                                       │                     │ accept()
+                                       │                     ▼
+                                       │              [Client Connected]
+                                       │                     │
+                                       │                     │ stream frames
+                                       │                     │
+                                       │                     ▼
+                                       │              [Client Disconnected]
+                                       │                     │
+                                       │◄────────────────────┘
+                                       │
+                                       └──stop()──► [Stopped]
+```
+
+**Network Flow:**
+```
+Client Device          NetworkStreamer           Main Loop
+(Browser/VLC)               │                        │
+    │                       │                        │
+    │  HTTP GET /stream     │                        │
+    ├──────────────────────►│                        │
+    │                       │                        │
+    │  HTTP 200 OK          │                        │
+    │  (MJPEG headers)      │                        │
+    │◄──────────────────────┤                        │
+    │                       │                        │
+    │                       │  updateFrame()         │
+    │                       │◄───────────────────────┤
+    │                       │  (frame + detections)  │
+    │                       │                        │
+    │  JPEG frame 1         │                        │
+    │  (with bboxes)        │                        │
+    │◄──────────────────────┤                        │
+    │                       │                        │
+    │  JPEG frame 2         │                        │
+    │◄──────────────────────┤                        │
+    │                       │                        │
+    │        ...            │         ...            │
+```
+
+**Security Note:**
+- No authentication/encryption (designed for local network only)
+- Binds to all interfaces (0.0.0.0)
+- Should not be exposed to public internet
 
 ---
 
