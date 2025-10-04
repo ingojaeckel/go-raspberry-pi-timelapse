@@ -4,7 +4,6 @@
 #include <chrono>
 #include <csignal>
 #include <atomic>
-#include <cstdio>  // For std::setvbuf
 
 #include "config_manager.hpp"
 #include "logger.hpp"
@@ -22,10 +21,6 @@ void signalHandler(int signal) {
 }
 
 int main(int argc, char* argv[]) {
-    // Force line buffering for stdout (macOS compatibility)
-    std::setvbuf(stdout, nullptr, _IOLBF, 0);
-    std::setvbuf(stderr, nullptr, _IOLBF, 0);
-    
     // Setup signal handlers for graceful shutdown
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
@@ -37,21 +32,16 @@ int main(int argc, char* argv[]) {
         
         if (parse_result == ConfigManager::ParseResult::HELP_REQUESTED ||
             parse_result == ConfigManager::ParseResult::LIST_REQUESTED) {
-            // Ensure output is flushed before exiting (macOS compatibility)
-            std::cout.flush();
-            std::cerr.flush();
             return 0;  // Success exit for help/list
         }
         
         if (parse_result == ConfigManager::ParseResult::PARSE_ERROR) {
             std::cerr << "Error parsing arguments. Use --help for usage information." << std::endl;
-            std::cerr.flush();
             return 1;
         }
 
         if (!config_manager.validateConfig()) {
             std::cerr << "Invalid configuration. Exiting." << std::endl;
-            std::cerr.flush();
             return 1;
         }
 
