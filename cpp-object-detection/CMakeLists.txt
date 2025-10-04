@@ -42,6 +42,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # Source files
 set(SOURCES
     src/main.cpp
+    src/application.cpp
     src/webcam_interface.cpp
     src/object_detector.cpp
     src/config_manager.cpp
