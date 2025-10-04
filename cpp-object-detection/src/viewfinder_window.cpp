@@ -103,7 +103,7 @@ cv::Mat ViewfinderWindow::drawBoundingBoxes(const cv::Mat& frame,
         
         // Draw label text
         cv::putText(annotated_frame, label, text_origin, 
-                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
     }
     
     return annotated_frame;
