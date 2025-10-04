@@ -161,6 +161,53 @@ TEST_F(ObjectDetectorTest, ValidModelPaths) {
         EXPECT_NE(detector, nullptr);
     }
 }
+
+TEST_F(ObjectDetectorTest, ObjectTrackerStructure) {
+    // Test the ObjectTracker structure has the expected fields
+    ObjectDetector::ObjectTracker tracker;
+    
+    // Set basic fields
+    tracker.object_type = "person";
+    tracker.center = cv::Point2f(100.0f, 200.0f);
+    tracker.previous_center = cv::Point2f(90.0f, 190.0f);
+    tracker.was_present_last_frame = true;
+    tracker.frames_since_detection = 0;
+    tracker.is_new = false;
+    
+    // Test position history
+    EXPECT_TRUE(tracker.position_history.empty());
+    
+    // Add positions to history
+    tracker.position_history.push_back(cv::Point2f(80.0f, 180.0f));
+    tracker.position_history.push_back(cv::Point2f(90.0f, 190.0f));
+    tracker.position_history.push_back(cv::Point2f(100.0f, 200.0f));
+    
+    EXPECT_EQ(tracker.position_history.size(), 3);
+    EXPECT_EQ(tracker.position_history.front().x, 80.0f);
+    EXPECT_EQ(tracker.position_history.back().x, 100.0f);
+}
+
+TEST_F(ObjectDetectorTest, PositionHistoryLimit) {
+    // Test that position history is limited to MAX_POSITION_HISTORY
+    ObjectDetector::ObjectTracker tracker;
+    
+    // Add more positions than the limit
+    for (int i = 0; i <= ObjectDetector::ObjectTracker::MAX_POSITION_HISTORY + 5; ++i) {
+        tracker.position_history.push_back(cv::Point2f(i * 10.0f, i * 10.0f));
+        
+        // Simulate the limit enforcement
+        if (tracker.position_history.size() > ObjectDetector::ObjectTracker::MAX_POSITION_HISTORY) {
+            tracker.position_history.pop_front();
+        }
+    }
+    
+    // Should be limited to MAX_POSITION_HISTORY
+    EXPECT_EQ(tracker.position_history.size(), ObjectDetector::ObjectTracker::MAX_POSITION_HISTORY);
+    
+    // The oldest position should have been removed
+    EXPECT_GT(tracker.position_history.front().x, 0.0f);
+}
+
 TEST_F(ObjectDetectorTest, GetTotalObjectsDetected) {
     // Test getting total objects detected
     auto detector = std::make_unique<ObjectDetector>(
