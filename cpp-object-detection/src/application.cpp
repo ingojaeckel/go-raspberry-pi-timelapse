@@ -72,7 +72,7 @@ bool initializeComponents(ApplicationContext& ctx) {
 
     ctx.detector = std::make_shared<ObjectDetector>(
         ctx.config.model_path, ctx.config.config_path, ctx.config.classes_path,
-        ctx.config.min_confidence, ctx.logger, model_type);
+        ctx.config.min_confidence, ctx.logger, model_type, ctx.config.detection_scale_factor);
 
     if (!ctx.detector->initialize()) {
         ctx.logger->error("Failed to initialize object detector");

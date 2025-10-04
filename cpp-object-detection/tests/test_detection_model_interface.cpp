@@ -20,7 +20,8 @@ public:
     bool initialize(const std::string& model_path,
                    const std::string& config_path,
                    const std::string& classes_path,
-                   double confidence_threshold) override {
+                   double confidence_threshold,
+                   double detection_scale_factor = 1.0) override {
         model_path_ = model_path;
         confidence_threshold_ = confidence_threshold;
         initialized_ = true;
@@ -226,4 +227,39 @@ TEST_F(DetectionModelInterfaceTest, ModelPerformanceComparison) {
         EXPECT_GT(yolov5l_metrics.avg_inference_time_ms, yolov5s_metrics.avg_inference_time_ms);
         EXPECT_GT(yolov5l_metrics.model_size_mb, yolov5s_metrics.model_size_mb);
     }
+}
+
+TEST_F(DetectionModelInterfaceTest, DetectionScaleFactorInitialization) {
+    auto model = std::make_unique<YoloV5SmallModel>(logger_);
+    
+    // Initialize with scale factor of 0.5 (50% reduction)
+    bool result = model->initialize("test_model.onnx", "", "test_classes.names", 0.5, 0.5);
+    
+    // Model should accept the scale factor without error (though it may fail due to missing model file)
+    // We're testing that the API accepts the parameter correctly
+    EXPECT_FALSE(result);  // Will fail due to missing model file, but that's expected
+}
+
+TEST_F(DetectionModelInterfaceTest, DetectionScaleFactorDefault) {
+    auto model = std::make_unique<YoloV5SmallModel>(logger_);
+    
+    // Initialize without specifying scale factor (should default to 1.0)
+    bool result = model->initialize("test_model.onnx", "", "test_classes.names", 0.5);
+    
+    // Should work the same as before (backwards compatible)
+    EXPECT_FALSE(result);  // Will fail due to missing model file, but that's expected
+}
+
+TEST_F(DetectionModelInterfaceTest, MockModelWithScaleFactor) {
+    auto model = std::make_unique<MockDetectionModel>(logger_);
+    
+    // Test with scale factor
+    bool result = model->initialize("test_model.onnx", "", "test_classes.names", 0.5, 0.5);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(model->isInitialized());
+    
+    // Test detection still works
+    cv::Mat frame = cv::Mat::zeros(480, 640, CV_8UC3);
+    auto detections = model->detect(frame);
+    EXPECT_EQ(detections.size(), 1);
 }

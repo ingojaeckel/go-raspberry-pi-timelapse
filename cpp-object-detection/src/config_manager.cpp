@@ -84,6 +84,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->classes_path = value;
         } else if (arg == "--model-type") {
             config_->model_type = value;
+        } else if (arg == "--detection-scale") {
+            config_->detection_scale_factor = std::stod(value);
         } else if (arg == "--processing-threads") {
             config_->processing_threads = std::stoi(value);
         } else if (arg == "--max-frame-queue") {
@@ -129,6 +131,9 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --classes-path FILE            Path to class names file (default: models/coco.names)\n"
               << "  --model-type TYPE              Detection model type (default: yolov5s)\n"
               << "                                 Available: yolov5s (fast), yolov5l (accurate), yolov8n, yolov8m\n"
+              << "  --detection-scale N            Scale factor for detection (0.1-1.0, default: 0.5)\n"
+              << "                                 Lower values = faster but may reduce accuracy\n"
+              << "                                 0.5 = 50% reduction (1280x720 -> 640x360, 75% fewer pixels)\n"
               << "  --output-dir DIR               Directory to save detection photos (default: detections)\n"
               << "  --processing-threads N         Number of processing threads (default: 1)\n"
               << "  --enable-parallel              Enable parallel frame processing\n"
@@ -169,6 +174,11 @@ bool ConfigManager::validateConfig() const {
     
     if (config_->min_confidence < 0.0 || config_->min_confidence > 1.0) {
         std::cerr << "Invalid min_confidence: " << config_->min_confidence << " (must be 0.0-1.0)" << std::endl;
+        return false;
+    }
+    
+    if (config_->detection_scale_factor <= 0.0 || config_->detection_scale_factor > 1.0) {
+        std::cerr << "Invalid detection_scale_factor: " << config_->detection_scale_factor << " (must be 0.0-1.0)" << std::endl;
         return false;
     }
     
