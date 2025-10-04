@@ -3,17 +3,11 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <vector>
-#include <algorithm>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 SystemMonitor::SystemMonitor(std::shared_ptr<Logger> logger, 
                             const std::string& output_dir)
     : logger_(logger), output_dir_(output_dir) {
     last_check_time_ = std::chrono::steady_clock::now();
-    last_cleanup_time_ = std::chrono::steady_clock::now();
 }
 
 SystemMonitor::~SystemMonitor() = default;
@@ -28,15 +22,6 @@ void SystemMonitor::performPeriodicCheck() {
     logSystemStats();
     
     last_check_time_ = std::chrono::steady_clock::now();
-    
-    // Perform cleanup if needed and interval has passed
-    if (shouldPerformCleanup() && isDiskSpaceCritical()) {
-        int deleted = cleanupOldDetections();
-        if (deleted > 0) {
-            logger_->info("Cleaned up " + std::to_string(deleted) + " old detection photos due to low disk space");
-        }
-        last_cleanup_time_ = std::chrono::steady_clock::now();
-    }
 }
 
 unsigned long long SystemMonitor::getAvailableDiskSpace() const {
@@ -101,62 +86,6 @@ bool SystemMonitor::isDiskSpaceCritical() const {
     return (available < MIN_FREE_SPACE_BYTES) || (usage_percent > DISK_SPACE_CRITICAL_PERCENT);
 }
 
-int SystemMonitor::cleanupOldDetections() {
-    // Get list of all detection image files
-    struct dirent* entry;
-    DIR* dir = opendir(output_dir_.c_str());
-    
-    if (!dir) {
-        logger_->warning("Cannot open output directory for cleanup: " + output_dir_);
-        return 0;
-    }
-    
-    // Collect all .jpg files with their modification times
-    std::vector<std::pair<std::string, time_t>> files;
-    
-    while ((entry = readdir(dir)) != nullptr) {
-        std::string filename = entry->d_name;
-        
-        // Skip . and .. and non-jpg files
-        if (filename == "." || filename == ".." || 
-            filename.substr(filename.find_last_of(".") + 1) != "jpg") {
-            continue;
-        }
-        
-        std::string filepath = output_dir_ + "/" + filename;
-        struct stat file_stat;
-        
-        if (stat(filepath.c_str(), &file_stat) == 0) {
-            files.push_back({filepath, file_stat.st_mtime});
-        }
-    }
-    
-    closedir(dir);
-    
-    if (files.empty()) {
-        return 0;
-    }
-    
-    // Sort by modification time (oldest first)
-    std::sort(files.begin(), files.end(),
-              [](const auto& a, const auto& b) {
-                  return a.second < b.second;
-              });
-    
-    // Delete oldest 20% of files or until we have enough space
-    int to_delete = std::max(1, static_cast<int>(files.size() * 0.2));
-    int deleted = 0;
-    
-    for (int i = 0; i < to_delete && i < static_cast<int>(files.size()); ++i) {
-        if (unlink(files[i].first.c_str()) == 0) {
-            deleted++;
-            logger_->debug("Deleted old detection photo: " + files[i].first);
-        }
-    }
-    
-    return deleted;
-}
-
 void SystemMonitor::logSystemStats() {
     std::ostringstream stats;
     stats << "System statistics: ";
@@ -210,10 +139,4 @@ bool SystemMonitor::shouldPerformCheck() const {
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_check_time_);
     return elapsed.count() >= CHECK_INTERVAL_SECONDS;
-}
-
-bool SystemMonitor::shouldPerformCleanup() const {
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_cleanup_time_);
-    return elapsed.count() >= CLEANUP_INTERVAL_SECONDS;
 }

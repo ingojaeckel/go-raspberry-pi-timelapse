@@ -29,7 +29,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
   - Bounded data structures to prevent memory leaks
   - Automatic camera reconnection and keep-alive
   - System resource monitoring (disk space, CPU temperature)
-  - Automatic cleanup of old detection photos
+  - Warnings and logging for low disk space
   - Overflow protection for long-running counters
 
 ## Object Tracking and Permanence Model

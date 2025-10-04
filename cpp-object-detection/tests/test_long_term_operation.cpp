@@ -65,23 +65,6 @@ TEST_F(SystemMonitorTest, DiskSpaceCriticalCheck) {
     EXPECT_TRUE(is_critical == true || is_critical == false);
 }
 
-TEST_F(SystemMonitorTest, CleanupOldDetections) {
-    // Create some test files
-    for (int i = 0; i < 10; ++i) {
-        std::string filename = test_dir_ + "/test_" + std::to_string(i) + ".jpg";
-        std::ofstream file(filename);
-        file << "test data";
-        file.close();
-    }
-    
-    // Cleanup should remove some files
-    int deleted = system_monitor_->cleanupOldDetections();
-    
-    // Should have deleted at least 2 files (20% of 10)
-    EXPECT_GE(deleted, 1);
-    EXPECT_LE(deleted, 10);
-}
-
 TEST_F(SystemMonitorTest, PeriodicCheckDoesNotCrash) {
     // Periodic check should complete without crashing
     EXPECT_NO_THROW(system_monitor_->performPeriodicCheck());

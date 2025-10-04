@@ -8,7 +8,7 @@ The application has been designed to run reliably for long periods without manua
 
 - **Memory leak prevention** through bounded data structures
 - **Camera resilience** with automatic reconnection
-- **Resource monitoring** with automatic cleanup
+- **Resource monitoring** with warnings and logging
 - **Overflow protection** for long-running counters
 
 ## Automatic Memory Management
@@ -76,22 +76,20 @@ The camera health monitoring system tracks consecutive capture failures:
 
 ### Disk Space Management
 
-The application monitors available disk space to prevent running out of storage:
+The application monitors available disk space and logs warnings when space is low:
 
 **Monitoring interval**: Every 5 minutes
 
 **Thresholds**:
-- **Warning**: 90% disk usage
-- **Critical**: 95% disk usage or < 100 MB free
-- **Cleanup trigger**: Automatic when critical
+- **Warning**: 90% disk usage - logs warning message
+- **Critical**: 95% disk usage or < 100 MB free - logs error message
 
-**Automatic cleanup**:
-- Runs once per hour when disk space is critical
-- Removes oldest 20% of detection photos
-- Prioritizes oldest files first (by modification time)
-- Logs number of files deleted
+**Actions taken**:
+- Logs warning when disk usage exceeds 90%
+- Logs error when disk usage exceeds 95% or free space < 100 MB
+- No automatic file deletion - requires manual intervention
 
-**Manual cleanup**:
+**Manual cleanup** (when needed):
 ```bash
 # Find and remove photos older than 7 days
 find detections/ -name "*.jpg" -mtime +7 -delete
@@ -256,18 +254,19 @@ v4l2-ctl --device=/dev/video0 --all
 4. Manually restart: `systemctl restart object-detection`
 5. If persistent, check USB cable quality and port
 
-### Disk Full Despite Cleanup
+### Disk Full Despite Warnings
 
-**Symptoms**: Critical disk space warnings, no cleanup performed
+**Symptoms**: Critical disk space warnings in logs
 
 **Solutions**:
-1. Verify cleanup is enabled (automatic when critical)
-2. Check cleanup interval has elapsed (1 hour)
-3. Manually trigger cleanup by filling disk to critical level
-4. Reduce photo retention manually:
+1. Monitor disk usage regularly with `df -h`
+2. Set up alerts for disk space warnings in logs
+3. Manually cleanup old photos periodically:
    ```bash
    find detections/ -name "*.jpg" -mtime +7 -delete
    ```
+4. Consider external storage or network storage for detections
+5. Implement log rotation for application logs
 
 ### Performance Degradation Over Time
 
@@ -366,7 +365,7 @@ For general-purpose long-term monitoring:
 
 1. **Frame processing rate**: Should match configured `--max-fps`
 2. **Detection frequency**: Varies by scene activity
-3. **Disk usage trend**: Should stabilize with auto-cleanup
+3. **Disk usage trend**: Monitor and manage manually
 4. **CPU temperature**: Should remain stable
 5. **Memory usage**: Should stabilize within first hour
 
@@ -396,7 +395,6 @@ grep "heartbeat" object_detection.log | tail -1
 - **Concurrent tracked objects**: 100
 - **Object type history**: 50 types
 - **Frame counter**: 1,000,000 before reset
-- **Disk cleanup**: Every 1 hour when critical
 - **Resource checks**: Every 5 minutes
 
 ### Recommended Operational Limits
@@ -452,14 +450,14 @@ Potential enhancements for even more robust long-term operation:
 2. **Quality-based photo storage** to reduce disk usage
 3. **Network health monitoring** if streaming is enabled
 4. **Automatic model switching** based on system load
-5. **Predictive disk cleanup** before reaching critical levels
+5. **Automatic disk cleanup** with configurable policies (currently manual only)
 
 ## Conclusion
 
 The application is designed for reliable long-term operation with minimal manual intervention. Key design principles:
 
 - **Fail-safe**: Bounded data structures prevent unbounded growth
-- **Self-healing**: Automatic camera reconnection and cleanup
+- **Self-healing**: Automatic camera reconnection
 - **Observable**: Comprehensive logging and metrics
 - **Efficient**: Configurable rate limiting and resource usage
 - **Maintainable**: Clear limits and thresholds
