@@ -17,8 +17,10 @@ public:
     struct ObjectTracker {
         std::string object_type;
         cv::Point2f center;
+        cv::Point2f previous_center;  // Track previous position for movement detection
         bool was_present_last_frame;
         int frames_since_detection;
+        bool is_new;  // Flag to indicate if this is a newly entered object
     };
 
     ObjectDetector(const std::string& model_path,

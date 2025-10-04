@@ -29,6 +29,21 @@ public:
                           double confidence);
     
     /**
+     * Log object entry with position
+     */
+    void logObjectEntry(const std::string& object_type,
+                       float x, float y,
+                       double confidence);
+    
+    /**
+     * Log object movement with old and new positions
+     */
+    void logObjectMovement(const std::string& object_type,
+                          float old_x, float old_y,
+                          float new_x, float new_y,
+                          double confidence);
+    
+    /**
      * Log heartbeat message indicating system is still running
      */
     void logHeartbeat();
