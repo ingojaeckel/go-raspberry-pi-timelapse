@@ -27,6 +27,28 @@ void Logger::logObjectDetection(const std::string& object_type,
     log(Level::INFO, ss.str());
 }
 
+void Logger::logObjectEntry(const std::string& object_type,
+                           float x, float y,
+                           double confidence) {
+    std::stringstream ss;
+    ss << "new " << object_type << " entered frame at (" 
+       << std::fixed << std::setprecision(0) << x << ", " << y << ") ("
+       << std::setprecision(0) << (confidence * 100) << "% confidence)";
+    log(Level::INFO, ss.str());
+}
+
+void Logger::logObjectMovement(const std::string& object_type,
+                              float old_x, float old_y,
+                              float new_x, float new_y,
+                              double confidence) {
+    std::stringstream ss;
+    ss << object_type << " seen earlier moved from (" 
+       << std::fixed << std::setprecision(0) << old_x << ", " << old_y << ") -> ("
+       << new_x << ", " << new_y << ") ("
+       << std::setprecision(0) << (confidence * 100) << "% confidence)";
+    log(Level::INFO, ss.str());
+}
+
 void Logger::logHeartbeat() {
     log(Level::INFO, "Detection system operational - heartbeat");
 }
