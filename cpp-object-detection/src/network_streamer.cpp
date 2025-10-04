@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <ifaddrs.h>
+#include <cerrno>
 #include <cstring>
 #include <sstream>
 
