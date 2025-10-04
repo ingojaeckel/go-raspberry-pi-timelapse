@@ -197,7 +197,7 @@ jobs:
           mkdir -p release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}
 
           if [ "${{ matrix.platform }}" = "macos" ]; then
-            cp ./object_detection.app/Contents/MacOS/object_detection release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
+            cp build-static/object_detection.app/Contents/MacOS/object_detection release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
           else
             cp build-static/object_detection release/object-detection-${{ matrix.platform }}-${{ matrix.arch }}/
           fi
