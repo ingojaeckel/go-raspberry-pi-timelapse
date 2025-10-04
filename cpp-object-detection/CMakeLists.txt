@@ -52,6 +52,7 @@ set(SOURCES
     src/detection_model_factory.cpp
     src/yolo_v5_model.cpp
     src/viewfinder_window.cpp
+    src/network_streamer.cpp
 )
 
 # Create executable

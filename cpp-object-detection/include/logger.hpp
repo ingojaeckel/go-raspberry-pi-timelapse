@@ -22,13 +22,6 @@ public:
     ~Logger();
 
     /**
-     * Log an object detection event
-     */
-    void logObjectDetection(const std::string& object_type, 
-                          const std::string& action, // "entered" or "exited"
-                          double confidence);
-    
-    /**
      * Log object entry with position
      */
     void logObjectEntry(const std::string& object_type,

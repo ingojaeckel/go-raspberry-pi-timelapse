@@ -18,15 +18,6 @@ Logger::~Logger() {
     }
 }
 
-void Logger::logObjectDetection(const std::string& object_type, 
-                               const std::string& action, 
-                               double confidence) {
-    std::stringstream ss;
-    ss << object_type << " " << action << " frame (" 
-       << std::fixed << std::setprecision(0) << (confidence * 100) << "% confidence)";
-    log(Level::INFO, ss.str());
-}
-
 void Logger::logObjectEntry(const std::string& object_type,
                            float x, float y,
                            double confidence) {

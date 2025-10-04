@@ -89,21 +89,6 @@ public:
      * This helps get accurate timing measurements
      */
     virtual void warmUp() = 0;
-    
-protected:
-    // Common target classes for security monitoring
-    static std::vector<std::string> getTargetClasses() {
-        return {
-            "person",      // People
-            "car",         // Vehicles  
-            "truck",
-            "bus",
-            "motorcycle", 
-            "bicycle",
-            "cat",         // Small animals
-            "dog"
-        };
-    }
 };
 
 /**
