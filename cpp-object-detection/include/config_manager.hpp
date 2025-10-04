@@ -29,6 +29,7 @@ public:
         std::string config_path = "models/yolov5s.yaml";
         std::string classes_path = "models/coco.names";
         std::string model_type = "yolov5s";  // Model type: yolov5s, yolov5l, yolov8n, yolov8m
+        double detection_scale_factor = 0.5;  // Scale factor for detection (0.5 = 50% reduction, 75% fewer pixels)
         
         // Performance
         bool enable_gpu = false;

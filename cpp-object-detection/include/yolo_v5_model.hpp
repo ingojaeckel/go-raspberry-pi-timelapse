@@ -17,7 +17,8 @@ public:
     bool initialize(const std::string& model_path,
                    const std::string& config_path,
                    const std::string& classes_path,
-                   double confidence_threshold) override;
+                   double confidence_threshold,
+                   double detection_scale_factor = 1.0) override;
     
     std::vector<Detection> detect(const cv::Mat& frame) override;
     
@@ -36,6 +37,7 @@ private:
     cv::dnn::Net net_;
     std::vector<std::string> class_names_;
     double confidence_threshold_;
+    double detection_scale_factor_;
     bool initialized_;
     mutable std::chrono::steady_clock::time_point last_inference_start_;
     mutable int avg_inference_time_ms_;
@@ -65,7 +67,8 @@ public:
     bool initialize(const std::string& model_path,
                    const std::string& config_path,
                    const std::string& classes_path,
-                   double confidence_threshold) override;
+                   double confidence_threshold,
+                   double detection_scale_factor = 1.0) override;
     
     std::vector<Detection> detect(const cv::Mat& frame) override;
     
@@ -84,6 +87,7 @@ private:
     cv::dnn::Net net_;
     std::vector<std::string> class_names_;
     double confidence_threshold_;
+    double detection_scale_factor_;
     bool initialized_;
     mutable std::chrono::steady_clock::time_point last_inference_start_;
     mutable int avg_inference_time_ms_;

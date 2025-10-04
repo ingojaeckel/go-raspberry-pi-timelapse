@@ -44,12 +44,14 @@ public:
      * @param config_path Path to configuration file (optional)
      * @param classes_path Path to class names file
      * @param confidence_threshold Minimum confidence for detections
+     * @param detection_scale_factor Scale factor for input frames (default 1.0 = no scaling)
      * @return true if initialization successful
      */
     virtual bool initialize(const std::string& model_path,
                            const std::string& config_path,
                            const std::string& classes_path,
-                           double confidence_threshold) = 0;
+                           double confidence_threshold,
+                           double detection_scale_factor = 1.0) = 0;
     
     /**
      * Detect objects in a frame

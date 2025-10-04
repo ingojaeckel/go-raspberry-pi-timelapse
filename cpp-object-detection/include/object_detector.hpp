@@ -26,7 +26,8 @@ public:
                   const std::string& classes_path,
                   double confidence_threshold,
                   std::shared_ptr<Logger> logger,
-                  DetectionModelFactory::ModelType model_type = DetectionModelFactory::ModelType::YOLO_V5_SMALL);
+                  DetectionModelFactory::ModelType model_type = DetectionModelFactory::ModelType::YOLO_V5_SMALL,
+                  double detection_scale_factor = 1.0);
     
     ~ObjectDetector();
 
@@ -75,6 +76,7 @@ private:
     std::string config_path_;
     std::string classes_path_;
     double confidence_threshold_;
+    double detection_scale_factor_;
     std::shared_ptr<Logger> logger_;
     DetectionModelFactory::ModelType model_type_;
     

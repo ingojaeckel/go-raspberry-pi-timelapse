@@ -8,9 +8,11 @@ ObjectDetector::ObjectDetector(const std::string& model_path,
                               const std::string& classes_path,
                               double confidence_threshold,
                               std::shared_ptr<Logger> logger,
-                              DetectionModelFactory::ModelType model_type)
+                              DetectionModelFactory::ModelType model_type,
+                              double detection_scale_factor)
     : model_path_(model_path), config_path_(config_path), classes_path_(classes_path),
-      confidence_threshold_(confidence_threshold), logger_(logger), model_type_(model_type),
+      confidence_threshold_(confidence_threshold), detection_scale_factor_(detection_scale_factor),
+      logger_(logger), model_type_(model_type),
       initialized_(false) {
 }
 
@@ -32,7 +34,7 @@ bool ObjectDetector::initialize() {
         }
         
         // Initialize the model
-        if (!detection_model_->initialize(model_path_, config_path_, classes_path_, confidence_threshold_)) {
+        if (!detection_model_->initialize(model_path_, config_path_, classes_path_, confidence_threshold_, detection_scale_factor_)) {
             logger_->error("Failed to initialize detection model");
             return false;
         }
@@ -124,7 +126,7 @@ bool ObjectDetector::switchModel(DetectionModelFactory::ModelType new_model_type
         }
         
         // Initialize new model
-        if (!new_model->initialize(model_path_, config_path_, classes_path_, confidence_threshold_)) {
+        if (!new_model->initialize(model_path_, config_path_, classes_path_, confidence_threshold_, detection_scale_factor_)) {
             logger_->error("Failed to initialize new detection model");
             return false;
         }
