@@ -171,20 +171,7 @@ void ParallelFrameProcessor::workerThread() {
     logger_->debug("Worker thread exiting");
 }
 
-void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections) {
-    std::lock_guard<std::mutex> lock(photo_mutex_);
-    
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_photo_time_);
-    
-    // Only save photo if enough time has passed (10 second interval)
-    if (elapsed.count() < PHOTO_INTERVAL_SECONDS) {
-        return;
-    }
-    
-    // Update last photo time
-    last_photo_time_ = now;
-    
+void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections, bool is_night, bool is_preprocessed) {
     // Create a copy of the frame to draw on
     cv::Mat annotated_frame = frame.clone();
     
@@ -214,7 +201,7 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
     }
     
     // Generate filename with timestamp and detected objects
-    std::string filename = generateFilename(detections);
+    std::string filename = generateFilename(detections, is_night, is_preprocessed);
     std::string filepath = output_dir_ + "/" + filename;
     
     // Save the image
@@ -243,7 +230,7 @@ cv::Scalar ParallelFrameProcessor::getColorForClass(const std::string& class_nam
     }
 }
 
-std::string ParallelFrameProcessor::generateFilename(const std::vector<Detection>& detections) const {
+std::string ParallelFrameProcessor::generateFilename(const std::vector<Detection>& detections, bool is_night, bool is_preprocessed) const {
     // Get current time
     auto now = std::chrono::system_clock::now();
     auto time_t_now = std::chrono::system_clock::to_time_t(now);
@@ -270,8 +257,14 @@ std::string ParallelFrameProcessor::generateFilename(const std::vector<Detection
     }
     object_str << " detected";
     
+    // Add night mode indicator if applicable
+    std::string mode_suffix = "";
+    if (is_night) {
+        mode_suffix = is_preprocessed ? " night-enhanced" : " night-original";
+    }
+    
     // Combine to create filename
-    return timestamp.str() + " " + object_str.str() + ".jpg";
+    return timestamp.str() + " " + object_str.str() + mode_suffix + ".jpg";
 }
 
 ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal(const cv::Mat& frame) {
@@ -282,8 +275,18 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
     result.processed = true;
     
     try {
-        // Perform object detection
-        result.detections = detector_->detectObjects(frame);
+        // Determine if we're in night mode
+        bool night_mode = isNightMode(frame);
+        
+        // Preprocess frame for night if needed
+        cv::Mat processed_frame = frame;
+        if (night_mode) {
+            processed_frame = preprocessForNight(frame);
+            logger_->debug("Night mode detected - applying image enhancement for better detection");
+        }
+        
+        // Perform object detection on the preprocessed frame
+        result.detections = detector_->detectObjects(processed_frame);
         
         // Filter for target classes and log detections
         std::vector<Detection> target_detections;
@@ -305,7 +308,24 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
         
         // Save photo with bounding boxes if we have target detections
         if (!target_detections.empty()) {
-            saveDetectionPhoto(frame, target_detections);
+            std::lock_guard<std::mutex> lock(photo_mutex_);
+            
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_photo_time_);
+            
+            // Only save photo if enough time has passed (10 second interval)
+            if (elapsed.count() >= PHOTO_INTERVAL_SECONDS) {
+                last_photo_time_ = now;
+                
+                if (night_mode) {
+                    // In night mode, save both original and preprocessed versions
+                    saveDetectionPhoto(frame, target_detections, true, false);  // Original with bboxes
+                    saveDetectionPhoto(processed_frame, target_detections, true, true);  // Enhanced with bboxes
+                } else {
+                    // Normal mode, save single photo
+                    saveDetectionPhoto(frame, target_detections, false, false);
+                }
+            }
         }
         
     } catch (const std::exception& e) {
@@ -314,4 +334,67 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
     }
     
     return result;
+}
+
+bool ParallelFrameProcessor::isNightTime() const {
+    auto now = std::chrono::system_clock::now();
+    auto time_t_now = std::chrono::system_clock::to_time_t(now);
+    std::tm tm_now;
+    localtime_r(&time_t_now, &tm_now);
+    
+    int hour = tm_now.tm_hour;
+    // Night time is between NIGHT_START_HOUR (18:00) and NIGHT_END_HOUR (06:00)
+    return (hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR);
+}
+
+double ParallelFrameProcessor::calculateBrightness(const cv::Mat& frame) const {
+    // Convert to grayscale if not already
+    cv::Mat gray;
+    if (frame.channels() == 3) {
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = frame;
+    }
+    
+    // Calculate mean brightness (0-255 scale)
+    cv::Scalar mean_brightness = cv::mean(gray);
+    return mean_brightness[0];
+}
+
+bool ParallelFrameProcessor::isNightMode(const cv::Mat& frame) const {
+    // Check both time of day and brightness level
+    bool is_night_time = isNightTime();
+    double brightness = calculateBrightness(frame);
+    
+    // Consider it night mode if it's nighttime AND the image is dark
+    // OR if the image is very dark regardless of time (e.g., indoor with lights off)
+    bool is_dark = brightness < DARKNESS_THRESHOLD;
+    
+    return is_night_time && is_dark;
+}
+
+cv::Mat ParallelFrameProcessor::preprocessForNight(const cv::Mat& frame) const {
+    // Convert to LAB color space for better processing
+    cv::Mat lab_frame;
+    cv::cvtColor(frame, lab_frame, cv::COLOR_BGR2Lab);
+    
+    // Split into L, A, B channels
+    std::vector<cv::Mat> lab_channels;
+    cv::split(lab_frame, lab_channels);
+    
+    // Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to L channel
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+    clahe->setClipLimit(2.0);
+    clahe->setTilesGridSize(cv::Size(8, 8));
+    clahe->apply(lab_channels[0], lab_channels[0]);
+    
+    // Merge channels back
+    cv::Mat enhanced_lab;
+    cv::merge(lab_channels, enhanced_lab);
+    
+    // Convert back to BGR
+    cv::Mat enhanced_frame;
+    cv::cvtColor(enhanced_lab, enhanced_frame, cv::COLOR_Lab2BGR);
+    
+    return enhanced_frame;
 }

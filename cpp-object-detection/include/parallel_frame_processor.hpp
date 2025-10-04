@@ -80,6 +80,11 @@ private:
     std::mutex photo_mutex_;
     static constexpr int PHOTO_INTERVAL_SECONDS = 10;
     
+    // Night mode thresholds
+    static constexpr int NIGHT_START_HOUR = 18;  // 6 PM
+    static constexpr int NIGHT_END_HOUR = 6;     // 6 AM
+    static constexpr double DARKNESS_THRESHOLD = 60.0;  // Average brightness threshold (0-255)
+    
     // Threading infrastructure
     std::vector<std::thread> worker_threads_;
     std::queue<std::pair<cv::Mat, std::promise<FrameResult>>> frame_queue_;
@@ -95,7 +100,13 @@ private:
     FrameResult processFrameInternal(const cv::Mat& frame);
     
     // Helper methods for photo storage
-    void saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections);
+    void saveDetectionPhoto(const cv::Mat& frame, const std::vector<Detection>& detections, bool is_night, bool is_preprocessed);
     cv::Scalar getColorForClass(const std::string& class_name) const;
-    std::string generateFilename(const std::vector<Detection>& detections) const;
+    std::string generateFilename(const std::vector<Detection>& detections, bool is_night, bool is_preprocessed) const;
+    
+    // Night detection and preprocessing helpers
+    bool isNightTime() const;
+    double calculateBrightness(const cv::Mat& frame) const;
+    bool isNightMode(const cv::Mat& frame) const;
+    cv::Mat preprocessForNight(const cv::Mat& frame) const;
 };
