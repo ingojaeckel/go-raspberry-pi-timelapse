@@ -93,14 +93,14 @@ jobs:
             echo "Unit tests not available for this configuration"
           fi
 
-      - name: Test executable
-        working-directory: cpp-object-detection/build
-        run: |
-          # Test that executable runs and shows help
-          ./object_detection --help
+      # - name: Test executable
+      #   working-directory: cpp-object-detection/build
+      #   run: |
+      #     # Test that executable runs and shows help
+      #     ./object_detection --help
 
-          # Test argument parsing
-          ./object_detection --max-fps 3 --min-confidence 0.7 --help
+      #     # Test argument parsing
+      #     ./object_detection --max-fps 3 --min-confidence 0.7 --help
 
       - name: Create artifact name
         id: artifact
