@@ -57,6 +57,12 @@ public:
         
         // Burst mode
         bool enable_burst_mode = false;  // Enable burst mode to max out FPS when new objects enter the scene
+        
+        // Google Sheets integration
+        bool enable_google_sheets = false;      // Enable Google Sheets integration for detection logging
+        std::string google_sheets_id = "";      // Google Sheets spreadsheet ID or URL
+        std::string google_sheets_api_key = ""; // Google API key for Sheets API
+        std::string google_sheets_name = "Sheet1"; // Sheet name/tab within spreadsheet
     };
 
     enum class ParseResult {

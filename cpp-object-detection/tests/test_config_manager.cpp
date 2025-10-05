@@ -151,3 +151,54 @@ TEST_F(ConfigManagerTest, BurstModeDefaultDisabled) {
     const auto& config = config_manager->getConfig();
     EXPECT_FALSE(config.enable_burst_mode);
 }
+TEST_F(ConfigManagerTest, GoogleSheetsDefaultDisabled) {
+    const auto& config = config_manager->getConfig();
+    EXPECT_FALSE(config.enable_google_sheets);
+}
+
+TEST_F(ConfigManagerTest, EnableGoogleSheetsArgument) {
+    const char* argv[] = {"program", "--enable-google-sheets", 
+                         "--google-sheets-id", "test_id",
+                         "--google-sheets-api-key", "test_key"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_TRUE(config.enable_google_sheets);
+    EXPECT_EQ(config.google_sheets_id, "test_id");
+    EXPECT_EQ(config.google_sheets_api_key, "test_key");
+    EXPECT_TRUE(config_manager->validateConfig());
+}
+
+TEST_F(ConfigManagerTest, GoogleSheetsRequiresId) {
+    const char* argv[] = {"program", "--enable-google-sheets",
+                         "--google-sheets-api-key", "test_key"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    EXPECT_FALSE(config_manager->validateConfig());  // Should fail without ID
+}
+
+TEST_F(ConfigManagerTest, GoogleSheetsRequiresApiKey) {
+    const char* argv[] = {"program", "--enable-google-sheets",
+                         "--google-sheets-id", "test_id"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    EXPECT_FALSE(config_manager->validateConfig());  // Should fail without API key
+}
+
+TEST_F(ConfigManagerTest, GoogleSheetsCustomSheetName) {
+    const char* argv[] = {"program", "--enable-google-sheets",
+                         "--google-sheets-id", "test_id",
+                         "--google-sheets-api-key", "test_key",
+                         "--google-sheets-name", "MySheet"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_EQ(config.google_sheets_name, "MySheet");
+    EXPECT_TRUE(config_manager->validateConfig());
+}
