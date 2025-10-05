@@ -227,6 +227,58 @@ TEST_F(ObjectDetectorTest, GetTopDetectedObjects) {
     EXPECT_TRUE(top_objects.empty());
 }
 
+TEST_F(ObjectDetectorTest, EnrichDetectionsWithStationaryStatus) {
+    // Test that detections are enriched with stationary status
+    auto detector = std::make_unique<ObjectDetector>(
+        model_path, config_path, classes_path, confidence_threshold, logger);
+    
+    // Create some mock detections
+    std::vector<Detection> detections;
+    Detection d1;
+    d1.class_name = "person";
+    d1.confidence = 0.92;
+    d1.bbox = cv::Rect(100, 100, 50, 100);
+    d1.is_stationary = false;  // Initially not stationary
+    detections.push_back(d1);
+    
+    // Update tracking (this will create a tracker for the person)
+    detector->updateTracking(detections);
+    
+    // Enrich detections with stationary status
+    detector->enrichDetectionsWithStationaryStatus(detections);
+    
+    // Since we only have one detection and it just appeared, it should not be stationary
+    // (need at least 3 positions in history to determine if stationary)
+    EXPECT_FALSE(detections[0].is_stationary);
+    
+    // Simulate the same object in the same position over multiple frames
+    for (int i = 0; i < 5; i++) {
+        std::vector<Detection> same_detections;
+        Detection d;
+        d.class_name = "person";
+        d.confidence = 0.92;
+        d.bbox = cv::Rect(100, 100, 50, 100);  // Same position
+        same_detections.push_back(d);
+        
+        detector->updateTracking(same_detections);
+        detector->enrichDetectionsWithStationaryStatus(same_detections);
+    }
+    
+    // After several frames in the same position, the object should be marked as stationary
+    std::vector<Detection> final_detections;
+    Detection d_final;
+    d_final.class_name = "person";
+    d_final.confidence = 0.92;
+    d_final.bbox = cv::Rect(100, 100, 50, 100);
+    final_detections.push_back(d_final);
+    
+    detector->updateTracking(final_detections);
+    detector->enrichDetectionsWithStationaryStatus(final_detections);
+    
+    // The detection should now have is_stationary = true
+    EXPECT_TRUE(final_detections[0].is_stationary);
+}
+
 TEST_F(ObjectDetectorTest, GetTopDetectedObjectsWithLimit) {
     // Test getting top detected objects with different limits
     auto detector = std::make_unique<ObjectDetector>(

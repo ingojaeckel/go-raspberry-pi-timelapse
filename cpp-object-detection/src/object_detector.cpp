@@ -530,3 +530,36 @@ bool ObjectDetector::isStationaryPastTimeout(const ObjectTracker& tracker, int s
     
     return stationary_duration.count() >= stationary_timeout_seconds;
 }
+
+void ObjectDetector::enrichDetectionsWithStationaryStatus(std::vector<Detection>& detections) {
+    // For each detection, find the corresponding tracked object and set its stationary status
+    for (auto& detection : detections) {
+        // Calculate detection center
+        cv::Point2f detection_center(
+            detection.bbox.x + detection.bbox.width / 2.0f,
+            detection.bbox.y + detection.bbox.height / 2.0f
+        );
+        
+        // Find the matching tracked object (same logic as in updateTrackedObjects)
+        float min_distance = MAX_MOVEMENT_DISTANCE;
+        const ObjectTracker* best_match = nullptr;
+        
+        for (const auto& tracked : tracked_objects_) {
+            if (tracked.object_type == detection.class_name && tracked.was_present_last_frame) {
+                float distance = cv::norm(tracked.center - detection_center);
+                
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    best_match = &tracked;
+                }
+            }
+        }
+        
+        // If we found a match, copy the stationary status
+        if (best_match != nullptr) {
+            detection.is_stationary = best_match->is_stationary;
+        } else {
+            detection.is_stationary = false;  // New objects are not stationary
+        }
+    }
+}

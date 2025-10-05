@@ -106,6 +106,12 @@ public:
     }
     
     /**
+     * Enrich detections with stationary status from tracked objects
+     * This should be called after updateTracking() to populate the is_stationary flag
+     */
+    void enrichDetectionsWithStationaryStatus(std::vector<Detection>& detections);
+    
+    /**
      * Check if an object has been stationary for longer than the timeout period
      */
     bool isStationaryPastTimeout(const ObjectTracker& tracker, int stationary_timeout_seconds) const;

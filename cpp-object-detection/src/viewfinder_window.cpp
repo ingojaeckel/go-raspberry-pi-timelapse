@@ -100,6 +100,11 @@ cv::Mat ViewfinderWindow::drawBoundingBoxes(const cv::Mat& frame,
         std::string label = detection.class_name + " " + 
                            std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
         
+        // Add stationary indicator if object is stationary
+        if (detection.is_stationary) {
+            label += ", stationary";
+        }
+        
         // Draw label with auto-positioning to avoid cutoff at screen edges
         DrawingUtils::drawBoundingBoxLabel(annotated_frame, label, detection.bbox, color);
     }
