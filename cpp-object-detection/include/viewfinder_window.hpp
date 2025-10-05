@@ -42,7 +42,8 @@ public:
                            int camera_id,
                            const std::string& camera_name,
                            int detection_width,
-                           int detection_height);
+                           int detection_height,
+                           bool brightness_filter_active = false);
     
     /**
      * Check if the window should be closed (user pressed a key)
@@ -76,7 +77,8 @@ private:
                       int camera_id,
                       const std::string& camera_name,
                       int detection_width,
-                      int detection_height);
+                      int detection_height,
+                      bool brightness_filter_active = false);
     
     // Get color for different object classes
     cv::Scalar getColorForClass(const std::string& class_name) const;

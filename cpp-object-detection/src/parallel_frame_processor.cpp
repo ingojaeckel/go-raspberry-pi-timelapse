@@ -10,10 +10,13 @@ ParallelFrameProcessor::ParallelFrameProcessor(std::shared_ptr<ObjectDetector> d
                                              std::shared_ptr<PerformanceMonitor> perf_monitor,
                                              int num_threads,
                                              size_t max_queue_size,
-                                             const std::string& output_dir)
+                                             const std::string& output_dir,
+                                             bool enable_brightness_filter)
     : detector_(detector), logger_(logger), perf_monitor_(perf_monitor),
       num_threads_(num_threads), max_queue_size_(max_queue_size), output_dir_(output_dir),
-      total_images_saved_(0), shutdown_requested_(false), frames_in_progress_(0) {
+      enable_brightness_filter_(enable_brightness_filter),
+      total_images_saved_(0), shutdown_requested_(false), frames_in_progress_(0),
+      brightness_filter_active_(false) {
     last_photo_time_ = std::chrono::steady_clock::now() - std::chrono::seconds(PHOTO_INTERVAL_SECONDS);
 }
 
@@ -345,8 +348,17 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
     result.processed = true;
     
     try {
-        // Perform object detection
-        result.detections = detector_->detectObjects(frame);
+        // Apply brightness filter if enabled and high brightness is detected
+        cv::Mat processed_frame = frame.clone();
+        if (enable_brightness_filter_ && detectHighBrightness(frame)) {
+            processed_frame = applyBrightnessFilter(frame);
+            brightness_filter_active_ = true;
+        } else {
+            brightness_filter_active_ = false;
+        }
+        
+        // Perform object detection on the (possibly filtered) frame
+        result.detections = detector_->detectObjects(processed_frame);
         
         // Filter for target classes and log detections
         std::vector<Detection> target_detections;
@@ -386,4 +398,62 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
 
 int ParallelFrameProcessor::getTotalImagesSaved() const {
     return total_images_saved_;
+}
+
+bool ParallelFrameProcessor::detectHighBrightness(const cv::Mat& frame) {
+    // Convert to grayscale for brightness analysis
+    cv::Mat gray;
+    if (frame.channels() == 3) {
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = frame;
+    }
+    
+    // Calculate mean brightness
+    cv::Scalar mean_brightness = cv::mean(gray);
+    double avg_brightness = mean_brightness[0];
+    
+    // High brightness threshold (on 0-255 scale, values above 180 indicate very bright conditions)
+    const double HIGH_BRIGHTNESS_THRESHOLD = 180.0;
+    
+    if (avg_brightness > HIGH_BRIGHTNESS_THRESHOLD) {
+        logger_->debug("High brightness detected: " + std::to_string(static_cast<int>(avg_brightness)) + "/255");
+        return true;
+    }
+    
+    return false;
+}
+
+cv::Mat ParallelFrameProcessor::applyBrightnessFilter(const cv::Mat& frame) {
+    cv::Mat filtered = frame.clone();
+    
+    // Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to reduce glare
+    // This helps reduce the impact of reflections while preserving details
+    cv::Mat lab;
+    cv::cvtColor(filtered, lab, cv::COLOR_BGR2Lab);
+    
+    // Split into L, a, b channels
+    std::vector<cv::Mat> lab_channels;
+    cv::split(lab, lab_channels);
+    
+    // Apply CLAHE to the L channel (lightness)
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2.0, cv::Size(8, 8));
+    clahe->apply(lab_channels[0], lab_channels[0]);
+    
+    // Merge channels back
+    cv::merge(lab_channels, lab);
+    cv::cvtColor(lab, filtered, cv::COLOR_Lab2BGR);
+    
+    // Apply gamma correction to reduce overexposure
+    // Gamma < 1 darkens the image, reducing bright spots
+    const double gamma = 0.7;
+    cv::Mat lut(1, 256, CV_8U);
+    uchar* p = lut.ptr();
+    for (int i = 0; i < 256; ++i) {
+        p[i] = cv::saturate_cast<uchar>(pow(i / 255.0, gamma) * 255.0);
+    }
+    cv::LUT(filtered, lut, filtered);
+    
+    logger_->debug("Applied brightness filter to reduce reflections");
+    return filtered;
 }

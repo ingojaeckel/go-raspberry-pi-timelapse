@@ -46,6 +46,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->show_preview = true;
         } else if (arg == "--enable-streaming") {
             config_->enable_streaming = true;
+        } else if (arg == "--enable-brightness-filter") {
+            config_->enable_brightness_filter = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -148,7 +150,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --no-headless                  Disable headless mode (show GUI windows)\n"
               << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n"
               << "  --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)\n"
-              << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n\n"
+              << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n"
+              << "  --enable-brightness-filter     Enable high brightness filter to reduce glass reflections (default: disabled)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"

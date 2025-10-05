@@ -97,7 +97,8 @@ bool initializeComponents(ApplicationContext& ctx) {
     // Initialize parallel frame processor
     int effective_threads = ctx.config.enable_parallel_processing ? ctx.config.processing_threads : 1;
     ctx.frame_processor = std::make_shared<ParallelFrameProcessor>(
-        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, ctx.config.output_dir);
+        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, 
+        ctx.config.output_dir, ctx.config.enable_brightness_filter);
 
     if (!ctx.frame_processor->initialize()) {
         ctx.logger->error("Failed to initialize parallel frame processor");
@@ -108,6 +109,10 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.logger->info("Parallel processing enabled with " + std::to_string(ctx.config.processing_threads) + " threads");
     } else {
         ctx.logger->info("Sequential processing enabled (single-threaded)");
+    }
+    
+    if (ctx.config.enable_brightness_filter) {
+        ctx.logger->info("High brightness filter enabled - will reduce glass reflections in bright conditions");
     }
 
     // Initialize viewfinder if preview is enabled
@@ -222,6 +227,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         // Get camera name (empty string if not available)
                         std::string camera_name = "";  // Could be extended to get actual camera name
                         
+                        // Check if brightness filter is active
+                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                        
                         ctx.viewfinder->showFrameWithStats(
                             ctx.frame, 
                             result.detections,
@@ -236,7 +244,8 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.config.camera_id,
                             camera_name,
                             ctx.detection_width,
-                            ctx.detection_height
+                            ctx.detection_height,
+                            brightness_filter_active
                         );
                         
                         // Check if user wants to close the viewfinder
@@ -254,6 +263,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         int total_images = ctx.frame_processor->getTotalImagesSaved();
                         std::string camera_name = "";
                         
+                        // Check if brightness filter is active
+                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                        
                         ctx.network_streamer->updateFrameWithStats(
                             ctx.frame,
                             result.detections,
@@ -268,7 +280,8 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.config.camera_id,
                             camera_name,
                             ctx.detection_width,
-                            ctx.detection_height
+                            ctx.detection_height,
+                            brightness_filter_active
                         );
                     }
                 }

@@ -51,7 +51,8 @@ public:
                              int camera_id,
                              const std::string& camera_name,
                              int detection_width,
-                             int detection_height);
+                             int detection_height,
+                             bool brightness_filter_active = false);
     
     /**
      * Stop the streaming server
@@ -99,7 +100,8 @@ private:
                       int camera_id,
                       const std::string& camera_name,
                       int detection_width,
-                      int detection_height);
+                      int detection_height,
+                      bool brightness_filter_active = false);
     cv::Scalar getColorForClass(const std::string& class_name) const;
     std::string getLocalIpAddress() const;
 };
