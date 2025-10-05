@@ -11,7 +11,7 @@
  */
 class YoloV5SmallModel : public IDetectionModel {
 public:
-    explicit YoloV5SmallModel(std::shared_ptr<Logger> logger);
+    explicit YoloV5SmallModel(std::shared_ptr<Logger> logger, bool enable_cuda = false);
     ~YoloV5SmallModel() override = default;
     
     bool initialize(const std::string& model_path,
@@ -39,6 +39,7 @@ private:
     double confidence_threshold_;
     double detection_scale_factor_;
     bool initialized_;
+    bool enable_cuda_;
     mutable std::chrono::steady_clock::time_point last_inference_start_;
     mutable int avg_inference_time_ms_;
     
@@ -61,7 +62,7 @@ private:
  */
 class YoloV5LargeModel : public IDetectionModel {
 public:
-    explicit YoloV5LargeModel(std::shared_ptr<Logger> logger);
+    explicit YoloV5LargeModel(std::shared_ptr<Logger> logger, bool enable_cuda = false);
     ~YoloV5LargeModel() override = default;
     
     bool initialize(const std::string& model_path,
@@ -89,6 +90,7 @@ private:
     double confidence_threshold_;
     double detection_scale_factor_;
     bool initialized_;
+    bool enable_cuda_;
     mutable std::chrono::steady_clock::time_point last_inference_start_;
     mutable int avg_inference_time_ms_;
     

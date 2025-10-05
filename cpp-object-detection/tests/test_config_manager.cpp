@@ -135,3 +135,19 @@ TEST_F(ConfigManagerTest, BrightnessFilterDefaultDisabled) {
     const auto& config = config_manager->getConfig();
     EXPECT_FALSE(config.enable_brightness_filter);
 }
+
+TEST_F(ConfigManagerTest, EnableCudaArgument) {
+    const char* argv[] = {"program", "--enable-cuda"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_TRUE(config.enable_cuda);
+    EXPECT_TRUE(config_manager->validateConfig());
+}
+
+TEST_F(ConfigManagerTest, CudaDefaultDisabled) {
+    const auto& config = config_manager->getConfig();
+    EXPECT_FALSE(config.enable_cuda);
+}

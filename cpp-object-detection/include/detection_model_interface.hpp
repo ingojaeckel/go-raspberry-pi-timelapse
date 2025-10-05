@@ -107,11 +107,13 @@ public:
      * Create a detection model of the specified type
      * @param type Model type to create
      * @param logger Logger instance for the model
+     * @param enable_cuda Enable CUDA backend if available (default: false)
      * @return Unique pointer to the model instance
      */
     static std::unique_ptr<IDetectionModel> createModel(
         ModelType type, 
-        std::shared_ptr<class Logger> logger);
+        std::shared_ptr<class Logger> logger,
+        bool enable_cuda = false);
     
     /**
      * Get available model types with their characteristics

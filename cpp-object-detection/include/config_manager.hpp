@@ -35,6 +35,7 @@ public:
         
         // Performance
         bool enable_gpu = false;
+        bool enable_cuda = false;  // Enable CUDA backend for OpenCV (off by default)
         int processing_threads = 1;
         bool enable_parallel_processing = false;
         int max_frame_queue_size = 10;

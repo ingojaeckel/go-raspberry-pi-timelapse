@@ -14,10 +14,11 @@ ObjectDetector::ObjectDetector(const std::string& model_path,
                               double confidence_threshold,
                               std::shared_ptr<Logger> logger,
                               DetectionModelFactory::ModelType model_type,
-                              double detection_scale_factor)
+                              double detection_scale_factor,
+                              bool enable_cuda)
     : model_path_(model_path), config_path_(config_path), classes_path_(classes_path),
       confidence_threshold_(confidence_threshold), detection_scale_factor_(detection_scale_factor),
-      logger_(logger), model_type_(model_type),
+      logger_(logger), model_type_(model_type), enable_cuda_(enable_cuda),
       initialized_(false), total_objects_detected_(0) {
 }
 
@@ -32,7 +33,7 @@ bool ObjectDetector::initialize() {
     
     // Create the detection model using the factory
     try {
-        detection_model_ = DetectionModelFactory::createModel(model_type_, logger_);
+        detection_model_ = DetectionModelFactory::createModel(model_type_, logger_, enable_cuda_);
         if (!detection_model_) {
             logger_->error("Failed to create detection model");
             return false;

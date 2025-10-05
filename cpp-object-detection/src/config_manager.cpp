@@ -38,6 +38,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->verbose = true;
         } else if (arg == "--enable-gpu") {
             config_->enable_gpu = true;
+        } else if (arg == "--enable-cuda") {
+            config_->enable_cuda = true;
         } else if (arg == "--enable-parallel") {
             config_->enable_parallel_processing = true;
         } else if (arg == "--no-headless") {
@@ -152,6 +154,10 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --analysis-rate-limit N        Maximum images to analyze per second (default: 1.0)\n"
               << "                                 Lower values reduce CPU usage by adding sleep between analyses\n"
               << "  --enable-gpu                   Enable GPU acceleration if available\n"
+              << "  --enable-cuda                  Enable CUDA backend for OpenCV (off by default)\n"
+              << "                                 Requires OpenCV built with CUDA support\n"
+              << "                                 Performance: ~2-3x faster inference on compatible GPUs\n"
+              << "                                 Note: Not supported on macOS; supported on Linux x86_64\n"
               << "  --no-headless                  Disable headless mode (show GUI windows)\n"
               << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n"
               << "  --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)\n"

@@ -5,28 +5,29 @@
 
 std::unique_ptr<IDetectionModel> DetectionModelFactory::createModel(
     ModelType type, 
-    std::shared_ptr<Logger> logger) {
+    std::shared_ptr<Logger> logger,
+    bool enable_cuda) {
     
     switch (type) {
         case ModelType::YOLO_V5_SMALL:
-            return std::make_unique<YoloV5SmallModel>(logger);
+            return std::make_unique<YoloV5SmallModel>(logger, enable_cuda);
             
         case ModelType::YOLO_V5_LARGE:
-            return std::make_unique<YoloV5LargeModel>(logger);
+            return std::make_unique<YoloV5LargeModel>(logger, enable_cuda);
             
         case ModelType::YOLO_V8_NANO:
             // Future implementation - for now fall back to V5 small
             if (logger) {
                 logger->warning("YOLOv8 Nano not yet implemented, using YOLOv5 Small");
             }
-            return std::make_unique<YoloV5SmallModel>(logger);
+            return std::make_unique<YoloV5SmallModel>(logger, enable_cuda);
             
         case ModelType::YOLO_V8_MEDIUM:
             // Future implementation - for now fall back to V5 large
             if (logger) {
                 logger->warning("YOLOv8 Medium not yet implemented, using YOLOv5 Large");
             }
-            return std::make_unique<YoloV5LargeModel>(logger);
+            return std::make_unique<YoloV5LargeModel>(logger, enable_cuda);
             
         default:
             throw std::invalid_argument("Unknown model type");

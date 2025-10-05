@@ -25,9 +25,9 @@ const cv::Scalar YoloV5LargeModel::MEAN = cv::Scalar(0, 0, 0);
 // YoloV5SmallModel Implementation
 // ============================================================================
 
-YoloV5SmallModel::YoloV5SmallModel(std::shared_ptr<Logger> logger)
+YoloV5SmallModel::YoloV5SmallModel(std::shared_ptr<Logger> logger, bool enable_cuda)
     : logger_(logger), confidence_threshold_(0.5), detection_scale_factor_(1.0), 
-      initialized_(false), avg_inference_time_ms_(65) {
+      initialized_(false), enable_cuda_(enable_cuda), avg_inference_time_ms_(65) {
 }
 
 bool YoloV5SmallModel::initialize(const std::string& model_path,
@@ -208,23 +208,32 @@ bool YoloV5SmallModel::loadModel(const std::string& model_path) {
         }
 
         // Select backend based on platform and available hardware
+        if (enable_cuda_) {
+            // User explicitly requested CUDA
 #ifdef __APPLE__
-        // macOS doesn't support CUDA in OpenCV DNN
-        logger_->info("YOLOv5s using CPU backend for inference (macOS)");
-        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
-        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+            logger_->warning("CUDA backend requested but not supported on macOS");
+            logger_->info("YOLOv5s using CPU backend for inference (macOS)");
+            net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+            net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
 #else
-        // Try to use GPU if available on other platforms
-        try {
-            net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-            net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
-            logger_->info("YOLOv5s using CUDA backend for GPU acceleration");
-        } catch (const std::exception& e) {
-            logger_->info("YOLOv5s using CPU backend for inference: " + std::string(e.what()));
+            // Try to use CUDA on Linux/other platforms
+            try {
+                net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+                net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+                logger_->info("YOLOv5s using CUDA backend for GPU acceleration");
+            } catch (const std::exception& e) {
+                logger_->warning("Failed to enable CUDA backend: " + std::string(e.what()));
+                logger_->info("YOLOv5s falling back to CPU backend");
+                net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+                net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+            }
+#endif
+        } else {
+            // CUDA not requested, use CPU backend
+            logger_->info("YOLOv5s using CPU backend for inference");
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
         }
-#endif
 
         logger_->debug("YOLOv5s neural network loaded successfully");
         return true;
@@ -344,9 +353,9 @@ void YoloV5SmallModel::updateInferenceTime(int inference_time_ms) const {
 // YoloV5LargeModel Implementation  
 // ============================================================================
 
-YoloV5LargeModel::YoloV5LargeModel(std::shared_ptr<Logger> logger)
+YoloV5LargeModel::YoloV5LargeModel(std::shared_ptr<Logger> logger, bool enable_cuda)
     : logger_(logger), confidence_threshold_(0.5), detection_scale_factor_(1.0),
-      initialized_(false), avg_inference_time_ms_(120) {
+      initialized_(false), enable_cuda_(enable_cuda), avg_inference_time_ms_(120) {
 }
 
 bool YoloV5LargeModel::initialize(const std::string& model_path,
@@ -527,23 +536,32 @@ bool YoloV5LargeModel::loadModel(const std::string& model_path) {
         }
 
         // Select backend based on platform and available hardware
+        if (enable_cuda_) {
+            // User explicitly requested CUDA
 #ifdef __APPLE__
-        // macOS doesn't support CUDA in OpenCV DNN
-        logger_->info("YOLOv5l using CPU backend for inference (macOS)");
-        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
-        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+            logger_->warning("CUDA backend requested but not supported on macOS");
+            logger_->info("YOLOv5l using CPU backend for inference (macOS)");
+            net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+            net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
 #else
-        // Try to use GPU if available on other platforms
-        try {
-            net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-            net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
-            logger_->info("YOLOv5l using CUDA backend for GPU acceleration");
-        } catch (const std::exception& e) {
-            logger_->info("YOLOv5l using CPU backend for inference: " + std::string(e.what()));
+            // Try to use CUDA on Linux/other platforms
+            try {
+                net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+                net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+                logger_->info("YOLOv5l using CUDA backend for GPU acceleration");
+            } catch (const std::exception& e) {
+                logger_->warning("Failed to enable CUDA backend: " + std::string(e.what()));
+                logger_->info("YOLOv5l falling back to CPU backend");
+                net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+                net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+            }
+#endif
+        } else {
+            // CUDA not requested, use CPU backend
+            logger_->info("YOLOv5l using CPU backend for inference");
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
         }
-#endif
 
         logger_->debug("YOLOv5l neural network loaded successfully");
         return true;

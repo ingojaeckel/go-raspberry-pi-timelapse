@@ -39,7 +39,8 @@ public:
                   double confidence_threshold,
                   std::shared_ptr<Logger> logger,
                   DetectionModelFactory::ModelType model_type = DetectionModelFactory::ModelType::YOLO_V5_SMALL,
-                  double detection_scale_factor = 1.0);
+                  double detection_scale_factor = 1.0,
+                  bool enable_cuda = false);
     
     ~ObjectDetector();
 
@@ -118,6 +119,7 @@ private:
     double detection_scale_factor_;
     std::shared_ptr<Logger> logger_;
     DetectionModelFactory::ModelType model_type_;
+    bool enable_cuda_;
     
     std::unique_ptr<IDetectionModel> detection_model_;
     std::vector<ObjectTracker> tracked_objects_;
