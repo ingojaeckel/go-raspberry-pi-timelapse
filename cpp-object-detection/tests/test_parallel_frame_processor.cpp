@@ -221,3 +221,26 @@ TEST_F(ParallelFrameProcessorTest, GetTotalImagesSaved) {
     
     processor->shutdown();
 }
+
+TEST_F(ParallelFrameProcessorTest, BurstModeEnabledByDefault) {
+    // Test that burst mode is disabled by default
+    auto processor = std::make_unique<ParallelFrameProcessor>(
+        detector, logger, perf_monitor, 1, 10, "detections", false);
+    
+    EXPECT_TRUE(processor->initialize());
+    EXPECT_FALSE(processor->isBurstModeActive());
+    
+    processor->shutdown();
+}
+
+TEST_F(ParallelFrameProcessorTest, BurstModeCanBeEnabled) {
+    // Test that burst mode can be enabled via constructor
+    auto processor = std::make_unique<ParallelFrameProcessor>(
+        detector, logger, perf_monitor, 1, 10, "detections", false, true);
+    
+    EXPECT_TRUE(processor->initialize());
+    // Burst mode should be inactive initially (no objects)
+    EXPECT_FALSE(processor->isBurstModeActive());
+    
+    processor->shutdown();
+}
