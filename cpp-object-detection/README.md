@@ -24,6 +24,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **🆕 Speed vs Accuracy Trade-offs** - Select optimal model for your use case
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
 - **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
+- **🆕 Burst Mode** - Dynamically max out FPS when new objects enter frame, throttle when stationary
 - **🆕 Detection Scale Factor** - In-memory image downscaling for 4x faster processing
 - **🆕 Long-Term Operation Optimizations**:
   - Bounded data structures to prevent memory leaks
@@ -373,6 +374,7 @@ OPTIONS:
   --show-preview                 Show real-time viewfinder with detection bounding boxes
   --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)
   --streaming-port N             Port for HTTP streaming server (default: 8080)
+  --enable-burst-mode            Enable burst mode to max out FPS when new objects enter frame
 ```
 
 ### Network Streaming
@@ -421,6 +423,8 @@ The application includes an **analysis rate limiting feature** to reduce CPU usa
 - Example: If analysis takes 50ms and rate limit is 1/sec → sleep 950ms
 - This allows the CPU to idle between analyses, reducing energy consumption by up to 95%
 
+> **📖 For details on burst mode (dynamic rate limiting), see [BURST_MODE_FEATURE.md](BURST_MODE_FEATURE.md)**
+
 ### Examples
 
 **Energy-efficient monitoring (low CPU):**
@@ -441,6 +445,12 @@ The application includes an **analysis rate limiting feature** to reduce CPU usa
 **🆕 Performance-optimized setup:**
 ```bash
 ./object_detection --detection-scale 0.25 --max-fps 10 --min-confidence 0.5
+```
+
+**🆕 Burst mode for wildlife monitoring:**
+```bash
+# Low baseline rate (0.5 fps), burst to max when animals detected
+./object_detection --enable-burst-mode --analysis-rate-limit 0.5 --min-confidence 0.6
 ```
 
 **Custom logging:**
