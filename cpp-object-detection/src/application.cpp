@@ -142,6 +142,25 @@ bool initializeComponents(ApplicationContext& ctx) {
     ctx.system_monitor = std::make_shared<SystemMonitor>(ctx.logger, ctx.config.output_dir);
     ctx.logger->info("System monitor initialized for resource tracking");
 
+    // Initialize Google Sheets client if enabled
+    if (ctx.config.enable_google_sheets) {
+        GoogleSheetsClient::Config sheets_config;
+        sheets_config.enabled = true;
+        sheets_config.spreadsheet_id = ctx.config.google_sheets_id;
+        sheets_config.api_key = ctx.config.google_sheets_api_key;
+        sheets_config.sheet_name = ctx.config.google_sheets_name;
+        
+        ctx.google_sheets_client = std::make_shared<GoogleSheetsClient>(sheets_config, ctx.logger);
+        if (!ctx.google_sheets_client->initialize()) {
+            ctx.logger->error("Failed to initialize Google Sheets client");
+            return false;
+        }
+        ctx.logger->info("Google Sheets integration enabled");
+        
+        // Pass Google Sheets client to object detector for event logging
+        ctx.detector->setGoogleSheetsClient(ctx.google_sheets_client);
+    }
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
     ctx.start_time = std::chrono::steady_clock::now();

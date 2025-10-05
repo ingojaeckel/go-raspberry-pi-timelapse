@@ -16,6 +16,7 @@
 #include "viewfinder_window.hpp"
 #include "network_streamer.hpp"
 #include "system_monitor.hpp"
+#include "google_sheets_client.hpp"
 
 /**
  * Context structure to hold shared application state
@@ -34,6 +35,7 @@ struct ApplicationContext {
     std::shared_ptr<ViewfinderWindow> viewfinder;
     std::shared_ptr<NetworkStreamer> network_streamer;
     std::shared_ptr<SystemMonitor> system_monitor;
+    std::shared_ptr<GoogleSheetsClient> google_sheets_client;
     
     // Processing state
     std::queue<std::future<ParallelFrameProcessor::FrameResult>> pending_frames;

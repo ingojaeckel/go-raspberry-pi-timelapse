@@ -54,9 +54,13 @@ else()
 endif()
 find_package(Threads REQUIRED)
 
+# Find CURL library
+find_package(CURL REQUIRED)
+
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(${CURL_INCLUDE_DIRS})
 
 # Source files
 set(SOURCES
@@ -73,6 +77,7 @@ set(SOURCES
     src/viewfinder_window.cpp
     src/network_streamer.cpp
     src/system_monitor.cpp
+    src/google_sheets_client.cpp
 )
 
 # Create executable
@@ -82,6 +87,7 @@ add_executable(object_detection ${SOURCES})
 target_link_libraries(object_detection 
     ${OpenCV_LIBS}
     Threads::Threads
+    CURL::libcurl
 )
 
 # Compiler flags for optimization and warnings

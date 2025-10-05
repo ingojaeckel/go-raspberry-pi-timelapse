@@ -1,6 +1,7 @@
 # Test configuration
 find_package(GTest REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(CURL REQUIRED)
 
 # Test sources
 set(TEST_SOURCES
@@ -15,6 +16,7 @@ set(TEST_SOURCES
     test_photo_storage_logic.cpp
     test_network_streamer.cpp
     test_long_term_operation.cpp
+    test_google_sheets_client.cpp
 )
 
 # Create test executable
@@ -24,6 +26,7 @@ add_executable(object_detection_tests ${TEST_SOURCES})
 target_include_directories(object_detection_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${OpenCV_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIRS}
 )
 
 # Link libraries
@@ -32,6 +35,7 @@ target_link_libraries(object_detection_tests
     GTest::gtest_main
     ${OpenCV_LIBS}
     pthread
+    CURL::libcurl
 )
 
 # Add individual source files we want to test
@@ -47,6 +51,7 @@ target_sources(object_detection_tests PRIVATE
     ../src/viewfinder_window.cpp
     ../src/network_streamer.cpp
     ../src/system_monitor.cpp
+    ../src/google_sheets_client.cpp
 )
 
 # Code coverage support for tests

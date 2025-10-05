@@ -100,6 +100,11 @@ public:
     void updateTracking(const std::vector<Detection>& detections) {
         updateTrackedObjects(detections);
     }
+    
+    /**
+     * Set Google Sheets client for logging detection events
+     */
+    void setGoogleSheetsClient(std::shared_ptr<class GoogleSheetsClient> client);
 
 private:
     std::string model_path_;
@@ -109,6 +114,7 @@ private:
     double detection_scale_factor_;
     std::shared_ptr<Logger> logger_;
     DetectionModelFactory::ModelType model_type_;
+    std::shared_ptr<class GoogleSheetsClient> google_sheets_client_;  // Optional Google Sheets integration
     
     std::unique_ptr<IDetectionModel> detection_model_;
     std::vector<ObjectTracker> tracked_objects_;
