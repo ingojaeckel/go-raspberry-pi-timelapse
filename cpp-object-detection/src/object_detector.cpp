@@ -347,6 +347,8 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                     tracked.center.y,
                     detection_it->confidence
                 );
+                // Record for hourly summary (new objects are typically moving/dynamic)
+                logger_->recordDetection(tracked.object_type, false);
             } else {
                 // Object was seen before - check if it moved
                 float distance = cv::norm(tracked.center - tracked.previous_center);
@@ -398,6 +400,8 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                         tracked.center.y,
                         detection_it->confidence
                     );
+                    // Record as dynamic object
+                    logger_->recordDetection(tracked.object_type, false);
                 } else {
                     logger_->debug("Movement below threshold (" + std::to_string(distance) + 
                                  " < 5.0 pixels) - not logging");

@@ -307,6 +307,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
             ctx.perf_monitor->logPerformanceReport();
             ctx.last_heartbeat = now;
         }
+        
+        // Check and print hourly summary
+        ctx.logger->checkAndPrintSummary(ctx.config.summary_interval_minutes);
 
         // Perform periodic system resource checks
         if (ctx.system_monitor) {
@@ -358,5 +361,9 @@ void performGracefulShutdown(ApplicationContext& ctx) {
     }
     
     ctx.webcam->release();
+    
+    // Print final summary covering entire program runtime
+    ctx.logger->printFinalSummary();
+    
     ctx.logger->info("Object Detection Application stopped");
 }

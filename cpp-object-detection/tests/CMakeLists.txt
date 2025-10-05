@@ -6,6 +6,7 @@ find_package(OpenCV REQUIRED)
 set(TEST_SOURCES
     test_config_manager.cpp
     test_logger.cpp
+    test_hourly_summary.cpp
     test_performance_monitor.cpp
     test_webcam_interface.cpp
     test_object_detector.cpp

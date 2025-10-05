@@ -18,6 +18,7 @@ public:
         // Logging
         std::string log_file = "object_detection.log";
         int heartbeat_interval_minutes = 10;
+        int summary_interval_minutes = 60;  // Hourly summary interval
         
         // Video capture
         int camera_id = 0;
