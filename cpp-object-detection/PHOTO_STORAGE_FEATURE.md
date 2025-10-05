@@ -63,16 +63,26 @@ Photos are saved intelligently based on detected changes:
 - When same stationary objects remain in frame with no changes
 - Prevents disk space exhaustion from redundant photos
 
+**🆕 Stationary Object Detection (configurable timeout, default: 120s):**
+- When objects have been stationary for longer than timeout period, photo capture stops
+- Stationary detection based on average movement over last 10 frames (threshold: ≤10 pixels)
+- Automatically resumes photo capture when objects start moving again
+- Configurable via `--stationary-timeout N` parameter
+
 **Implementation:**
 - Tracks object counts by type from last saved photo
 - Compares current detections with previous state
 - Uses object tracking to detect new entries
+- 🆕 Analyzes position history to determine if objects are stationary
+- 🆕 Tracks how long objects have been stationary
 - Thread-safe implementation using mutex protection
 
 **Benefits:**
 - Immediate response to meaningful changes in scene
 - Reduced storage of redundant photos
 - Better capture of dynamic events
+- 🆕 Massive disk space savings for long-term stationary objects (e.g., parked cars)
+- 🆕 Focus on capturing meaningful movement and changes
 
 ## Architecture
 
@@ -83,12 +93,19 @@ Photos are saved intelligently based on detected changes:
    - `getColorForClass()` - Maps object types to colors
    - `generateFilename()` - Creates timestamped filenames
    - `processFrameInternal()` - Processes frames and triggers photo saving
+   - 🆕 Checks stationary status before saving photos
 
-2. **Configuration**
+2. **ObjectDetector** - Object tracking and stationary detection
+   - `updateStationaryStatus()` - Analyzes movement to determine if object is stationary
+   - `isStationaryPastTimeout()` - Checks if stationary object has exceeded timeout period
+   - Tracks position history for movement analysis
+
+3. **Configuration**
    - `--output-dir DIR` - Specify output directory (default: `detections`)
+   - 🆕 `--stationary-timeout N` - Seconds before stopping photos of stationary objects (default: 120)
    - Automatically creates output directory if it doesn't exist
 
-3. **Thread Safety**
+4. **Thread Safety**
    - Uses mutex (`photo_mutex_`) to protect photo saving
    - Prevents race conditions in multi-threaded mode
    - Safe time tracking for 10-second interval

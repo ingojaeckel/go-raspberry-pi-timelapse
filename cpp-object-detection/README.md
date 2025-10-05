@@ -11,6 +11,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Headless operation** - no X11 required
 - **Object tracking and permanence** - Distinguishes new objects from moving objects
 - **Position-based tracking** for people, vehicles, and small animals (cat/dog/fox)
+- **🆕 Stationary object detection** - Automatically stops taking photos of stationary objects after configurable timeout
 - **Real-time viewfinder** - optional on-screen preview with detection bounding boxes and performance statistics (--show-preview)
   - **Debug overlay** with performance metrics, detection counts, uptime, and top detected objects
   - **Toggle overlay** with SPACE key for minimal screen coverage
@@ -81,6 +82,68 @@ Frame 3: Detect "cat" at (300, 100) → Log: "new cat entered frame at (300, 100
 ```
 
 For complete details on movement detection improvements, see [MOVEMENT_DETECTION_IMPROVEMENTS.md](MOVEMENT_DETECTION_IMPROVEMENTS.md).
+
+## Stationary Object Detection
+
+The application includes intelligent stationary object detection to avoid filling disk space with redundant photos of objects that aren't moving.
+
+### How It Works
+
+1. **Movement Tracking**: The system tracks object movement by analyzing position history over the last 10 frames
+2. **Stationary Threshold**: Objects with average movement ≤ 10 pixels are considered stationary
+3. **Timeout Period**: After objects have been stationary for a configurable period (default: 120 seconds / 2 minutes), photo capture stops
+4. **Automatic Resume**: If objects start moving again, photo capture automatically resumes
+
+### Configuration
+
+```bash
+# Set stationary timeout to 5 minutes (300 seconds)
+./object_detection --stationary-timeout 300
+
+# Set to 30 seconds for frequent updates
+./object_detection --stationary-timeout 30
+
+# Default is 120 seconds (2 minutes)
+./object_detection
+```
+
+### Behavior Examples
+
+**Scenario 1: Stationary Car**
+```
+Time: 0s   - Car detected → Photo saved (new object)
+Time: 10s  - Same car, no movement → Photo saved (10s interval)
+Time: 20s  - Same car, no movement → Photo saved (10s interval)
+...
+Time: 120s - Same car, no movement → Photo saved (10s interval)
+Time: 130s - Same car, no movement → Photo SKIPPED (stationary timeout reached)
+Time: 140s - Same car, no movement → Photo SKIPPED
+...
+```
+
+**Scenario 2: Object Starts Moving Again**
+```
+Time: 0s   - Person detected → Photo saved
+Time: 120s - Person stationary → Photo saved (last before timeout)
+Time: 130s - Person stationary → Photo SKIPPED (timeout reached)
+Time: 150s - Person moves → Photo saved immediately (movement detected)
+Time: 160s - Person still moving → Photo saved (10s interval)
+```
+
+**Scenario 3: Multiple Objects with Different States**
+```
+Time: 0s   - Car detected → Photo saved
+Time: 120s - Car stationary, person enters → Photo saved (new object)
+Time: 130s - Both stationary for < 120s → Photo saved (10s interval)
+Time: 250s - Both stationary for > 120s → Photo SKIPPED
+```
+
+### Benefits
+
+- **Disk Space Savings**: Avoid hundreds of redundant photos of parked cars or static objects
+- **Meaningful Photos**: Only capture photos when something interesting is happening
+- **Configurable**: Adjust timeout based on your monitoring needs
+- **Smart Resume**: Automatically starts capturing again when movement is detected
 
 ## Model Selection
 
