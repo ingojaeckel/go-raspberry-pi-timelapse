@@ -2,6 +2,8 @@
 
 A standalone C++ executable for real-time object detection from webcam data at 720p resolution. This application features a pluggable model architecture that allows engineers to select different detection models based on their speed/accuracy requirements.
 
+**⚡ Optimized for Long-Term Operation**: This application is designed to run continuously for days, weeks, or months without manual intervention. See [LONG_TERM_OPERATION.md](LONG_TERM_OPERATION.md) for details on memory management, camera resilience, and resource monitoring.
+
 ## Features
 
 - **Real-time object detection** from USB webcam input
@@ -9,7 +11,9 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Headless operation** - no X11 required
 - **Object tracking and permanence** - Distinguishes new objects from moving objects
 - **Position-based tracking** for people, vehicles, and small animals (cat/dog/fox)
-- **Real-time viewfinder** - optional on-screen preview with detection bounding boxes (--show-preview)
+- **Real-time viewfinder** - optional on-screen preview with detection bounding boxes and performance statistics (--show-preview)
+  - **Debug overlay** with performance metrics, detection counts, uptime, and top detected objects
+  - **Toggle overlay** with SPACE key for minimal screen coverage
 - **Network streaming** - MJPEG HTTP streaming to view feed on any device on local network (--enable-streaming)
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
@@ -21,20 +25,33 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
 - **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
 - **🆕 Detection Scale Factor** - In-memory image downscaling for 4x faster processing
+- **🆕 Long-Term Operation Optimizations**:
+  - Bounded data structures to prevent memory leaks
+  - Automatic camera reconnection and keep-alive
+  - System resource monitoring (disk space, CPU temperature)
+  - Warnings and logging for low disk space
+  - Overflow protection for long-running counters
 
 ## Object Tracking and Permanence Model
 
-The application implements a simple but effective object tracking system that maintains object identity across frames:
+The application implements an enhanced object tracking system that maintains object identity across frames with position history:
 
 ### How It Works
 
 1. **Position-Based Tracking**: Objects are tracked using their center (x, y) coordinates and object type (e.g., "cat", "person")
-2. **Movement Detection**: When an object of the same type is detected in a subsequent frame:
+2. **🆕 Position History**: Maintains up to 10 recent positions for each tracked object to analyze movement patterns
+3. **🆕 Closest-Match Algorithm**: Finds the best matching object when multiple candidates exist within threshold
+4. **Movement Detection**: When an object of the same type is detected in a subsequent frame:
    - If distance from previous position < 100 pixels → Same object (has moved)
    - If distance from previous position > 100 pixels → Different object (new entry)
-3. **Smart Logging**: 
+5. **🆕 Movement Pattern Analysis**: 
+   - Calculates average step size from position history
+   - Tracks overall displacement and path length
+   - Provides detailed movement statistics in debug mode
+6. **Smart Logging**: 
    - New objects: `"new cat entered frame at (320, 240)"`
    - Moved objects: `"cat seen earlier moved from (320, 240) -> (325, 245)"`
+   - 🆕 Debug mode: Detailed distance calculations and movement patterns
 
 ### Configuration
 
@@ -43,16 +60,27 @@ The tracking behavior is controlled by these parameters in the code:
 - **MAX_MOVEMENT_DISTANCE**: 100 pixels - Maximum distance an object can move between frames and still be considered the same object
 - **Movement threshold**: 5 pixels - Minimum movement to log (avoids noise from detection jitter)
 - **Tracking timeout**: 30 frames - Objects not seen for 30 frames are removed from tracking
+- **🆕 MAX_POSITION_HISTORY**: 10 positions - Number of recent positions to track for movement analysis
 
 ### Example Scenario
 
 ```
 Frame 1: Detect "cat" at (100, 100) → Log: "new cat entered frame at (100, 100)"
 Frame 2: Detect "cat" at (105, 102) → Log: "cat seen earlier moved from (100, 100) -> (105, 102)"
+        Debug: "Movement pattern: 2 positions tracked, avg step: 5.4 px"
 Frame 3: Detect "cat" at (300, 100) → Log: "new cat entered frame at (300, 100)" (too far, likely different cat)
 ```
 
-This simple model assumes objects don't teleport across the frame and provides basic permanence tracking suitable for monitoring applications.
+**🆕 Enhanced Debug Output** (with `--verbose` flag):
+```
+[DEBUG] Processing detection: cat at (105, 102)
+[DEBUG]   Distance to existing cat at (100, 100): 5.4 pixels
+[DEBUG]   Matched to existing cat (distance: 5.4 pixels)
+[DEBUG] Movement analysis: 2 positions in history, average step: 5.4 pixels
+[DEBUG] Logging movement: cat moved 5.4 pixels [avg step: 5.4 px, overall path: 5.4 px]
+```
+
+For complete details on movement detection improvements, see [MOVEMENT_DETECTION_IMPROVEMENTS.md](MOVEMENT_DETECTION_IMPROVEMENTS.md).
 
 ## Model Selection
 
@@ -174,12 +202,16 @@ public:
 4. **Object Detector (`object_detector.hpp/cpp`)**
    - Object detection orchestrator using pluggable models
    - Target class filtering (person, vehicles, animals, furniture, books)
-   - **Object tracking and permanence model**:
+   - **🆕 Enhanced object tracking and permanence model**:
      - Tracks objects frame-to-frame based on position and type
+     - Maintains position history (up to 10 recent positions) for movement pattern analysis
      - Distinguishes between new objects entering frame vs. tracked objects moving
      - Uses configurable distance threshold (100 pixels) for movement detection
+     - Improved closest-match algorithm for accurate object association
+     - Comprehensive debug logging for distance calculations and movement patterns
      - Logs "new [object] entered frame at (x, y)" for new detections
-     - Logs "[object] moved from (x1, y1) -> (x2, y2)" for tracked movement
+     - Logs "[object] moved from (x1, y1) -> (x2, y2)" with movement statistics
+     - See [MOVEMENT_DETECTION_IMPROVEMENTS.md](MOVEMENT_DETECTION_IMPROVEMENTS.md) for details
    - Model switching and performance monitoring
 
 5. **🆕 Detection Model Interface (`detection_model_interface.hpp`)**
@@ -693,6 +725,87 @@ std::vector<std::string> ObjectDetector::getTargetClasses() {
 1. **Adjust model input size** in `object_detector.hpp`
 2. **Optimize post-processing** in `postProcess()` method
 3. **Add threading** for parallel processing
+
+## Hardware Requirements and Platform Support
+
+### Supported Platforms
+
+| Platform | CPU Architecture | Expected Performance | Status |
+|----------|-----------------|---------------------|--------|
+| **Linux x86_64** | Intel Core i7, AMD Ryzen | 8-15 fps @ 720p | ✅ Fully Supported |
+| **Linux 386** | Intel Pentium M | 1-3 fps @ 720p | ✅ Fully Supported |
+| **macOS x86_64** | Intel-based Macs | 8-15 fps @ 720p | ✅ Fully Supported |
+| **Headless** | Any supported arch | Same as base platform | ✅ Fully Supported |
+
+### 32-bit Linux (386) Specific Notes
+
+**Building for 32-bit Linux:**
+```bash
+# Install 32-bit build tools
+sudo apt-get install -y gcc-multilib g++-multilib
+
+# For 32-bit OpenCV (required for building)
+sudo dpkg --add-architecture i386
+sudo apt-get update
+sudo apt-get install -y libopencv-dev:i386
+
+# Build 32-bit executable
+cd cpp-object-detection
+./scripts/build-linux-386.sh
+```
+
+> **Note:** 32-bit OpenCV libraries (`libopencv-dev:i386`) may not be available in all Ubuntu versions. If you encounter installation issues, you'll need to build on a native 32-bit system or use an older Ubuntu version that provides 32-bit packages.
+
+**Hardware Constraints:**
+
+For older hardware like **Intel Pentium M with 1.5GB RAM**, use these recommended settings:
+
+```bash
+# Minimal resource usage configuration
+./object_detection \
+  --max-fps 1 \
+  --min-confidence 0.8 \
+  --frame-width 640 \
+  --frame-height 480 \
+  --analysis-rate-limit 0.5 \
+  --heartbeat-interval 15
+
+# Alternative: Ultra-low memory mode (320p)
+./object_detection \
+  --max-fps 1 \
+  --min-confidence 0.85 \
+  --frame-width 320 \
+  --frame-height 240 \
+  --analysis-rate-limit 0.33 \
+  --detection-scale 1.0
+```
+
+**Key Recommendations for 32-bit / Low-Memory Systems:**
+- ✅ Use `--max-fps 1` to limit processing overhead
+- ✅ Set `--min-confidence 0.8` or higher to reduce false positives
+- ✅ Use `--frame-width 640 --frame-height 480` (VGA) instead of 720p
+- ✅ Set `--analysis-rate-limit 0.5` for one analysis every 2 seconds
+- ✅ Increase `--heartbeat-interval` to reduce log I/O
+- ✅ Use `--detection-scale 0.5` to process downscaled frames (2x speedup)
+- ⚠️ Avoid `--enable-gpu` on systems without GPU support
+- ⚠️ Avoid `--show-preview` on headless systems
+
+**Memory Usage on 32-bit Systems:**
+- Base application: ~50MB
+- YOLO model (loaded): ~100MB
+- Frame buffers: ~10-20MB
+- Total: ~150-170MB (comfortably fits in 1.5GB RAM)
+
+**Dependencies for 32-bit Linux:**
+```bash
+# On 64-bit system building for 32-bit
+sudo dpkg --add-architecture i386
+sudo apt-get update
+sudo apt-get install -y gcc-multilib g++-multilib libopencv-dev:i386
+
+# On native 32-bit system
+sudo apt-get install -y cmake build-essential libopencv-dev pkg-config
+```
 
 ## Troubleshooting
 

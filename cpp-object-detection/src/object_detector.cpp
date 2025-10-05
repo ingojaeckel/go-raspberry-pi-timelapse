@@ -18,7 +18,7 @@ ObjectDetector::ObjectDetector(const std::string& model_path,
     : model_path_(model_path), config_path_(config_path), classes_path_(classes_path),
       confidence_threshold_(confidence_threshold), detection_scale_factor_(detection_scale_factor),
       logger_(logger), model_type_(model_type),
-      initialized_(false) {
+      initialized_(false), total_objects_detected_(0) {
 }
 
 ObjectDetector::~ObjectDetector() = default;
@@ -172,6 +172,7 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
     // - Track objects frame-to-frame based on (x, y) position and object type
     // - Determine if detected object is "new" (entered frame) or "moved" (was near this position before)
     // - Use MAX_MOVEMENT_DISTANCE threshold to decide: if distance > threshold, consider it a new object
+    // - Maintain position history for better movement analysis
     
     // Mark all current objects as not seen this frame
     for (auto& tracked : tracked_objects_) {
@@ -188,24 +189,63 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             detection.bbox.y + detection.bbox.height / 2.0f
         );
         
+        logger_->debug("Processing detection: " + detection.class_name + 
+                      " at (" + std::to_string(detection_center.x) + ", " + 
+                      std::to_string(detection_center.y) + ")");
+        
         // Try to match with existing tracked objects of the same type
+        float min_distance = MAX_MOVEMENT_DISTANCE;
+        ObjectTracker* best_match = nullptr;
+        
         for (auto& tracked : tracked_objects_) {
             if (tracked.object_type == detection.class_name) {
                 // Calculate distance from previously tracked position
                 float distance = cv::norm(tracked.center - detection_center);
                 
-                // Check if this detection is close enough to be the same object
-                // If distance is within threshold, assume it's the same object that moved
-                if (distance < MAX_MOVEMENT_DISTANCE) {
-                    // Store previous position before updating (for movement logging)
-                    tracked.previous_center = tracked.center;
-                    tracked.center = detection_center;
-                    tracked.was_present_last_frame = true;
-                    tracked.frames_since_detection = 0;
-                    tracked.is_new = false;  // Not new, it's been tracked
-                    found_existing = true;
-                    break;
+                logger_->debug("  Distance to existing " + tracked.object_type + 
+                              " at (" + std::to_string(tracked.center.x) + ", " + 
+                              std::to_string(tracked.center.y) + "): " + 
+                              std::to_string(distance) + " pixels");
+                
+                // Find the closest matching object within threshold
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    best_match = &tracked;
                 }
+            }
+        }
+        
+        // Check if we found a match within threshold
+        if (best_match != nullptr) {
+            logger_->debug("  Matched to existing " + best_match->object_type + 
+                          " (distance: " + std::to_string(min_distance) + " pixels)");
+            
+            // Store previous position before updating (for movement logging)
+            best_match->previous_center = best_match->center;
+            
+            // Add current position to history before updating
+            best_match->position_history.push_back(best_match->center);
+            if (best_match->position_history.size() > ObjectTracker::MAX_POSITION_HISTORY) {
+                best_match->position_history.pop_front();
+            }
+            
+            // Update position
+            best_match->center = detection_center;
+            best_match->was_present_last_frame = true;
+            best_match->frames_since_detection = 0;
+            best_match->is_new = false;  // Not new, it's been tracked
+            found_existing = true;
+            
+            // Log movement pattern if we have enough history
+            if (best_match->position_history.size() >= 3) {
+                float total_path_length = 0.0f;
+                for (size_t i = 1; i < best_match->position_history.size(); ++i) {
+                    total_path_length += cv::norm(best_match->position_history[i] - 
+                                                  best_match->position_history[i-1]);
+                }
+                logger_->debug("  Movement pattern: " + std::to_string(best_match->position_history.size()) + 
+                              " positions tracked, total path length: " + 
+                              std::to_string(total_path_length) + " pixels");
             }
         }
         
@@ -214,24 +254,65 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
         // 1. First time seeing this object type, OR
         // 2. Object of this type is too far from any previously tracked position (likely a different object)
         if (!found_existing) {
+            // Check if we're at the tracking limit
+            if (tracked_objects_.size() >= MAX_TRACKED_OBJECTS) {
+                logger_->warning("Maximum tracked objects limit (" + std::to_string(MAX_TRACKED_OBJECTS) + 
+                                ") reached. Cleaning up oldest objects.");
+                cleanupOldTrackedObjects();
+            }
+
+            logger_->debug("  Creating new tracker for " + detection.class_name + 
+                          " (no existing object within " + std::to_string(MAX_MOVEMENT_DISTANCE) + 
+                          " pixel threshold)");
+            
             ObjectTracker new_tracker;
             new_tracker.object_type = detection.class_name;
             new_tracker.center = detection_center;
             new_tracker.previous_center = detection_center;  // Same as current for new object
+            new_tracker.position_history.push_back(detection_center);  // Initialize history
             new_tracker.was_present_last_frame = true;
             new_tracker.frames_since_detection = 0;
             new_tracker.is_new = true;  // Mark as newly entered
             tracked_objects_.push_back(new_tracker);
+            
+            // Update statistics with bounded growth protection
+            total_objects_detected_++;
+            object_type_counts_[detection.class_name]++;
+            
+            // Limit object type counts map size
+            if (object_type_counts_.size() > MAX_OBJECT_TYPE_ENTRIES) {
+                limitObjectTypeCounts();
+            }
         }
     }
     
     // Remove objects that haven't been seen for too long
+    // First, log the objects that will be removed
+    for (const auto& tracker : tracked_objects_) {
+        if (tracker.frames_since_detection > 30) {
+            logger_->debug("Removing " + tracker.object_type + 
+                          " tracker (not seen for " + 
+                          std::to_string(tracker.frames_since_detection) + " frames)");
+        }
+    }
+    
+    // Count how many will be removed before erasing
+    auto removed_count = std::count_if(tracked_objects_.begin(), tracked_objects_.end(),
+                                       [](const ObjectTracker& tracker) {
+                                           return tracker.frames_since_detection > 30; // 30 frames threshold
+                                       });
+    
+    // Now remove them
     tracked_objects_.erase(
         std::remove_if(tracked_objects_.begin(), tracked_objects_.end(),
                       [](const ObjectTracker& tracker) {
                           return tracker.frames_since_detection > 30; // 30 frames threshold
                       }),
         tracked_objects_.end());
+    
+    if (removed_count > 0) {
+        logger_->debug("Removed " + std::to_string(removed_count) + " stale tracker(s)");
+    }
 }
 
 
@@ -252,6 +333,9 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
             
             if (tracked.is_new) {
                 // New object entered the frame
+                logger_->debug("New object entered: " + tracked.object_type + 
+                             " at (" + std::to_string(tracked.center.x) + ", " + 
+                             std::to_string(tracked.center.y) + ")");
                 logger_->logObjectEntry(
                     tracked.object_type,
                     tracked.center.x,
@@ -264,9 +348,45 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                 // Object was seen before - check if it moved
                 float distance = cv::norm(tracked.center - tracked.previous_center);
                 
+                logger_->debug("Checking movement for " + tracked.object_type + 
+                             ": distance = " + std::to_string(distance) + " pixels, " +
+                             "from (" + std::to_string(tracked.previous_center.x) + ", " + 
+                             std::to_string(tracked.previous_center.y) + ") to (" +
+                             std::to_string(tracked.center.x) + ", " + 
+                             std::to_string(tracked.center.y) + ")");
+                
                 // Only log movement if the object actually moved a meaningful distance
                 // (avoid logging tiny movements due to detection jitter)
                 if (distance > 5.0f) {  // 5 pixel threshold to avoid logging noise
+                    // Calculate movement characteristics from position history
+                    std::string movement_info = "";
+                    if (tracked.position_history.size() >= 2) {
+                        // Calculate average movement over recent history
+                        float total_distance = 0.0f;
+                        for (size_t i = 1; i < tracked.position_history.size(); ++i) {
+                            total_distance += cv::norm(tracked.position_history[i] - 
+                                                      tracked.position_history[i-1]);
+                        }
+                        float avg_distance = total_distance / (tracked.position_history.size() - 1);
+                        
+                        // Determine movement direction from history
+                        cv::Point2f overall_direction = tracked.center - tracked.position_history.front();
+                        float overall_distance = cv::norm(overall_direction);
+                        
+                        movement_info = " [avg step: " + std::to_string(avg_distance) + 
+                                      " px, overall path: " + std::to_string(overall_distance) + " px]";
+                        
+                        logger_->debug("Movement analysis for " + tracked.object_type + 
+                                     ": " + std::to_string(tracked.position_history.size()) + 
+                                     " positions in history, average step size: " + 
+                                     std::to_string(avg_distance) + " pixels, " +
+                                     "overall displacement: " + std::to_string(overall_distance) + 
+                                     " pixels");
+                    }
+                    
+                    logger_->debug("Logging movement: " + tracked.object_type + 
+                                 " moved " + std::to_string(distance) + " pixels" + movement_info);
+                    
                     logger_->logObjectMovement(
                         tracked.object_type,
                         tracked.previous_center.x,
@@ -278,8 +398,8 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                     // Record as dynamic object
                     logger_->recordDetection(tracked.object_type, false);
                 } else {
-                    // Object is stationary (didn't move much)
-                    logger_->recordDetection(tracked.object_type, true);
+                    logger_->debug("Movement below threshold (" + std::to_string(distance) + 
+                                 " < 5.0 pixels) - not logging");
                 }
             }
         }
@@ -287,4 +407,71 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
     
     // Note: Exit detection would require more sophisticated tracking
     // For now, we focus on entry and movement detection which are more reliable
+}
+
+int ObjectDetector::getTotalObjectsDetected() const {
+    return total_objects_detected_;
+}
+
+std::vector<std::pair<std::string, int>> ObjectDetector::getTopDetectedObjects(int top_n) const {
+    // Convert map to vector for sorting
+    std::vector<std::pair<std::string, int>> sorted_objects(object_type_counts_.begin(), object_type_counts_.end());
+    
+    // Sort by count in descending order
+    std::sort(sorted_objects.begin(), sorted_objects.end(),
+              [](const auto& a, const auto& b) {
+                  return a.second > b.second;
+              });
+    
+    // Return top N objects
+    if (sorted_objects.size() > static_cast<size_t>(top_n)) {
+        sorted_objects.resize(top_n);
+    }
+    
+    return sorted_objects;
+}
+
+void ObjectDetector::cleanupOldTrackedObjects() {
+    // Remove objects that haven't been seen recently, prioritizing older ones
+    // This is called when we hit the MAX_TRACKED_OBJECTS limit
+    if (tracked_objects_.empty()) {
+        return;
+    }
+    
+    // Sort by frames_since_detection (descending) to remove oldest first
+    std::sort(tracked_objects_.begin(), tracked_objects_.end(),
+              [](const ObjectTracker& a, const ObjectTracker& b) {
+                  return a.frames_since_detection > b.frames_since_detection;
+              });
+    
+    // Remove the oldest 20% or at least 10 objects
+    size_t to_remove = std::max(static_cast<size_t>(10), tracked_objects_.size() / 5);
+    to_remove = std::min(to_remove, tracked_objects_.size());
+    
+    logger_->debug("Cleaning up " + std::to_string(to_remove) + " old tracked objects");
+    tracked_objects_.erase(tracked_objects_.begin(), tracked_objects_.begin() + to_remove);
+}
+
+void ObjectDetector::limitObjectTypeCounts() {
+    // Keep only the most frequently detected object types
+    // This prevents the map from growing unbounded with rare detections
+    if (object_type_counts_.size() <= MAX_OBJECT_TYPE_ENTRIES) {
+        return;
+    }
+    
+    // Convert to vector and sort by count
+    std::vector<std::pair<std::string, int>> sorted_counts(object_type_counts_.begin(), 
+                                                            object_type_counts_.end());
+    std::sort(sorted_counts.begin(), sorted_counts.end(),
+              [](const std::pair<std::string, int>& a, const std::pair<std::string, int>& b) {
+                  return a.second > b.second;
+              });
+    
+    // Keep only top MAX_OBJECT_TYPE_ENTRIES
+    object_type_counts_.clear();
+    for (size_t i = 0; i < MAX_OBJECT_TYPE_ENTRIES && i < sorted_counts.size(); ++i) {
+        object_type_counts_[sorted_counts[i].first] = sorted_counts[i].second;
+    }
+    
+    logger_->debug("Limited object type counts to top " + std::to_string(MAX_OBJECT_TYPE_ENTRIES) + " types");
 }

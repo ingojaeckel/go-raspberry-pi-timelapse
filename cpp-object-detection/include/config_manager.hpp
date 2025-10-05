@@ -48,6 +48,9 @@ public:
         // Network streaming
         bool enable_streaming = false;  // Enable MJPEG HTTP streaming
         int streaming_port = 8080;      // Port for HTTP streaming server
+        
+        // Image preprocessing
+        bool enable_brightness_filter = false;  // Enable high brightness filter for glass reflections
     };
 
     enum class ParseResult {

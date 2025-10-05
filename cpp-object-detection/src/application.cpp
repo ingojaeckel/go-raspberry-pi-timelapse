@@ -97,7 +97,8 @@ bool initializeComponents(ApplicationContext& ctx) {
     // Initialize parallel frame processor
     int effective_threads = ctx.config.enable_parallel_processing ? ctx.config.processing_threads : 1;
     ctx.frame_processor = std::make_shared<ParallelFrameProcessor>(
-        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, ctx.config.output_dir);
+        ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, 
+        ctx.config.output_dir, ctx.config.enable_brightness_filter);
 
     if (!ctx.frame_processor->initialize()) {
         ctx.logger->error("Failed to initialize parallel frame processor");
@@ -108,6 +109,10 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.logger->info("Parallel processing enabled with " + std::to_string(ctx.config.processing_threads) + " threads");
     } else {
         ctx.logger->info("Sequential processing enabled (single-threaded)");
+    }
+    
+    if (ctx.config.enable_brightness_filter) {
+        ctx.logger->info("High brightness filter enabled - will reduce glass reflections in bright conditions");
     }
 
     // Initialize viewfinder if preview is enabled
@@ -133,11 +138,20 @@ bool initializeComponents(ApplicationContext& ctx) {
         }
     }
 
+    // Initialize system monitor for long-term operation
+    ctx.system_monitor = std::make_shared<SystemMonitor>(ctx.logger, ctx.config.output_dir);
+    ctx.logger->info("System monitor initialized for resource tracking");
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
+    ctx.start_time = std::chrono::steady_clock::now();
     ctx.heartbeat_interval = std::chrono::minutes(ctx.config.heartbeat_interval_minutes);
     ctx.frame_interval = std::chrono::milliseconds(1000 / ctx.config.max_fps);
     ctx.last_frame_time = std::chrono::steady_clock::now();
+    
+    // Store detection resolution (scaled from camera resolution)
+    ctx.detection_width = static_cast<int>(ctx.config.frame_width * ctx.config.detection_scale_factor);
+    ctx.detection_height = static_cast<int>(ctx.config.frame_height * ctx.config.detection_scale_factor);
 
     return true;
 }
@@ -146,8 +160,24 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
     ctx.logger->info("Starting main processing loop...");
     ctx.logger->info("Analysis rate limit: " + std::to_string(ctx.config.analysis_rate_limit) + " images/second");
 
+    // Track time for periodic camera health checks
+    auto last_health_check = std::chrono::steady_clock::now();
+    constexpr int HEALTH_CHECK_INTERVAL_SECONDS = 60;  // Check every minute
+
     while (running) {
         auto loop_start = std::chrono::steady_clock::now();
+
+        // Periodic camera health check
+        auto health_check_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            loop_start - last_health_check);
+        if (health_check_elapsed.count() >= HEALTH_CHECK_INTERVAL_SECONDS) {
+            if (!ctx.webcam->healthCheck()) {
+                ctx.logger->error("Camera health check failed - stopping application");
+                running = false;
+                break;
+            }
+            last_health_check = loop_start;
+        }
 
         // Check if enough time has passed for next frame
         if (loop_start - ctx.last_frame_time < ctx.frame_interval) {
@@ -189,7 +219,34 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                     
                     // Display in viewfinder if enabled
                     if (ctx.config.show_preview && ctx.viewfinder) {
-                        ctx.viewfinder->showFrame(ctx.frame, result.detections);
+                        // Get statistics for display
+                        auto top_objects = ctx.detector->getTopDetectedObjects(10);
+                        int total_objects = ctx.detector->getTotalObjectsDetected();
+                        int total_images = ctx.frame_processor->getTotalImagesSaved();
+                        
+                        // Get camera name (empty string if not available)
+                        std::string camera_name = "";  // Could be extended to get actual camera name
+                        
+                        // Check if brightness filter is active
+                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                        
+                        ctx.viewfinder->showFrameWithStats(
+                            ctx.frame, 
+                            result.detections,
+                            ctx.perf_monitor->getCurrentFPS(),
+                            ctx.perf_monitor->getAverageProcessingTime(),
+                            total_objects,
+                            total_images,
+                            ctx.start_time,
+                            top_objects,
+                            ctx.config.frame_width,
+                            ctx.config.frame_height,
+                            ctx.config.camera_id,
+                            camera_name,
+                            ctx.detection_width,
+                            ctx.detection_height,
+                            brightness_filter_active
+                        );
                         
                         // Check if user wants to close the viewfinder
                         if (ctx.viewfinder->shouldClose()) {
@@ -200,7 +257,32 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                     
                     // Update network streamer if enabled
                     if (ctx.config.enable_streaming && ctx.network_streamer) {
-                        ctx.network_streamer->updateFrame(ctx.frame, result.detections);
+                        // Get statistics for display (same as viewfinder)
+                        auto top_objects = ctx.detector->getTopDetectedObjects(10);
+                        int total_objects = ctx.detector->getTotalObjectsDetected();
+                        int total_images = ctx.frame_processor->getTotalImagesSaved();
+                        std::string camera_name = "";
+                        
+                        // Check if brightness filter is active
+                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                        
+                        ctx.network_streamer->updateFrameWithStats(
+                            ctx.frame,
+                            result.detections,
+                            ctx.perf_monitor->getCurrentFPS(),
+                            ctx.perf_monitor->getAverageProcessingTime(),
+                            total_objects,
+                            total_images,
+                            ctx.start_time,
+                            top_objects,
+                            ctx.config.frame_width,
+                            ctx.config.frame_height,
+                            ctx.config.camera_id,
+                            camera_name,
+                            ctx.detection_width,
+                            ctx.detection_height,
+                            brightness_filter_active
+                        );
                     }
                 }
             } catch (const std::exception& e) {
@@ -228,6 +310,11 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
         
         // Check and print hourly summary
         ctx.logger->checkAndPrintSummary(ctx.config.summary_interval_minutes);
+
+        // Perform periodic system resource checks
+        if (ctx.system_monitor) {
+            ctx.system_monitor->performPeriodicCheck();
+        }
 
         // Apply rate limiting with evenly distributed sleep time
         // Calculate required sleep time based on analysis rate limit and actual processing time

@@ -119,3 +119,19 @@ TEST_F(ConfigManagerTest, InvalidAnalysisRateLimitNegative) {
     EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
     EXPECT_FALSE(config_manager->validateConfig());
 }
+
+TEST_F(ConfigManagerTest, EnableBrightnessFilterArgument) {
+    const char* argv[] = {"program", "--enable-brightness-filter"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_TRUE(config.enable_brightness_filter);
+    EXPECT_TRUE(config_manager->validateConfig());
+}
+
+TEST_F(ConfigManagerTest, BrightnessFilterDefaultDisabled) {
+    const auto& config = config_manager->getConfig();
+    EXPECT_FALSE(config.enable_brightness_filter);
+}

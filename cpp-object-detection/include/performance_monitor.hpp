@@ -79,8 +79,10 @@ private:
     
     static constexpr int PERFORMANCE_WARNING_INTERVAL_SECONDS = 60;
     static constexpr int PERFORMANCE_REPORT_INTERVAL_SECONDS = 300; // 5 minutes
+    static constexpr int MAX_FRAME_COUNT = 1000000;  // Reset counters to prevent overflow
     
     void updateFPS();
     bool shouldLogWarning() const;
     bool shouldLogReport() const;
+    void checkForCounterOverflow();
 };

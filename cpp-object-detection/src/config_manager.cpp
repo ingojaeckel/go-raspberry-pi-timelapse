@@ -46,6 +46,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->show_preview = true;
         } else if (arg == "--enable-streaming") {
             config_->enable_streaming = true;
+        } else if (arg == "--enable-brightness-filter") {
+            config_->enable_brightness_filter = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -151,7 +153,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --no-headless                  Disable headless mode (show GUI windows)\n"
               << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n"
               << "  --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)\n"
-              << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n\n"
+              << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n"
+              << "  --enable-brightness-filter     Enable high brightness filter to reduce glass reflections (default: disabled)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"
@@ -164,13 +167,18 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  " << program_name << " --model-type yolov5l --max-fps 2  # High accuracy mode\n"
               << "  " << program_name << " --model-type yolov5s --processing-threads 4  # Fast parallel mode\n"
               << "  " << program_name << " --show-preview  # Development mode with real-time viewfinder\n"
+              << "  " << program_name << " --max-fps 1 --frame-width 640 --frame-height 480  # Low-resource mode (32-bit)\n"
               << "  " << program_name << " --enable-streaming --streaming-port 8080  # Network streaming mode\n"
               << "SUPPORTED PLATFORMS:\n"
               << "  - Linux x86_64 (Intel Core i7, AMD Ryzen 5 3600)\n"
-              << "  - Linux 386 (Intel Pentium M)\n"
+              << "  - Linux 386 (Intel Pentium M with 1.5GB RAM)\n"
               << "  - macOS x86_64 (Intel-based Macs)\n"
               << "  - Headless operation (no X11 required on Linux)\n"
-              << "  - USB webcams (Logitech C920 recommended)\n\n";
+              << "  - USB webcams (Logitech C920 recommended)\n\n"
+              << "32-BIT LINUX RECOMMENDATIONS:\n"
+              << "  For older hardware (Intel Pentium M, 1.5GB RAM):\n"
+              << "  " << program_name << " --max-fps 1 --min-confidence 0.8 --frame-width 640 --frame-height 480 --analysis-rate-limit 0.5\n"
+              << "  Consider using --detection-scale 0.5 for additional 2x speedup\n\n";
     
     // Explicit flush for macOS compatibility
     std::cout.flush();

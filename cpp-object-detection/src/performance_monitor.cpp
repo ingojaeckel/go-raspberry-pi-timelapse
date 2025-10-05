@@ -31,6 +31,7 @@ void PerformanceMonitor::endFrameProcessing() {
     total_frames_processed_++;
     
     updateFPS();
+    checkForCounterOverflow();
     
     if (total_frames_processed_ % 100 == 0) {
         // only print every 100 frames to reduce log spam
@@ -121,4 +122,19 @@ bool PerformanceMonitor::shouldLogReport() const {
         now - last_report_time_);
     
     return time_since_last_report.count() >= PERFORMANCE_REPORT_INTERVAL_SECONDS;
+}
+
+void PerformanceMonitor::checkForCounterOverflow() {
+    // Reset counters when approaching overflow to prevent issues during long-term operation
+    // With 1 fps, 1M frames = ~11.5 days, so this is a reasonable safety check
+    if (total_frames_processed_ >= MAX_FRAME_COUNT || total_frames_captured_ >= MAX_FRAME_COUNT) {
+        logger_->info("Performance counters reset after processing " + 
+                     std::to_string(total_frames_processed_) + " frames (overflow prevention)");
+        
+        // Keep the average processing time but reset counters
+        double avg_time = getAverageProcessingTime();
+        total_frames_processed_ = 100;  // Start with 100 to maintain average
+        total_frames_captured_ = 100;
+        total_processing_time_ms_ = avg_time * 100;
+    }
 }

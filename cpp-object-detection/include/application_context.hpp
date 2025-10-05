@@ -15,6 +15,7 @@
 #include "detection_model_interface.hpp"
 #include "viewfinder_window.hpp"
 #include "network_streamer.hpp"
+#include "system_monitor.hpp"
 
 /**
  * Context structure to hold shared application state
@@ -32,14 +33,18 @@ struct ApplicationContext {
     std::shared_ptr<ParallelFrameProcessor> frame_processor;
     std::shared_ptr<ViewfinderWindow> viewfinder;
     std::shared_ptr<NetworkStreamer> network_streamer;
+    std::shared_ptr<SystemMonitor> system_monitor;
     
     // Processing state
     std::queue<std::future<ParallelFrameProcessor::FrameResult>> pending_frames;
     cv::Mat frame;
     std::chrono::steady_clock::time_point last_heartbeat;
     std::chrono::steady_clock::time_point last_frame_time;
+    std::chrono::steady_clock::time_point start_time;
     std::chrono::milliseconds heartbeat_interval;
     std::chrono::milliseconds frame_interval;
+    int detection_width;
+    int detection_height;
 };
 
 // Function declarations for main.cpp helper functions

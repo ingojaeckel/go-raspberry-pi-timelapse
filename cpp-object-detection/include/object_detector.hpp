@@ -3,7 +3,9 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
+#include <map>
 #include <memory>
+#include <deque>
 #include "logger.hpp"
 #include "detection_model_interface.hpp"
 
@@ -18,9 +20,13 @@ public:
         std::string object_type;
         cv::Point2f center;
         cv::Point2f previous_center;  // Track previous position for movement detection
+        std::deque<cv::Point2f> position_history;  // Track path of object movement
         bool was_present_last_frame;
         int frames_since_detection;
         bool is_new;  // Flag to indicate if this is a newly entered object
+        
+        // Constants for movement history tracking
+        static constexpr size_t MAX_POSITION_HISTORY = 10;  // Keep last 10 positions
     };
 
     ObjectDetector(const std::string& model_path,
@@ -74,6 +80,16 @@ public:
     static std::vector<ModelMetrics> getAvailableModels();
     
     /**
+     * Get total number of objects detected since start
+     */
+    int getTotalObjectsDetected() const;
+    
+    /**
+     * Get top N most frequently detected objects with counts
+     */
+    std::vector<std::pair<std::string, int>> getTopDetectedObjects(int top_n = 10) const;
+     
+    /*
      * Get currently tracked objects
      */
     const std::vector<ObjectTracker>& getTrackedObjects() const { return tracked_objects_; }
@@ -99,6 +115,16 @@ private:
     
     bool initialized_;
     
+    // Statistics tracking with bounded growth
+    int total_objects_detected_;
+    std::map<std::string, int> object_type_counts_;
+    
+    // Limits to prevent unbounded growth
+    static constexpr size_t MAX_TRACKED_OBJECTS = 100;  // Reasonable limit for concurrent objects
+    static constexpr int MAX_OBJECT_TYPE_ENTRIES = 50;   // Limit different object types tracked
+    
     void updateTrackedObjects(const std::vector<Detection>& detections);
     void logObjectEvents(const std::vector<Detection>& current_detections);
+    void cleanupOldTrackedObjects();
+    void limitObjectTypeCounts();
 };

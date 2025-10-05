@@ -33,6 +33,18 @@ Enable the viewfinder with the `--show-preview` command-line flag:
   - White: Other detected objects
 
 - **Interactive control**: Press 'q' or ESC to close the viewfinder and stop the application
+- **Debug information overlay**: Shows real-time statistics (toggle with SPACE key):
+  - Performance metrics: Current FPS and average processing time
+  - Detection counters: Total objects detected and images saved
+  - System uptime
+  - Top 10 most frequently detected objects
+  - Camera information: Resolution, ID, and name
+  - Detection resolution used for object detection
+
+## Keyboard Controls
+
+- **SPACE**: Toggle debug information display on/off (enabled by default)
+- **q** or **ESC**: Close viewfinder and stop the application
 
 ## Default Behavior
 
