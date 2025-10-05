@@ -50,6 +50,9 @@ public:
         
         // Image preprocessing
         bool enable_brightness_filter = false;  // Enable high brightness filter for glass reflections
+        
+        // Burst mode
+        bool enable_burst_mode = false;  // Enable burst mode to max out FPS when new objects enter frame
     };
 
     enum class ParseResult {

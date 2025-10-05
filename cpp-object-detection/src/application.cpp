@@ -98,7 +98,7 @@ bool initializeComponents(ApplicationContext& ctx) {
     int effective_threads = ctx.config.enable_parallel_processing ? ctx.config.processing_threads : 1;
     ctx.frame_processor = std::make_shared<ParallelFrameProcessor>(
         ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, 
-        ctx.config.output_dir, ctx.config.enable_brightness_filter);
+        ctx.config.output_dir, ctx.config.enable_brightness_filter, ctx.config.enable_burst_mode);
 
     if (!ctx.frame_processor->initialize()) {
         ctx.logger->error("Failed to initialize parallel frame processor");
@@ -113,6 +113,10 @@ bool initializeComponents(ApplicationContext& ctx) {
     
     if (ctx.config.enable_brightness_filter) {
         ctx.logger->info("High brightness filter enabled - will reduce glass reflections in bright conditions");
+    }
+    
+    if (ctx.config.enable_burst_mode) {
+        ctx.logger->info("Burst mode enabled - will max out FPS when new objects enter frame");
     }
 
     // Initialize viewfinder if preview is enabled
@@ -314,18 +318,26 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
         }
 
         // Apply rate limiting with evenly distributed sleep time
-        // Calculate required sleep time based on analysis rate limit and actual processing time
-        double target_interval_ms = 1000.0 / ctx.config.analysis_rate_limit;
-        double actual_processing_time_ms = ctx.perf_monitor->getLastProcessingTime();
-        double sleep_time_ms = target_interval_ms - actual_processing_time_ms;
-        
-        if (sleep_time_ms > 0) {
-            auto sleep_duration = std::chrono::milliseconds(static_cast<long>(sleep_time_ms));
-            ctx.logger->debug("Rate limiting: sleeping for " + std::to_string(sleep_time_ms) + " ms (processing took " + std::to_string(actual_processing_time_ms) + " ms, target interval: " + std::to_string(target_interval_ms) + " ms)");
-            std::this_thread::sleep_for(sleep_duration);
-        } else {
-            // Processing took longer than target interval - small delay to prevent excessive CPU usage
+        // Skip rate limiting if burst mode is active
+        if (ctx.config.enable_burst_mode && ctx.frame_processor->isBurstModeActive()) {
+            // Burst mode active - skip sleep to max out FPS
+            ctx.logger->debug("Burst mode active - skipping rate limit sleep");
+            // Small delay to prevent excessive CPU usage
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        } else {
+            // Calculate required sleep time based on analysis rate limit and actual processing time
+            double target_interval_ms = 1000.0 / ctx.config.analysis_rate_limit;
+            double actual_processing_time_ms = ctx.perf_monitor->getLastProcessingTime();
+            double sleep_time_ms = target_interval_ms - actual_processing_time_ms;
+            
+            if (sleep_time_ms > 0) {
+                auto sleep_duration = std::chrono::milliseconds(static_cast<long>(sleep_time_ms));
+                ctx.logger->debug("Rate limiting: sleeping for " + std::to_string(sleep_time_ms) + " ms (processing took " + std::to_string(actual_processing_time_ms) + " ms, target interval: " + std::to_string(target_interval_ms) + " ms)");
+                std::this_thread::sleep_for(sleep_duration);
+            } else {
+                // Processing took longer than target interval - small delay to prevent excessive CPU usage
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
     }
 }

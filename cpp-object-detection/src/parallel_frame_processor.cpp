@@ -11,12 +11,14 @@ ParallelFrameProcessor::ParallelFrameProcessor(std::shared_ptr<ObjectDetector> d
                                              int num_threads,
                                              size_t max_queue_size,
                                              const std::string& output_dir,
-                                             bool enable_brightness_filter)
+                                             bool enable_brightness_filter,
+                                             bool enable_burst_mode)
     : detector_(detector), logger_(logger), perf_monitor_(perf_monitor),
       num_threads_(num_threads), max_queue_size_(max_queue_size), output_dir_(output_dir),
       enable_brightness_filter_(enable_brightness_filter),
+      enable_burst_mode_(enable_burst_mode),
       total_images_saved_(0), shutdown_requested_(false), frames_in_progress_(0),
-      brightness_filter_active_(false) {
+      brightness_filter_active_(false), burst_mode_active_(false) {
     last_photo_time_ = std::chrono::steady_clock::now() - std::chrono::seconds(PHOTO_INTERVAL_SECONDS);
 }
 
@@ -383,6 +385,11 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
             detector_->updateTracking(target_detections);
         }
         
+        // Update burst mode state if enabled
+        if (enable_burst_mode_) {
+            updateBurstModeState(target_detections);
+        }
+        
         // Save photo with bounding boxes if we have target detections
         if (!target_detections.empty()) {
             saveDetectionPhoto(frame, target_detections, detector_);
@@ -456,4 +463,49 @@ cv::Mat ParallelFrameProcessor::applyBrightnessFilter(const cv::Mat& frame) {
     
     logger_->debug("Applied brightness filter to reduce reflections");
     return filtered;
+}
+void ParallelFrameProcessor::updateBurstModeState(const std::vector<Detection>& detections) {
+    std::lock_guard<std::mutex> lock(burst_mode_mutex_);
+    
+    // Get current frame object types
+    std::set<std::string> current_frame_object_types;
+    for (const auto& detection : detections) {
+        current_frame_object_types.insert(detection.class_name);
+    }
+    
+    // Check if there are any new object types that weren't in the previous frame
+    bool has_new_object_types = false;
+    for (const auto& object_type : current_frame_object_types) {
+        if (previous_frame_object_types_.find(object_type) == previous_frame_object_types_.end()) {
+            has_new_object_types = true;
+            logger_->info("Burst mode: New object type '" + object_type + "' entered frame - activating burst mode");
+            break;
+        }
+    }
+    
+    // Update burst mode state
+    bool was_active = burst_mode_active_.load();
+    
+    if (has_new_object_types) {
+        // New objects detected - activate burst mode
+        if (!was_active) {
+            burst_mode_active_ = true;
+            logger_->info("Burst mode ACTIVATED - maxing out frame analysis rate");
+        }
+    } else if (!current_frame_object_types.empty()) {
+        // Same objects still present - keep burst mode active
+        if (!was_active) {
+            burst_mode_active_ = true;
+            logger_->info("Burst mode ACTIVATED - objects detected in frame");
+        }
+    } else {
+        // No objects detected - deactivate burst mode
+        if (was_active) {
+            burst_mode_active_ = false;
+            logger_->info("Burst mode DEACTIVATED - returning to normal throttled rate");
+        }
+    }
+    
+    // Update previous frame state for next iteration
+    previous_frame_object_types_ = current_frame_object_types;
 }

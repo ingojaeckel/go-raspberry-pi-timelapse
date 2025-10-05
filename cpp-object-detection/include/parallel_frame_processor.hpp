@@ -10,6 +10,7 @@
 #include <future>
 #include <chrono>
 #include <map>
+#include <set>
 #include "object_detector.hpp"
 #include "logger.hpp"
 #include "performance_monitor.hpp"
@@ -33,7 +34,8 @@ public:
                           int num_threads = 1,
                           size_t max_queue_size = 10,
                           const std::string& output_dir = "detections",
-                          bool enable_brightness_filter = false);
+                          bool enable_brightness_filter = false,
+                          bool enable_burst_mode = false);
     
     ~ParallelFrameProcessor();
 
@@ -77,6 +79,11 @@ public:
      * Check if brightness filter is currently active
      */
     bool isBrightnessFilterActive() const { return brightness_filter_active_; }
+    
+    /**
+     * Check if burst mode is currently active
+     */
+    bool isBurstModeActive() const { return burst_mode_active_; }
 
 private:
     std::shared_ptr<ObjectDetector> detector_;
@@ -87,6 +94,7 @@ private:
     size_t max_queue_size_;
     std::string output_dir_;
     bool enable_brightness_filter_;
+    bool enable_burst_mode_;
     
     // Photo storage rate limiting
     std::chrono::steady_clock::time_point last_photo_time_;
@@ -96,6 +104,11 @@ private:
     
     // Track object state from last saved photo
     std::map<std::string, int> last_saved_object_counts_;
+    
+    // Burst mode state tracking
+    std::atomic<bool> burst_mode_active_;
+    std::set<std::string> previous_frame_object_types_;
+    std::mutex burst_mode_mutex_;
     
     // Threading infrastructure
     std::vector<std::thread> worker_threads_;
@@ -120,4 +133,7 @@ private:
     // Brightness detection and filtering
     bool detectHighBrightness(const cv::Mat& frame);
     cv::Mat applyBrightnessFilter(const cv::Mat& frame);
+    
+    // Burst mode state management
+    void updateBurstModeState(const std::vector<Detection>& detections);
 };
