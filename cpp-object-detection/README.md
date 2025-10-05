@@ -25,6 +25,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **🆕 Speed vs Accuracy Trade-offs** - Select optimal model for your use case
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
 - **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
+- **🆕 Burst Mode** - Automatically max out FPS when new objects enter the scene
 - **🆕 Detection Scale Factor** - In-memory image downscaling for 4x faster processing
 - **🆕 Long-Term Operation Optimizations**:
   - Bounded data structures to prevent memory leaks
@@ -484,6 +485,30 @@ The application includes an **analysis rate limiting feature** to reduce CPU usa
 - Example: If analysis takes 50ms and rate limit is 1/sec → sleep 950ms
 - This allows the CPU to idle between analyses, reducing energy consumption by up to 95%
 
+### Burst Mode
+
+The **burst mode feature** intelligently adjusts frame rate based on scene activity:
+
+```bash
+# Enable burst mode with 1 FPS baseline
+./object_detection --enable-burst-mode --analysis-rate-limit 1
+```
+
+**How it works:**
+- **Normal operation**: Rate limiting applies (e.g., 1 FPS for energy efficiency)
+- **New object detected**: Automatically maxes out FPS by removing sleep intervals
+- **Objects become stationary**: Returns to normal rate limiting
+- **State transitions logged**: Track when burst mode activates/deactivates
+
+**Example scenario:**
+```
+Idle (no objects)           → 1 FPS (energy efficient)
+Person enters scene         → Burst mode ON → ~5-30 FPS (capture detail)
+Person stands still         → Burst mode OFF → 1 FPS (back to baseline)
+```
+
+See [BURST_MODE_FEATURE.md](BURST_MODE_FEATURE.md) for detailed documentation.
+
 ### Examples
 
 **Energy-efficient monitoring (low CPU):**
@@ -504,6 +529,11 @@ The application includes an **analysis rate limiting feature** to reduce CPU usa
 **🆕 Performance-optimized setup:**
 ```bash
 ./object_detection --detection-scale 0.25 --max-fps 10 --min-confidence 0.5
+```
+
+**🆕 Burst mode for event-driven capture:**
+```bash
+./object_detection --enable-burst-mode --analysis-rate-limit 1 --min-confidence 0.6
 ```
 
 **Custom logging:**
