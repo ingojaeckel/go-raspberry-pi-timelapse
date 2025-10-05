@@ -104,6 +104,34 @@ The application includes a **rate limiting feature** to control CPU usage and en
 
 This ensures the CPU can idle between analyses, significantly reducing energy consumption without affecting detection quality.
 
+### Burst Mode
+
+The application includes an optional **burst mode feature** to temporarily increase frame analysis rate when new objects enter the scene:
+
+- **Default behavior**: Disabled, normal rate limiting applies
+- **When enabled**: Automatically detects new object types entering the scene and temporarily maxes out FPS by removing sleep intervals
+- **How it works**: 
+  - Tracks object types present in each frame
+  - When a new object type enters (e.g., a person enters a scene with only a stationary car), burst mode activates
+  - While burst mode is active, rate limiting sleep is skipped (minimal 1ms delay only)
+  - When all objects become stationary or scene returns to known objects only, burst mode deactivates
+  - State transitions are logged for debugging
+
+**Example scenario:**
+```
+Frame N:   {car (stationary)}           → Burst mode: OFF
+Frame N+1: {person, car (stationary)}   → Burst mode: ACTIVATED (new object type "person")
+Frame N+2: {person, car (stationary)}   → Burst mode: ACTIVE (tracking continues)
+Frame N+3: {car (stationary)}           → Burst mode: DEACTIVATED (only stationary objects)
+```
+
+**Usage:**
+```bash
+./object_detection --enable-burst-mode --analysis-rate-limit 1
+```
+
+This feature is useful for scenarios where you want efficient energy usage during quiet periods, but maximum temporal resolution when action occurs.
+
 ### Command Line Options
 
 All configuration is done via command-line arguments:
@@ -115,6 +143,7 @@ Key Options:
   --max-fps N                Maximum processing rate (default: 5)
   --min-confidence N         Detection threshold (default: 0.5)
   --analysis-rate-limit N    Maximum images to analyze per second (default: 1.0)
+  --enable-burst-mode        Enable burst mode to max out FPS when new objects enter (default: disabled)
   --camera-id N              Camera device ID (default: 0)
   --log-file FILE            Log output location
   --heartbeat-interval N     Status logging interval in minutes
@@ -136,6 +165,11 @@ Key Options:
 **High-accuracy monitoring:**
 ```bash
 ./object_detection --max-fps 8 --min-confidence 0.3 --verbose --analysis-rate-limit 5
+```
+
+**Burst mode for event-driven capture:**
+```bash
+./object_detection --enable-burst-mode --analysis-rate-limit 1 --min-confidence 0.6
 ```
 
 **Custom logging:**

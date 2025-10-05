@@ -4,6 +4,7 @@
 #include <queue>
 #include <future>
 #include <chrono>
+#include <set>
 #include <opencv2/opencv.hpp>
 
 #include "config_manager.hpp"
@@ -45,6 +46,10 @@ struct ApplicationContext {
     std::chrono::milliseconds frame_interval;
     int detection_width;
     int detection_height;
+    
+    // Burst mode state
+    bool burst_mode_active = false;
+    std::set<std::string> previous_object_types;  // Track object types from previous frame
 };
 
 // Function declarations for main.cpp helper functions

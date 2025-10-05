@@ -159,6 +159,12 @@ bool initializeComponents(ApplicationContext& ctx) {
 void runMainProcessingLoop(ApplicationContext& ctx) {
     ctx.logger->info("Starting main processing loop...");
     ctx.logger->info("Analysis rate limit: " + std::to_string(ctx.config.analysis_rate_limit) + " images/second");
+    
+    if (ctx.config.enable_burst_mode) {
+        ctx.logger->info("Burst mode: ENABLED - will max out FPS when new objects enter the scene");
+    } else {
+        ctx.logger->info("Burst mode: DISABLED");
+    }
 
     // Track time for periodic camera health checks
     auto last_health_check = std::chrono::steady_clock::now();
@@ -316,13 +322,77 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
             ctx.system_monitor->performPeriodicCheck();
         }
 
+        // Burst mode logic: detect new object types and activate/deactivate burst mode
+        if (ctx.config.enable_burst_mode) {
+            // Get current object types from tracked objects
+            std::set<std::string> current_object_types;
+            const auto& tracked = ctx.detector->getTrackedObjects();
+            
+            bool has_new_object_type = false;
+            bool all_objects_stationary = true;
+            
+            for (const auto& obj : tracked) {
+                // Only consider objects present in current frame
+                if (obj.was_present_last_frame && obj.frames_since_detection == 0) {
+                    current_object_types.insert(obj.object_type);
+                    
+                    // Check if this is a new object type not seen in previous frame
+                    if (ctx.previous_object_types.find(obj.object_type) == ctx.previous_object_types.end()) {
+                        has_new_object_type = true;
+                    }
+                    
+                    // Check if this object is newly entered (not just a new type)
+                    if (obj.is_new) {
+                        has_new_object_type = true;
+                    }
+                    
+                    // Check if any object is not stationary
+                    if (!obj.is_stationary) {
+                        all_objects_stationary = false;
+                    }
+                }
+            }
+            
+            // Update burst mode state
+            bool previous_burst_state = ctx.burst_mode_active;
+            
+            if (has_new_object_type) {
+                // Activate burst mode when new object type enters
+                ctx.burst_mode_active = true;
+                if (!previous_burst_state) {
+                    ctx.logger->info("Burst mode ACTIVATED - new object type detected");
+                }
+            } else if (all_objects_stationary && !current_object_types.empty()) {
+                // Deactivate burst mode when all objects are stationary
+                if (ctx.burst_mode_active) {
+                    ctx.burst_mode_active = false;
+                    ctx.logger->info("Burst mode DEACTIVATED - all objects stationary");
+                }
+            } else if (current_object_types.empty()) {
+                // Deactivate burst mode when no objects are present
+                if (ctx.burst_mode_active) {
+                    ctx.burst_mode_active = false;
+                    ctx.logger->info("Burst mode DEACTIVATED - no objects detected");
+                }
+            }
+            
+            // Update previous object types for next iteration
+            ctx.previous_object_types = current_object_types;
+        }
+
         // Apply rate limiting with evenly distributed sleep time
         // Calculate required sleep time based on analysis rate limit and actual processing time
         double target_interval_ms = 1000.0 / ctx.config.analysis_rate_limit;
         double actual_processing_time_ms = ctx.perf_monitor->getLastProcessingTime();
         double sleep_time_ms = target_interval_ms - actual_processing_time_ms;
         
-        if (sleep_time_ms > 0) {
+        // Skip sleep if burst mode is active
+        if (ctx.config.enable_burst_mode && ctx.burst_mode_active) {
+            // In burst mode, we process frames as fast as possible
+            // Only add minimal delay to prevent excessive CPU usage
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            ctx.logger->debug("Burst mode active: skipping normal rate limiting (minimal 1ms delay)");
+        } else if (sleep_time_ms > 0) {
             auto sleep_duration = std::chrono::milliseconds(static_cast<long>(sleep_time_ms));
             ctx.logger->debug("Rate limiting: sleeping for " + std::to_string(sleep_time_ms) + " ms (processing took " + std::to_string(actual_processing_time_ms) + " ms, target interval: " + std::to_string(target_interval_ms) + " ms)");
             std::this_thread::sleep_for(sleep_duration);

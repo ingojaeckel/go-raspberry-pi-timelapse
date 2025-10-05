@@ -54,6 +54,9 @@ public:
         
         // Stationary object detection
         int stationary_timeout_seconds = 120;  // Stop taking photos after objects are stationary for this many seconds
+        
+        // Burst mode
+        bool enable_burst_mode = false;  // Enable burst mode to max out FPS when new objects enter the scene
     };
 
     enum class ParseResult {
