@@ -87,7 +87,6 @@ private:
     size_t max_queue_size_;
     std::string output_dir_;
     bool enable_brightness_filter_;
-    std::atomic<bool> brightness_filter_active_;
     
     // Photo storage rate limiting
     std::chrono::steady_clock::time_point last_photo_time_;
@@ -105,6 +104,7 @@ private:
     std::condition_variable queue_condition_;
     std::atomic<bool> shutdown_requested_;
     std::atomic<size_t> frames_in_progress_;
+    std::atomic<bool> brightness_filter_active_;
     
     // Worker thread function
     void workerThread();
