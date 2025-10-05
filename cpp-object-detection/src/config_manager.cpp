@@ -48,6 +48,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->enable_streaming = true;
         } else if (arg == "--enable-brightness-filter") {
             config_->enable_brightness_filter = true;
+        } else if (arg == "--enable-burst-mode") {
+            config_->enable_burst_mode = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -157,7 +159,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)\n"
               << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n"
               << "  --enable-brightness-filter     Enable high brightness filter to reduce glass reflections (default: disabled)\n"
-              << "  --stationary-timeout N         Seconds before stopping photos of stationary objects (default: 120)\n\n"
+              << "  --stationary-timeout N         Seconds before stopping photos of stationary objects (default: 120)\n"
+              << "  --enable-burst-mode            Enable burst mode to max out FPS when new objects enter (default: disabled)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"
