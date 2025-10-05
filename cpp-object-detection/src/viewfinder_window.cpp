@@ -155,7 +155,9 @@ void ViewfinderWindow::showFrameWithStats(const cv::Mat& frame,
                                          const std::string& camera_name,
                                          int detection_width,
                                          int detection_height,
-                                         bool brightness_filter_active) {
+                                         bool brightness_filter_active,
+                                         bool gpu_enabled,
+                                         bool burst_mode_enabled) {
     if (!initialized_ || frame.empty()) {
         return;
     }
@@ -169,7 +171,8 @@ void ViewfinderWindow::showFrameWithStats(const cv::Mat& frame,
             drawDebugInfo(annotated_frame, current_fps, avg_processing_time_ms,
                          total_objects_detected, total_images_saved, start_time,
                          top_objects, camera_width, camera_height, camera_id,
-                         camera_name, detection_width, detection_height, brightness_filter_active);
+                         camera_name, detection_width, detection_height, brightness_filter_active,
+                         gpu_enabled, burst_mode_enabled);
         }
         
         // Display the frame
@@ -195,7 +198,9 @@ void ViewfinderWindow::drawDebugInfo(cv::Mat& frame,
                                     const std::string& camera_name,
                                     int detection_width,
                                     int detection_height,
-                                    bool brightness_filter_active) {
+                                    bool brightness_filter_active,
+                                    bool gpu_enabled,
+                                    bool burst_mode_enabled) {
     // Use small font to minimize screen coverage
     const double font_scale = 0.4;
     const int font_thickness = 1;
@@ -238,6 +243,10 @@ void ViewfinderWindow::drawDebugInfo(cv::Mat& frame,
     
     // Detection resolution
     lines.push_back("Detection: " + std::to_string(detection_width) + "x" + std::to_string(detection_height));
+    
+    // GPU and burst mode status
+    lines.push_back("GPU: " + std::string(gpu_enabled ? "ON" : "OFF"));
+    lines.push_back("Burst: " + std::string(burst_mode_enabled ? "ON" : "OFF"));
     
     // Top detected objects
     if (!top_objects.empty()) {
