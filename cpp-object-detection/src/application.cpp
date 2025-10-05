@@ -133,6 +133,10 @@ bool initializeComponents(ApplicationContext& ctx) {
         }
     }
 
+    // Initialize system monitor for long-term operation
+    ctx.system_monitor = std::make_shared<SystemMonitor>(ctx.logger, ctx.config.output_dir);
+    ctx.logger->info("System monitor initialized for resource tracking");
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
     ctx.start_time = std::chrono::steady_clock::now();
@@ -151,8 +155,24 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
     ctx.logger->info("Starting main processing loop...");
     ctx.logger->info("Analysis rate limit: " + std::to_string(ctx.config.analysis_rate_limit) + " images/second");
 
+    // Track time for periodic camera health checks
+    auto last_health_check = std::chrono::steady_clock::now();
+    constexpr int HEALTH_CHECK_INTERVAL_SECONDS = 60;  // Check every minute
+
     while (running) {
         auto loop_start = std::chrono::steady_clock::now();
+
+        // Periodic camera health check
+        auto health_check_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            loop_start - last_health_check);
+        if (health_check_elapsed.count() >= HEALTH_CHECK_INTERVAL_SECONDS) {
+            if (!ctx.webcam->healthCheck()) {
+                ctx.logger->error("Camera health check failed - stopping application");
+                running = false;
+                break;
+            }
+            last_health_check = loop_start;
+        }
 
         // Check if enough time has passed for next frame
         if (loop_start - ctx.last_frame_time < ctx.frame_interval) {
@@ -273,6 +293,11 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
             ctx.logger->logHeartbeat();
             ctx.perf_monitor->logPerformanceReport();
             ctx.last_heartbeat = now;
+        }
+
+        // Perform periodic system resource checks
+        if (ctx.system_monitor) {
+            ctx.system_monitor->performPeriodicCheck();
         }
 
         // Apply rate limiting with evenly distributed sleep time

@@ -115,10 +115,16 @@ private:
     
     bool initialized_;
     
-    // Statistics tracking
+    // Statistics tracking with bounded growth
     int total_objects_detected_;
     std::map<std::string, int> object_type_counts_;
     
+    // Limits to prevent unbounded growth
+    static constexpr size_t MAX_TRACKED_OBJECTS = 100;  // Reasonable limit for concurrent objects
+    static constexpr int MAX_OBJECT_TYPE_ENTRIES = 50;   // Limit different object types tracked
+    
     void updateTrackedObjects(const std::vector<Detection>& detections);
     void logObjectEvents(const std::vector<Detection>& current_detections);
+    void cleanupOldTrackedObjects();
+    void limitObjectTypeCounts();
 };
