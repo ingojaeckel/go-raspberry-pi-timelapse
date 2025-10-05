@@ -15,6 +15,7 @@ set(TEST_SOURCES
     test_photo_storage_logic.cpp
     test_network_streamer.cpp
     test_long_term_operation.cpp
+    test_stationary_detection.cpp
 )
 
 # Create test executable

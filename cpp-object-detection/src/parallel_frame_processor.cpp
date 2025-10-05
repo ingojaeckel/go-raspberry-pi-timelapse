@@ -12,10 +12,12 @@ ParallelFrameProcessor::ParallelFrameProcessor(std::shared_ptr<ObjectDetector> d
                                              int num_threads,
                                              size_t max_queue_size,
                                              const std::string& output_dir,
-                                             bool enable_brightness_filter)
+                                             bool enable_brightness_filter,
+                                             int stationary_timeout_seconds)
     : detector_(detector), logger_(logger), perf_monitor_(perf_monitor),
       num_threads_(num_threads), max_queue_size_(max_queue_size), output_dir_(output_dir),
       enable_brightness_filter_(enable_brightness_filter),
+      stationary_timeout_seconds_(stationary_timeout_seconds),
       total_images_saved_(0), shutdown_requested_(false), frames_in_progress_(0),
       brightness_filter_active_(false) {
     last_photo_time_ = std::chrono::steady_clock::now() - std::chrono::seconds(PHOTO_INTERVAL_SECONDS);
@@ -224,6 +226,30 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
     
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_photo_time_);
+    
+    // Check if all detected objects are stationary and past the timeout
+    bool all_stationary_past_timeout = false;
+    if (detector && !detections.empty()) {
+        const auto& tracked = detector->getTrackedObjects();
+        if (!tracked.empty()) {
+            all_stationary_past_timeout = true;
+            for (const auto& obj : tracked) {
+                if (obj.was_present_last_frame) {
+                    if (!detector->isStationaryPastTimeout(obj, stationary_timeout_seconds_)) {
+                        all_stationary_past_timeout = false;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Skip photo if all objects are stationary past timeout
+    if (all_stationary_past_timeout) {
+        logger_->debug("Skipping photo - all objects stationary for more than " + 
+                      std::to_string(stationary_timeout_seconds_) + " seconds");
+        return;
+    }
     
     // Save photo if:
     // 1. New types or new instances detected (immediate save, bypass 10s limit)
