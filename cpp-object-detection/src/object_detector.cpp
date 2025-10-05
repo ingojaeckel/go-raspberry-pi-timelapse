@@ -236,6 +236,9 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             best_match->is_new = false;  // Not new, it's been tracked
             found_existing = true;
             
+            // Update stationary status based on movement
+            updateStationaryStatus(*best_match);
+            
             // Log movement pattern if we have enough history
             if (best_match->position_history.size() >= 3) {
                 float total_path_length = 0.0f;
@@ -273,6 +276,8 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             new_tracker.was_present_last_frame = true;
             new_tracker.frames_since_detection = 0;
             new_tracker.is_new = true;  // Mark as newly entered
+            new_tracker.is_stationary = false;  // New objects are not yet stationary
+            new_tracker.stationary_since = std::chrono::steady_clock::now();
             tracked_objects_.push_back(new_tracker);
             
             // Update statistics with bounded growth protection
@@ -470,4 +475,54 @@ void ObjectDetector::limitObjectTypeCounts() {
     }
     
     logger_->debug("Limited object type counts to top " + std::to_string(MAX_OBJECT_TYPE_ENTRIES) + " types");
+}
+
+void ObjectDetector::updateStationaryStatus(ObjectTracker& tracker) {
+    // Need at least 3 positions to determine if stationary
+    if (tracker.position_history.size() < 3) {
+        tracker.is_stationary = false;
+        tracker.stationary_since = std::chrono::steady_clock::now();
+        return;
+    }
+    
+    // Calculate average movement over recent history
+    float total_distance = 0.0f;
+    for (size_t i = 1; i < tracker.position_history.size(); ++i) {
+        total_distance += cv::norm(tracker.position_history[i] - tracker.position_history[i-1]);
+    }
+    float avg_distance = total_distance / (tracker.position_history.size() - 1);
+    
+    // Check if object is stationary (avg movement below threshold)
+    bool currently_stationary = avg_distance <= ObjectTracker::STATIONARY_MOVEMENT_THRESHOLD;
+    
+    if (currently_stationary && !tracker.is_stationary) {
+        // Object just became stationary
+        tracker.is_stationary = true;
+        tracker.stationary_since = std::chrono::steady_clock::now();
+        logger_->debug("Object " + tracker.object_type + " is now stationary (avg movement: " + 
+                      std::to_string(avg_distance) + " pixels)");
+    } else if (!currently_stationary && tracker.is_stationary) {
+        // Object started moving again
+        tracker.is_stationary = false;
+        logger_->debug("Object " + tracker.object_type + " started moving again (avg movement: " + 
+                      std::to_string(avg_distance) + " pixels)");
+    } else if (currently_stationary) {
+        // Still stationary
+        auto now = std::chrono::steady_clock::now();
+        auto stationary_duration = std::chrono::duration_cast<std::chrono::seconds>(now - tracker.stationary_since);
+        logger_->debug("Object " + tracker.object_type + " stationary for " + 
+                      std::to_string(stationary_duration.count()) + " seconds (avg movement: " + 
+                      std::to_string(avg_distance) + " pixels)");
+    }
+}
+
+bool ObjectDetector::isStationaryPastTimeout(const ObjectTracker& tracker, int stationary_timeout_seconds) const {
+    if (!tracker.is_stationary) {
+        return false;
+    }
+    
+    auto now = std::chrono::steady_clock::now();
+    auto stationary_duration = std::chrono::duration_cast<std::chrono::seconds>(now - tracker.stationary_since);
+    
+    return stationary_duration.count() >= stationary_timeout_seconds;
 }

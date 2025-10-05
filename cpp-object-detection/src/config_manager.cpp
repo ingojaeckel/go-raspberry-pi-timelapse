@@ -100,6 +100,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->analysis_rate_limit = std::stod(value);
         } else if (arg == "--streaming-port") {
             config_->streaming_port = std::stoi(value);
+        } else if (arg == "--stationary-timeout") {
+            config_->stationary_timeout_seconds = std::stoi(value);
         } else {
             return false;
         }
@@ -151,7 +153,8 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --show-preview                 Show real-time viewfinder with detection bounding boxes\n"
               << "  --enable-streaming             Enable MJPEG HTTP streaming over network (default: disabled)\n"
               << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n"
-              << "  --enable-brightness-filter     Enable high brightness filter to reduce glass reflections (default: disabled)\n\n"
+              << "  --enable-brightness-filter     Enable high brightness filter to reduce glass reflections (default: disabled)\n"
+              << "  --stationary-timeout N         Seconds before stopping photos of stationary objects (default: 120)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"

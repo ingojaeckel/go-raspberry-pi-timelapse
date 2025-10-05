@@ -50,6 +50,9 @@ public:
         
         // Image preprocessing
         bool enable_brightness_filter = false;  // Enable high brightness filter for glass reflections
+        
+        // Stationary object detection
+        int stationary_timeout_seconds = 120;  // Stop taking photos after objects are stationary for this many seconds
     };
 
     enum class ParseResult {

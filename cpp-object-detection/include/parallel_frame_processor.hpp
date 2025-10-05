@@ -33,7 +33,8 @@ public:
                           int num_threads = 1,
                           size_t max_queue_size = 10,
                           const std::string& output_dir = "detections",
-                          bool enable_brightness_filter = false);
+                          bool enable_brightness_filter = false,
+                          int stationary_timeout_seconds = 120);
     
     ~ParallelFrameProcessor();
 
@@ -87,6 +88,7 @@ private:
     size_t max_queue_size_;
     std::string output_dir_;
     bool enable_brightness_filter_;
+    int stationary_timeout_seconds_;  // Timeout before stopping photos of stationary objects
     
     // Photo storage rate limiting
     std::chrono::steady_clock::time_point last_photo_time_;

@@ -98,7 +98,7 @@ bool initializeComponents(ApplicationContext& ctx) {
     int effective_threads = ctx.config.enable_parallel_processing ? ctx.config.processing_threads : 1;
     ctx.frame_processor = std::make_shared<ParallelFrameProcessor>(
         ctx.detector, ctx.logger, ctx.perf_monitor, effective_threads, ctx.config.max_frame_queue_size, 
-        ctx.config.output_dir, ctx.config.enable_brightness_filter);
+        ctx.config.output_dir, ctx.config.enable_brightness_filter, ctx.config.stationary_timeout_seconds);
 
     if (!ctx.frame_processor->initialize()) {
         ctx.logger->error("Failed to initialize parallel frame processor");

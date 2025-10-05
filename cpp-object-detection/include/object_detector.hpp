@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <deque>
+#include <chrono>
 #include "logger.hpp"
 #include "detection_model_interface.hpp"
 
@@ -24,9 +25,12 @@ public:
         bool was_present_last_frame;
         int frames_since_detection;
         bool is_new;  // Flag to indicate if this is a newly entered object
+        bool is_stationary;  // Flag to indicate if object is considered stationary
+        std::chrono::steady_clock::time_point stationary_since;  // When object became stationary
         
         // Constants for movement history tracking
         static constexpr size_t MAX_POSITION_HISTORY = 10;  // Keep last 10 positions
+        static constexpr float STATIONARY_MOVEMENT_THRESHOLD = 10.0f;  // Max avg movement (pixels) to be stationary
     };
 
     ObjectDetector(const std::string& model_path,
@@ -100,6 +104,11 @@ public:
     void updateTracking(const std::vector<Detection>& detections) {
         updateTrackedObjects(detections);
     }
+    
+    /**
+     * Check if an object has been stationary for longer than the timeout period
+     */
+    bool isStationaryPastTimeout(const ObjectTracker& tracker, int stationary_timeout_seconds) const;
 
 private:
     std::string model_path_;
@@ -127,4 +136,5 @@ private:
     void logObjectEvents(const std::vector<Detection>& current_detections);
     void cleanupOldTrackedObjects();
     void limitObjectTypeCounts();
+    void updateStationaryStatus(ObjectTracker& tracker);
 };
