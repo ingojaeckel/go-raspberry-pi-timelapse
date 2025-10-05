@@ -292,8 +292,24 @@ cv::Mat NetworkStreamer::drawBoundingBoxes(const cv::Mat& frame,
         cv::rectangle(annotated_frame, detection.bbox, color, 2);
         
         // Draw label with class name and confidence
-        std::string label = detection.class_name + " " + 
-                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
+        std::string label = detection.class_name + " (" + 
+                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%)";
+        
+        // Add stationary indicator if object is stationary
+        if (detection.is_stationary) {
+            label += ", stationary";
+            
+            // Add duration if available
+            if (detection.stationary_duration_seconds > 0) {
+                int duration = detection.stationary_duration_seconds;
+                if (duration < 60) {
+                    label += " for " + std::to_string(duration) + " sec";
+                } else {
+                    int minutes = duration / 60;
+                    label += " for " + std::to_string(minutes) + " min";
+                }
+            }
+        }
         
         // Draw label with auto-positioning to avoid cutoff at screen edges
         DrawingUtils::drawBoundingBoxLabel(annotated_frame, label, detection.bbox, color);

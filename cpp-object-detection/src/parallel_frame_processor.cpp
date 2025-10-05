@@ -280,8 +280,24 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
         cv::rectangle(annotated_frame, detection.bbox, color, 2);
         
         // Draw label with class name and confidence
-        std::string label = detection.class_name + " " + 
-                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
+        std::string label = detection.class_name + " (" + 
+                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%)";
+        
+        // Add stationary indicator if object is stationary
+        if (detection.is_stationary) {
+            label += ", stationary";
+            
+            // Add duration if available
+            if (detection.stationary_duration_seconds > 0) {
+                int duration = detection.stationary_duration_seconds;
+                if (duration < 60) {
+                    label += " for " + std::to_string(duration) + " sec";
+                } else {
+                    int minutes = duration / 60;
+                    label += " for " + std::to_string(minutes) + " min";
+                }
+            }
+        }
         
         // Draw label with auto-positioning to avoid cutoff at screen edges
         DrawingUtils::drawBoundingBoxLabel(annotated_frame, label, detection.bbox, color);
@@ -398,6 +414,8 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
         // Update object tracking before saving photo
         if (!target_detections.empty()) {
             detector_->updateTracking(target_detections);
+            // Enrich detections with stationary status from tracked objects
+            detector_->enrichDetectionsWithStationaryStatus(target_detections);
         }
         
         // Save photo with bounding boxes if we have target detections

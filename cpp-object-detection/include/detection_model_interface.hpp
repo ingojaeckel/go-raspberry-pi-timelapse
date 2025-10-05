@@ -13,6 +13,11 @@ struct Detection {
     double confidence;
     cv::Rect bbox;
     int class_id;
+    bool is_stationary;  // Indicates if the object is considered stationary
+    int stationary_duration_seconds;  // How long object has been stationary (0 if not stationary)
+    
+    // Constructor to initialize is_stationary to false by default
+    Detection() : confidence(0.0), class_id(-1), is_stationary(false), stationary_duration_seconds(0) {}
 };
 
 /**

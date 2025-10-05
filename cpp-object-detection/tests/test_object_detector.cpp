@@ -227,6 +227,131 @@ TEST_F(ObjectDetectorTest, GetTopDetectedObjects) {
     EXPECT_TRUE(top_objects.empty());
 }
 
+TEST_F(ObjectDetectorTest, EnrichDetectionsWithStationaryStatus) {
+    // Test that detections are enriched with stationary status
+    auto detector = std::make_unique<ObjectDetector>(
+        model_path, config_path, classes_path, confidence_threshold, logger);
+    
+    // Create some mock detections
+    std::vector<Detection> detections;
+    Detection d1;
+    d1.class_name = "person";
+    d1.confidence = 0.92;
+    d1.bbox = cv::Rect(100, 100, 50, 100);
+    d1.is_stationary = false;  // Initially not stationary
+    detections.push_back(d1);
+    
+    // Update tracking (this will create a tracker for the person)
+    detector->updateTracking(detections);
+    
+    // Enrich detections with stationary status
+    detector->enrichDetectionsWithStationaryStatus(detections);
+    
+    // Since we only have one detection and it just appeared, it should not be stationary
+    // (need at least 3 positions in history to determine if stationary)
+    EXPECT_FALSE(detections[0].is_stationary);
+    
+    // Simulate the same object in the same position over multiple frames
+    for (int i = 0; i < 5; i++) {
+        std::vector<Detection> same_detections;
+        Detection d;
+        d.class_name = "person";
+        d.confidence = 0.92;
+        d.bbox = cv::Rect(100, 100, 50, 100);  // Same position
+        same_detections.push_back(d);
+        
+        detector->updateTracking(same_detections);
+        detector->enrichDetectionsWithStationaryStatus(same_detections);
+    }
+    
+    // After several frames in the same position, the object should be marked as stationary
+    std::vector<Detection> final_detections;
+    Detection d_final;
+    d_final.class_name = "person";
+    d_final.confidence = 0.92;
+    d_final.bbox = cv::Rect(100, 100, 50, 100);
+    final_detections.push_back(d_final);
+    
+    detector->updateTracking(final_detections);
+    detector->enrichDetectionsWithStationaryStatus(final_detections);
+    
+    // The detection should now have is_stationary = true
+    EXPECT_TRUE(final_detections[0].is_stationary);
+    
+    // The detection should have stationary_duration_seconds set (may be 0 if just became stationary)
+    EXPECT_GE(final_detections[0].stationary_duration_seconds, 0);
+}
+
+TEST_F(ObjectDetectorTest, StationaryLabelFormat) {
+    // Test to verify the label format matches issue specification: "car (91%), stationary for 2 min"
+    // This is a documentation test - the actual label formatting happens in drawing code
+    
+    Detection d;
+    d.class_name = "car";
+    d.confidence = 0.91;
+    d.is_stationary = true;
+    d.stationary_duration_seconds = 120;  // 2 minutes
+    
+    // Build label as done in network_streamer.cpp, viewfinder_window.cpp, and parallel_frame_processor.cpp
+    std::string label = d.class_name + " (" + 
+                       std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
+    if (d.is_stationary) {
+        label += ", stationary";
+        
+        // Add duration if available
+        if (d.stationary_duration_seconds > 0) {
+            int duration = d.stationary_duration_seconds;
+            if (duration < 60) {
+                label += " for " + std::to_string(duration) + " sec";
+            } else {
+                int minutes = duration / 60;
+                label += " for " + std::to_string(minutes) + " min";
+            }
+        }
+    }
+    
+    // Verify format matches issue specification
+    EXPECT_EQ(label, "car (91%), stationary for 2 min");
+    
+    // Test with seconds
+    d.stationary_duration_seconds = 45;
+    label = d.class_name + " (" + 
+           std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
+    if (d.is_stationary) {
+        label += ", stationary";
+        if (d.stationary_duration_seconds > 0) {
+            int duration = d.stationary_duration_seconds;
+            if (duration < 60) {
+                label += " for " + std::to_string(duration) + " sec";
+            } else {
+                int minutes = duration / 60;
+                label += " for " + std::to_string(minutes) + " min";
+            }
+        }
+    }
+    EXPECT_EQ(label, "car (91%), stationary for 45 sec");
+    
+    // Test non-stationary object
+    d.is_stationary = false;
+    d.stationary_duration_seconds = 0;
+    label = d.class_name + " (" + 
+           std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
+    if (d.is_stationary) {
+        label += ", stationary";
+        if (d.stationary_duration_seconds > 0) {
+            int duration = d.stationary_duration_seconds;
+            if (duration < 60) {
+                label += " for " + std::to_string(duration) + " sec";
+            } else {
+                int minutes = duration / 60;
+                label += " for " + std::to_string(minutes) + " min";
+            }
+        }
+    }
+    
+    EXPECT_EQ(label, "car (91%)");
+}
+
 TEST_F(ObjectDetectorTest, GetTopDetectedObjectsWithLimit) {
     // Test getting top detected objects with different limits
     auto detector = std::make_unique<ObjectDetector>(
