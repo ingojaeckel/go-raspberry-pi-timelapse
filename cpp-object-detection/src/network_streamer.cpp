@@ -203,7 +203,7 @@ void NetworkStreamer::handleClient(int client_socket) {
         "Connection: keep-alive\r\n"
         "\r\n";
     
-    if (send(client_socket, headers.c_str(), headers.length(), 0) < 0) {
+    if (send(client_socket, headers.c_str(), headers.length(), MSG_NOSIGNAL) < 0) {
         logger_->error("Failed to send headers to client");
         return;
     }
@@ -240,20 +240,20 @@ void NetworkStreamer::handleClient(int client_socket) {
         std::string header_str = frame_header.str();
         
         // Send header
-        if (send(client_socket, header_str.c_str(), header_str.length(), 0) < 0) {
+        if (send(client_socket, header_str.c_str(), header_str.length(), MSG_NOSIGNAL) < 0) {
             logger_->debug("Client disconnected (header send failed)");
             break;
         }
 
         // Send JPEG data
-        if (send(client_socket, jpeg_data.data(), jpeg_data.size(), 0) < 0) {
+        if (send(client_socket, jpeg_data.data(), jpeg_data.size(), MSG_NOSIGNAL) < 0) {
             logger_->debug("Client disconnected (data send failed)");
             break;
         }
 
         // Send boundary
         const char* boundary = "\r\n";
-        if (send(client_socket, boundary, strlen(boundary), 0) < 0) {
+        if (send(client_socket, boundary, strlen(boundary), MSG_NOSIGNAL) < 0) {
             logger_->debug("Client disconnected (boundary send failed)");
             break;
         }
