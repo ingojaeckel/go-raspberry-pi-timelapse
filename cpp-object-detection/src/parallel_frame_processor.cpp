@@ -418,6 +418,11 @@ ParallelFrameProcessor::FrameResult ParallelFrameProcessor::processFrameInternal
             detector_->enrichDetectionsWithStationaryStatus(target_detections);
         }
         
+        // Enrich all detections with stationary status for viewfinder and network stream
+        if (!result.detections.empty()) {
+            detector_->enrichDetectionsWithStationaryStatus(result.detections);
+        }
+        
         // Save photo with bounding boxes if we have target detections
         if (!target_detections.empty()) {
             saveDetectionPhoto(frame, target_detections, detector_);

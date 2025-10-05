@@ -218,7 +218,9 @@ void ViewfinderWindow::drawDebugInfo(cv::Mat& frame,
     std::vector<std::string> lines;
     
     // Performance metrics
-    lines.push_back("FPS: " + std::to_string(static_cast<int>(current_fps)));
+    char fps_str[32];
+    snprintf(fps_str, sizeof(fps_str), "FPS: %.1f", current_fps);
+    lines.push_back(std::string(fps_str));
     lines.push_back("Avg proc: " + std::to_string(static_cast<int>(avg_processing_time_ms)) + " ms");
     
     // Counters
