@@ -1,4 +1,5 @@
 #include "network_streamer.hpp"
+#include "drawing_utils.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -292,32 +293,9 @@ cv::Mat NetworkStreamer::drawBoundingBoxes(const cv::Mat& frame,
         // Draw label with class name and confidence
         std::string label = detection.class_name + " " + 
                            std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
-        int baseline;
-        cv::Size text_size = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
         
-        // Position label at top of bbox by default, but move to bottom if it would be cut off
-        cv::Point text_origin;
-        int label_height = text_size.height + 7;  // text height + padding
-        
-        if (detection.bbox.y - label_height < 0) {
-            // Label would be cut off at top - position at bottom of bbox instead
-            text_origin = cv::Point(detection.bbox.x, detection.bbox.y + detection.bbox.height + text_size.height + 5);
-            cv::rectangle(annotated_frame,
-                         cv::Point(text_origin.x, text_origin.y - text_size.height - 2),
-                         cv::Point(text_origin.x + text_size.width, text_origin.y + 2),
-                         color, cv::FILLED);
-        } else {
-            // Normal position at top of bbox
-            text_origin = cv::Point(detection.bbox.x, detection.bbox.y - 5);
-            cv::rectangle(annotated_frame, 
-                         cv::Point(text_origin.x, text_origin.y - text_size.height - 2),
-                         cv::Point(text_origin.x + text_size.width, text_origin.y + 2),
-                         color, cv::FILLED);
-        }
-        
-        // Draw label text
-        cv::putText(annotated_frame, label, text_origin, 
-                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+        // Draw label with auto-positioning to avoid cutoff at screen edges
+        DrawingUtils::drawBoundingBoxLabel(annotated_frame, label, detection.bbox, color);
     }
     
     return annotated_frame;
