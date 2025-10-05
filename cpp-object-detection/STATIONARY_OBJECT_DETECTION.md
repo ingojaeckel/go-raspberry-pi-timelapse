@@ -325,10 +325,34 @@ This feature integrates with:
 - **Performance Monitoring** - Minimal performance impact
 - **Long-Term Operation** - Reduces disk I/O and storage requirements
 
+## Visual Indicator: Stationary Label on Bounding Boxes
+
+### Overview
+When an object is detected as stationary, all bounding box labels (in real-time viewfinder, stored files, and network stream) now display ", stationary" suffix to indicate the object's state.
+
+### Label Format
+- **Moving object:** `car (91%)`
+- **Stationary object:** `car (91%), stationary`
+
+### Implementation Details
+1. **Detection Enrichment:** After tracking update, detections are enriched with stationary status via `enrichDetectionsWithStationaryStatus()`
+2. **Label Generation:** All drawing functions check `detection.is_stationary` and append ", stationary" if true
+3. **Affected Paths:**
+   - Network stream (MJPEG): `NetworkStreamer::drawBoundingBoxes()`
+   - Viewfinder window: `ViewfinderWindow::drawBoundingBoxes()`
+   - Photo storage: `ParallelFrameProcessor::saveDetectionPhoto()`
+
+### Benefits
+- **Visual feedback:** Users can immediately see which objects are considered stationary
+- **Debugging aid:** Helps verify stationary detection algorithm is working correctly
+- **Status transparency:** Makes it clear why photo capture might be paused
+- **Consistent UI:** Same format across all rendering paths
+
 ## References
 
-- **Main Implementation:** `src/object_detector.cpp` (updateStationaryStatus, isStationaryPastTimeout)
+- **Main Implementation:** `src/object_detector.cpp` (updateStationaryStatus, isStationaryPastTimeout, enrichDetectionsWithStationaryStatus)
 - **Photo Skip Logic:** `src/parallel_frame_processor.cpp` (saveDetectionPhoto)
+- **Label Drawing:** `src/network_streamer.cpp`, `src/viewfinder_window.cpp`, `src/parallel_frame_processor.cpp`
 - **Configuration:** `include/config_manager.hpp` (stationary_timeout_seconds)
-- **Tests:** `tests/test_stationary_detection.cpp`
+- **Tests:** `tests/test_stationary_detection.cpp`, `tests/test_object_detector.cpp`
 - **Documentation:** `README.md`, `PHOTO_STORAGE_FEATURE.md`
