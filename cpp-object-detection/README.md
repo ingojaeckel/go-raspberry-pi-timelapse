@@ -158,6 +158,8 @@ The application supports multiple detection models with different speed/accuracy
 | YOLOv8n  | Fastest (~35ms) | 70% | 6MB  | Embedded systems |
 | YOLOv8m  | Slowest (~150ms) | 88% | 52MB | Maximum accuracy |
 
+> **📊 Exploring Alternative Models?** See [ALTERNATIVE_MODELS_ANALYSIS.md](ALTERNATIVE_MODELS_ANALYSIS.md) for an in-depth analysis of 3 additional model architectures (EfficientDet, Faster R-CNN, DETR) optimized for outdoor scenes, fine-grained classification, and handling occlusions.
+
 ### Model Selection Examples
 
 ```bash
