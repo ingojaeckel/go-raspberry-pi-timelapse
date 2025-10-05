@@ -97,8 +97,8 @@ cv::Mat ViewfinderWindow::drawBoundingBoxes(const cv::Mat& frame,
         cv::rectangle(annotated_frame, detection.bbox, color, 2);
         
         // Draw label with class name and confidence
-        std::string label = detection.class_name + " " + 
-                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
+        std::string label = detection.class_name + " (" + 
+                           std::to_string(static_cast<int>(detection.confidence * 100)) + "%)";
         
         // Add stationary indicator if object is stationary
         if (detection.is_stationary) {

@@ -279,6 +279,36 @@ TEST_F(ObjectDetectorTest, EnrichDetectionsWithStationaryStatus) {
     EXPECT_TRUE(final_detections[0].is_stationary);
 }
 
+TEST_F(ObjectDetectorTest, StationaryLabelFormat) {
+    // Test to verify the label format matches issue specification: "car (91%), stationary"
+    // This is a documentation test - the actual label formatting happens in drawing code
+    
+    Detection d;
+    d.class_name = "car";
+    d.confidence = 0.91;
+    d.is_stationary = true;
+    
+    // Build label as done in network_streamer.cpp, viewfinder_window.cpp, and parallel_frame_processor.cpp
+    std::string label = d.class_name + " (" + 
+                       std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
+    if (d.is_stationary) {
+        label += ", stationary";
+    }
+    
+    // Verify format matches issue specification
+    EXPECT_EQ(label, "car (91%), stationary");
+    
+    // Test non-stationary object
+    d.is_stationary = false;
+    label = d.class_name + " (" + 
+           std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
+    if (d.is_stationary) {
+        label += ", stationary";
+    }
+    
+    EXPECT_EQ(label, "car (91%)");
+}
+
 TEST_F(ObjectDetectorTest, GetTopDetectedObjectsWithLimit) {
     // Test getting top detected objects with different limits
     auto detector = std::make_unique<ObjectDetector>(
