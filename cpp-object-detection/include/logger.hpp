@@ -82,6 +82,11 @@ public:
      * Check if summary interval has elapsed and print if needed
      */
     void checkAndPrintSummary(int interval_minutes = 60);
+    
+    /**
+     * Print final summary covering entire program runtime
+     */
+    void printFinalSummary();
 
 private:
     std::unique_ptr<std::ofstream> file_stream_;
@@ -92,6 +97,10 @@ private:
     std::vector<DetectionEvent> detection_events_;
     std::chrono::system_clock::time_point summary_period_start_;
     std::mutex summary_mutex_;
+    
+    // Final summary tracking (all events throughout program lifetime)
+    std::vector<DetectionEvent> all_detection_events_;
+    std::chrono::system_clock::time_point program_start_time_;
     
     std::string getCurrentTimestamp() const;
     std::string levelToString(Level level) const;

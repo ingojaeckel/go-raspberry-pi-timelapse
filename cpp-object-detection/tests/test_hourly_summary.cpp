@@ -133,3 +133,37 @@ TEST_F(HourlySummaryTest, ConsecutiveDynamicObjects) {
     
     SUCCEED();
 }
+
+TEST_F(HourlySummaryTest, FinalSummary) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Record detections throughout "program lifetime"
+    logger->recordDetection("car", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    logger->recordDetection("person", false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Trigger hourly summary (clears periodic events but not all events)
+    logger->printHourlySummary();
+    
+    // Record more detections
+    logger->recordDetection("cat", false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    logger->recordDetection("dog", false);
+    
+    // Trigger final summary - should show all events from program start
+    logger->printFinalSummary();
+    
+    SUCCEED();
+}
+
+TEST_F(HourlySummaryTest, FinalSummaryEmpty) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Don't record any detections
+    
+    // Trigger final summary - should handle empty case gracefully
+    logger->printFinalSummary();
+    
+    SUCCEED();
+}

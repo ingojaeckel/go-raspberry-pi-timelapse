@@ -13,6 +13,7 @@ Logger::Logger(const std::string& log_file, bool verbose)
                   << ". Logging to console only." << std::endl;
     }
     summary_period_start_ = std::chrono::system_clock::now();
+    program_start_time_ = summary_period_start_;
 }
 
 Logger::~Logger() {
@@ -136,6 +137,7 @@ void Logger::recordDetection(const std::string& object_type, bool is_stationary)
     event.timestamp = std::chrono::system_clock::now();
     event.is_stationary = is_stationary;
     detection_events_.push_back(event);
+    all_detection_events_.push_back(event);  // Also track for final summary
 }
 
 std::string Logger::formatTime(const std::chrono::system_clock::time_point& time) const {
@@ -262,4 +264,131 @@ void Logger::checkAndPrintSummary(int interval_minutes) {
     if (elapsed.count() >= interval_minutes) {
         printHourlySummary();
     }
+}
+
+void Logger::printFinalSummary() {
+    std::lock_guard<std::mutex> lock(summary_mutex_);
+    
+    if (all_detection_events_.empty()) {
+        std::cout << "\n========================================\n";
+        std::cout << "Final Detection Summary\n";
+        std::cout << "========================================\n";
+        std::cout << "No objects were detected during program runtime.\n";
+        std::cout << "========================================\n" << std::flush;
+        return;
+    }
+    
+    auto period_end = std::chrono::system_clock::now();
+    
+    // Count total objects by type
+    std::map<std::string, int> object_counts;
+    for (const auto& event : all_detection_events_) {
+        object_counts[event.object_type]++;
+    }
+    
+    // Build summary header
+    std::stringstream summary;
+    summary << "\n========================================\n";
+    summary << "Final Detection Summary: " 
+            << formatTime(program_start_time_) << "-" 
+            << formatTime(period_end) << "\n";
+    summary << "Program Runtime: ";
+    
+    // Calculate and display runtime duration
+    auto runtime_seconds = std::chrono::duration_cast<std::chrono::seconds>(period_end - program_start_time_).count();
+    int hours = runtime_seconds / 3600;
+    int minutes = (runtime_seconds % 3600) / 60;
+    int seconds = runtime_seconds % 60;
+    
+    if (hours > 0) {
+        summary << hours << "h " << minutes << "m " << seconds << "s";
+    } else if (minutes > 0) {
+        summary << minutes << "m " << seconds << "s";
+    } else {
+        summary << seconds << "s";
+    }
+    summary << "\n";
+    summary << "========================================\n";
+    
+    // Print counts with proper pluralization
+    bool first = true;
+    for (const auto& [type, count] : object_counts) {
+        if (!first) summary << ", ";
+        summary << count << "x ";
+        if (type == "person") {
+            summary << (count > 1 ? "people" : "person");
+        } else {
+            summary << type << (count > 1 ? "s" : "");
+        }
+        first = false;
+    }
+    summary << " were detected.\n\nTimeline:\n";
+    
+    // Generate timeline with stationary object fusion (same logic as hourly summary)
+    std::string current_stationary_type;
+    std::chrono::system_clock::time_point stationary_start;
+    
+    for (size_t i = 0; i < all_detection_events_.size(); ++i) {
+        const auto& event = all_detection_events_[i];
+        
+        if (event.is_stationary) {
+            // Start or continue a stationary period
+            if (current_stationary_type.empty() || current_stationary_type != event.object_type) {
+                // Start new stationary period
+                if (!current_stationary_type.empty()) {
+                    // End previous stationary period
+                    auto prev_end = all_detection_events_[i-1].timestamp;
+                    summary << "from " << formatTime(stationary_start) 
+                           << "-" << formatTime(prev_end) 
+                           << " a " << current_stationary_type << " was detected\n";
+                }
+                current_stationary_type = event.object_type;
+                stationary_start = event.timestamp;
+            }
+            // Continue current stationary period
+        } else {
+            // Non-stationary (dynamic) object
+            if (!current_stationary_type.empty()) {
+                // End current stationary period
+                auto prev_end = all_detection_events_[i-1].timestamp;
+                summary << "from " << formatTime(stationary_start) 
+                       << "-" << formatTime(prev_end) 
+                       << " a " << current_stationary_type << " was detected\n";
+                current_stationary_type.clear();
+            }
+            
+            // Count consecutive detections of the same dynamic object at similar times
+            int same_type_count = 1;
+            while (i + 1 < all_detection_events_.size() && 
+                   all_detection_events_[i + 1].object_type == event.object_type &&
+                   !all_detection_events_[i + 1].is_stationary &&
+                   std::chrono::duration_cast<std::chrono::seconds>(
+                       all_detection_events_[i + 1].timestamp - event.timestamp).count() < 10) {
+                same_type_count++;
+                i++;
+            }
+            
+            summary << "at " << formatTime(event.timestamp) << ", ";
+            if (same_type_count == 1) {
+                summary << "a " << event.object_type;
+            } else if (same_type_count == 2) {
+                summary << "two " << (event.object_type == "person" ? "people" : event.object_type + "s");
+            } else {
+                summary << same_type_count << " " << (event.object_type == "person" ? "people" : event.object_type + "s");
+            }
+            summary << " were detected\n";
+        }
+    }
+    
+    // Handle trailing stationary period
+    if (!current_stationary_type.empty()) {
+        summary << "from " << formatTime(stationary_start) 
+               << "-" << formatTime(all_detection_events_.back().timestamp) 
+               << " a " << current_stationary_type << " was detected\n";
+    }
+    
+    summary << "========================================\n";
+    
+    // Print to stdout
+    std::cout << summary.str() << std::flush;
 }

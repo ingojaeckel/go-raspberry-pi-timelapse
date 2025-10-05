@@ -274,5 +274,9 @@ void performGracefulShutdown(ApplicationContext& ctx) {
     }
     
     ctx.webcam->release();
+    
+    // Print final summary covering entire program runtime
+    ctx.logger->printFinalSummary();
+    
     ctx.logger->info("Object Detection Application stopped");
 }

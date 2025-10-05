@@ -43,6 +43,8 @@ At the configured interval (default: every hour), the system prints a summary to
 
 ## Example Output
 
+### Periodic Summary (Hourly)
+
 ```
 ========================================
 Detection Summary: 00:00-01:00
@@ -58,6 +60,28 @@ at 00:50, two people were detected
 from 00:50-01:00 a car was detected
 ========================================
 ```
+
+### Final Summary (Program Exit)
+
+When the program exits, a final summary covering the entire program runtime is printed:
+
+```
+========================================
+Final Detection Summary: 08:00-18:45
+Program Runtime: 10h 45m 30s
+========================================
+12x cars, 45x people, 8x cats, 5x dogs were detected.
+
+Timeline:
+from 08:00-08:15 a car was detected
+at 08:15, a person was detected
+at 09:30, a cat was detected
+...
+from 18:30-18:45 a car was detected
+========================================
+```
+
+This final summary uses the same summarization logic but spans the entire program execution time.
 
 ## API
 
@@ -78,8 +102,11 @@ logger->recordDetection("car", true);      // Stationary car
 // Check if interval has elapsed and print summary if needed
 logger->checkAndPrintSummary(interval_minutes);
 
-// Or manually trigger summary
+// Or manually trigger periodic summary
 logger->printHourlySummary();
+
+// Print final summary covering entire program runtime
+logger->printFinalSummary();
 ```
 
 ### Integration in Main Loop
@@ -88,6 +115,27 @@ The feature is integrated into the main processing loop in `application.cpp`:
 
 ```cpp
 // Periodic heartbeat logging
+auto now = std::chrono::steady_clock::now();
+if (now - ctx.last_heartbeat >= ctx.heartbeat_interval) {
+    ctx.logger->logHeartbeat();
+    ctx.perf_monitor->logPerformanceReport();
+    ctx.last_heartbeat = now;
+}
+
+// Check and print hourly summary
+ctx.logger->checkAndPrintSummary(ctx.config.summary_interval_minutes);
+```
+
+### Integration in Shutdown
+
+The final summary is automatically printed during graceful shutdown in `performGracefulShutdown()`:
+
+```cpp
+// Print final summary covering entire program runtime
+ctx.logger->printFinalSummary();
+
+ctx.logger->info("Object Detection Application stopped");
+```
 auto now = std::chrono::steady_clock::now();
 if (now - ctx.last_heartbeat >= ctx.heartbeat_interval) {
     ctx.logger->logHeartbeat();
@@ -156,12 +204,31 @@ Tests are provided in `tests/test_hourly_summary.cpp`:
 - `MultipleObjectTypes`: Tests handling of various object types
 - `EmptySummary`: Ensures graceful handling of no detections
 - `ConsecutiveDynamicObjects`: Tests grouping of similar detections
+- `FinalSummary`: Tests final summary covering all events with periodic summaries in between
+- `FinalSummaryEmpty`: Tests final summary with no detections
 
 Run tests with:
 ```bash
 cd build
 ctest -R HourlySummary
 ```
+
+## Summary Types
+
+### Periodic Summary (Hourly)
+
+- Triggered at configurable intervals (default: 1 hour)
+- Shows detections from the current period only
+- Events are cleared after each periodic summary
+- Continues throughout program runtime
+
+### Final Summary (Program Exit)
+
+- Triggered once when program exits
+- Shows all detections from entire program runtime
+- Includes program runtime duration
+- Uses same timeline fusion logic
+- Automatically printed during graceful shutdown
 
 ## Future Enhancements
 

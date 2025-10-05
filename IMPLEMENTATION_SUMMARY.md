@@ -33,27 +33,39 @@ Successfully implemented the hourly object detection summary feature as requeste
   - Object type (person, car, cat, dog, etc.)
   - Timestamp
   - Stationary flag (based on movement tracking)
+- Events tracked in two collections:
+  - Periodic events (cleared after each hourly summary)
+  - All events (retained for final summary)
 
-### 2. Summary Generation
+### 2. Periodic Summary Generation
 - Triggered automatically at configurable intervals
 - Counts objects by type with proper pluralization
 - Generates chronological timeline with:
   - Stationary objects shown as time ranges (e.g., "from 0:00-0:10 a car was detected")
   - Dynamic objects shown at detection time (e.g., "at 0:10, a person was detected")
   - Consecutive similar objects grouped (e.g., "at 0:50, two people were detected")
+- Events cleared after each summary to start fresh
 
-### 3. Stationary Object Fusion
+### 3. Final Summary on Exit
+- Printed automatically when program exits
+- Covers entire program runtime
+- Shows total runtime duration (e.g., "10h 45m 30s")
+- Uses same summarization logic as periodic summaries
+- Includes all detections from program start to exit
+
+### 4. Stationary Object Fusion
 - Consecutive detections of the same stationary object type are merged
 - Reduces clutter in timeline
 - Shows meaningful time ranges instead of individual events
 
-### 4. Configuration
+### 5. Configuration
 - Default interval: 60 minutes (1 hour)
 - Configurable via command-line: `--summary-interval N`
 - Validated on startup
 
 ## Example Output
 
+### Periodic Summary (Hourly)
 ```
 ========================================
 Detection Summary: 00:00-01:00
@@ -67,6 +79,23 @@ at 00:30, an animal was detected
 at 00:31, an animal was detected
 at 00:50, two people were detected
 from 00:50-01:00 a car was detected
+========================================
+```
+
+### Final Summary (Program Exit)
+```
+========================================
+Final Detection Summary: 08:00-18:45
+Program Runtime: 10h 45m 30s
+========================================
+12x cars, 45x people, 8x cats, 5x dogs were detected.
+
+Timeline:
+from 08:00-08:15 a car was detected
+at 08:15, a person was detected
+at 09:30, a cat was detected
+...
+from 18:30-18:45 a car was detected
 ========================================
 ```
 
