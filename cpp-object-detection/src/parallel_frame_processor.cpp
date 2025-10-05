@@ -286,6 +286,17 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
         // Add stationary indicator if object is stationary
         if (detection.is_stationary) {
             label += ", stationary";
+            
+            // Add duration if available
+            if (detection.stationary_duration_seconds > 0) {
+                int duration = detection.stationary_duration_seconds;
+                if (duration < 60) {
+                    label += " for " + std::to_string(duration) + " sec";
+                } else {
+                    int minutes = duration / 60;
+                    label += " for " + std::to_string(minutes) + " min";
+                }
+            }
         }
         
         // Draw label with auto-positioning to avoid cutoff at screen edges

@@ -555,11 +555,21 @@ void ObjectDetector::enrichDetectionsWithStationaryStatus(std::vector<Detection>
             }
         }
         
-        // If we found a match, copy the stationary status
+        // If we found a match, copy the stationary status and calculate duration
         if (best_match != nullptr) {
             detection.is_stationary = best_match->is_stationary;
+            
+            if (best_match->is_stationary) {
+                // Calculate how long the object has been stationary
+                auto now = std::chrono::steady_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - best_match->stationary_since);
+                detection.stationary_duration_seconds = static_cast<int>(duration.count());
+            } else {
+                detection.stationary_duration_seconds = 0;
+            }
         } else {
             detection.is_stationary = false;  // New objects are not stationary
+            detection.stationary_duration_seconds = 0;
         }
     }
 }

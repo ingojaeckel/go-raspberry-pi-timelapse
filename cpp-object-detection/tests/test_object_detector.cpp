@@ -277,33 +277,76 @@ TEST_F(ObjectDetectorTest, EnrichDetectionsWithStationaryStatus) {
     
     // The detection should now have is_stationary = true
     EXPECT_TRUE(final_detections[0].is_stationary);
+    
+    // The detection should have stationary_duration_seconds set (may be 0 if just became stationary)
+    EXPECT_GE(final_detections[0].stationary_duration_seconds, 0);
 }
 
 TEST_F(ObjectDetectorTest, StationaryLabelFormat) {
-    // Test to verify the label format matches issue specification: "car (91%), stationary"
+    // Test to verify the label format matches issue specification: "car (91%), stationary for 2 min"
     // This is a documentation test - the actual label formatting happens in drawing code
     
     Detection d;
     d.class_name = "car";
     d.confidence = 0.91;
     d.is_stationary = true;
+    d.stationary_duration_seconds = 120;  // 2 minutes
     
     // Build label as done in network_streamer.cpp, viewfinder_window.cpp, and parallel_frame_processor.cpp
     std::string label = d.class_name + " (" + 
                        std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
     if (d.is_stationary) {
         label += ", stationary";
+        
+        // Add duration if available
+        if (d.stationary_duration_seconds > 0) {
+            int duration = d.stationary_duration_seconds;
+            if (duration < 60) {
+                label += " for " + std::to_string(duration) + " sec";
+            } else {
+                int minutes = duration / 60;
+                label += " for " + std::to_string(minutes) + " min";
+            }
+        }
     }
     
     // Verify format matches issue specification
-    EXPECT_EQ(label, "car (91%), stationary");
+    EXPECT_EQ(label, "car (91%), stationary for 2 min");
     
-    // Test non-stationary object
-    d.is_stationary = false;
+    // Test with seconds
+    d.stationary_duration_seconds = 45;
     label = d.class_name + " (" + 
            std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
     if (d.is_stationary) {
         label += ", stationary";
+        if (d.stationary_duration_seconds > 0) {
+            int duration = d.stationary_duration_seconds;
+            if (duration < 60) {
+                label += " for " + std::to_string(duration) + " sec";
+            } else {
+                int minutes = duration / 60;
+                label += " for " + std::to_string(minutes) + " min";
+            }
+        }
+    }
+    EXPECT_EQ(label, "car (91%), stationary for 45 sec");
+    
+    // Test non-stationary object
+    d.is_stationary = false;
+    d.stationary_duration_seconds = 0;
+    label = d.class_name + " (" + 
+           std::to_string(static_cast<int>(d.confidence * 100)) + "%)";
+    if (d.is_stationary) {
+        label += ", stationary";
+        if (d.stationary_duration_seconds > 0) {
+            int duration = d.stationary_duration_seconds;
+            if (duration < 60) {
+                label += " for " + std::to_string(duration) + " sec";
+            } else {
+                int minutes = duration / 60;
+                label += " for " + std::to_string(minutes) + " min";
+            }
+        }
     }
     
     EXPECT_EQ(label, "car (91%)");
