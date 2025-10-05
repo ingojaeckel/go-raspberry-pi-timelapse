@@ -138,7 +138,8 @@ void NetworkStreamer::updateFrameWithStats(const cv::Mat& frame,
                                           int camera_id,
                                           const std::string& camera_name,
                                           int detection_width,
-                                          int detection_height) {
+                                          int detection_height,
+                                          bool brightness_filter_active) {
     if (frame.empty()) {
         return;
     }
@@ -150,7 +151,7 @@ void NetworkStreamer::updateFrameWithStats(const cv::Mat& frame,
     drawDebugInfo(annotated_frame, current_fps, avg_processing_time_ms,
                  total_objects_detected, total_images_saved, start_time,
                  top_objects, camera_width, camera_height, camera_id,
-                 camera_name, detection_width, detection_height);
+                 camera_name, detection_width, detection_height, brightness_filter_active);
 
     // Update current frame (thread-safe)
     std::lock_guard<std::mutex> lock(frame_mutex_);
@@ -322,7 +323,8 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
                                    int camera_id,
                                    const std::string& camera_name,
                                    int detection_width,
-                                   int detection_height) {
+                                   int detection_height,
+                                   bool brightness_filter_active) {
     // Use small font to minimize screen coverage
     const double font_scale = 0.4;
     const int font_thickness = 1;
@@ -396,6 +398,36 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
         cv::putText(frame, line, cv::Point(x_offset, y_offset),
                    font_face, font_scale, text_color, font_thickness);
         y_offset += line_spacing;
+    }
+    
+    // Draw brightness filter indicator in top right corner if active
+    if (brightness_filter_active) {
+        const std::string filter_text = "High brightness filter ON";
+        const double indicator_font_scale = 0.5;
+        const int indicator_font_thickness = 1;
+        const cv::Scalar indicator_bg_color(0, 100, 200);  // Orange background
+        const cv::Scalar indicator_text_color(255, 255, 255);  // White text
+        
+        // Get text size
+        int baseline;
+        cv::Size text_size = cv::getTextSize(filter_text, font_face, indicator_font_scale, 
+                                             indicator_font_thickness, &baseline);
+        
+        // Position in top right corner with some padding
+        int indicator_x = frame.cols - text_size.width - 10;
+        int indicator_y = 10;
+        
+        // Draw background rectangle with transparency
+        cv::Mat indicator_overlay = frame.clone();
+        cv::rectangle(indicator_overlay, 
+                     cv::Point(indicator_x - 5, indicator_y - 2),
+                     cv::Point(indicator_x + text_size.width + 5, indicator_y + text_size.height + 5),
+                     indicator_bg_color, cv::FILLED);
+        cv::addWeighted(indicator_overlay, 0.7, frame, 0.3, 0, frame);
+        
+        // Draw text
+        cv::putText(frame, filter_text, cv::Point(indicator_x, indicator_y + text_size.height),
+                   font_face, indicator_font_scale, indicator_text_color, indicator_font_thickness);
     }
 }
 
