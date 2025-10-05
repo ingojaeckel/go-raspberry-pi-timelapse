@@ -31,6 +31,12 @@ public:
     std::string getModelName() const override;
     
     void warmUp() override;
+    
+    /**
+     * Set GPU acceleration preference
+     * @param enable_gpu Whether to enable GPU/CUDA acceleration
+     */
+    void setEnableGpu(bool enable_gpu);
 
 private:
     std::shared_ptr<Logger> logger_;
@@ -39,6 +45,7 @@ private:
     double confidence_threshold_;
     double detection_scale_factor_;
     bool initialized_;
+    bool enable_gpu_;
     mutable std::chrono::steady_clock::time_point last_inference_start_;
     mutable int avg_inference_time_ms_;
     
@@ -81,6 +88,12 @@ public:
     std::string getModelName() const override;
     
     void warmUp() override;
+    
+    /**
+     * Set GPU acceleration preference
+     * @param enable_gpu Whether to enable GPU/CUDA acceleration
+     */
+    void setEnableGpu(bool enable_gpu);
 
 private:
     std::shared_ptr<Logger> logger_;
@@ -89,6 +102,7 @@ private:
     double confidence_threshold_;
     double detection_scale_factor_;
     bool initialized_;
+    bool enable_gpu_;
     mutable std::chrono::steady_clock::time_point last_inference_start_;
     mutable int avg_inference_time_ms_;
     

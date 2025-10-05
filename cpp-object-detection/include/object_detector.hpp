@@ -39,7 +39,8 @@ public:
                   double confidence_threshold,
                   std::shared_ptr<Logger> logger,
                   DetectionModelFactory::ModelType model_type = DetectionModelFactory::ModelType::YOLO_V5_SMALL,
-                  double detection_scale_factor = 1.0);
+                  double detection_scale_factor = 1.0,
+                  bool enable_gpu = false);
     
     ~ObjectDetector();
 
@@ -122,6 +123,7 @@ private:
     std::string classes_path_;
     double confidence_threshold_;
     double detection_scale_factor_;
+    bool enable_gpu_;
     std::shared_ptr<Logger> logger_;
     DetectionModelFactory::ModelType model_type_;
     

@@ -1,4 +1,5 @@
 #include "object_detector.hpp"
+#include "yolo_v5_model.hpp"
 #include <fstream>
 #include <iostream>
 #include <algorithm>
@@ -14,10 +15,11 @@ ObjectDetector::ObjectDetector(const std::string& model_path,
                               double confidence_threshold,
                               std::shared_ptr<Logger> logger,
                               DetectionModelFactory::ModelType model_type,
-                              double detection_scale_factor)
+                              double detection_scale_factor,
+                              bool enable_gpu)
     : model_path_(model_path), config_path_(config_path), classes_path_(classes_path),
       confidence_threshold_(confidence_threshold), detection_scale_factor_(detection_scale_factor),
-      logger_(logger), model_type_(model_type),
+      enable_gpu_(enable_gpu), logger_(logger), model_type_(model_type),
       initialized_(false), total_objects_detected_(0) {
 }
 
@@ -36,6 +38,20 @@ bool ObjectDetector::initialize() {
         if (!detection_model_) {
             logger_->error("Failed to create detection model");
             return false;
+        }
+        
+        // Set GPU preference before initialization
+        // Cast to YoloV5 models to access setEnableGpu
+        if (model_type_ == DetectionModelFactory::ModelType::YOLO_V5_SMALL) {
+            auto* yolo_model = dynamic_cast<YoloV5SmallModel*>(detection_model_.get());
+            if (yolo_model) {
+                yolo_model->setEnableGpu(enable_gpu_);
+            }
+        } else if (model_type_ == DetectionModelFactory::ModelType::YOLO_V5_LARGE) {
+            auto* yolo_model = dynamic_cast<YoloV5LargeModel*>(detection_model_.get());
+            if (yolo_model) {
+                yolo_model->setEnableGpu(enable_gpu_);
+            }
         }
         
         // Initialize the model

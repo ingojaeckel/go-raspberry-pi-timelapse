@@ -151,3 +151,19 @@ TEST_F(ConfigManagerTest, BurstModeDefaultDisabled) {
     const auto& config = config_manager->getConfig();
     EXPECT_FALSE(config.enable_burst_mode);
 }
+
+TEST_F(ConfigManagerTest, EnableGpuArgument) {
+    const char* argv[] = {"program", "--enable-gpu"};
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_TRUE(config.enable_gpu);
+    EXPECT_TRUE(config_manager->validateConfig());
+}
+
+TEST_F(ConfigManagerTest, GpuDefaultDisabled) {
+    const auto& config = config_manager->getConfig();
+    EXPECT_FALSE(config.enable_gpu);
+}
