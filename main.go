@@ -37,6 +37,13 @@ func main() {
 		fmt.Println(version)
 		return
 	}
+	
+	// Validate CLI flags before applying them
+	if err := validateCLIFlags(secondsBetweenCaptures); err != nil {
+		log.Fatalf("Invalid CLI flags: %s", err.Error())
+		return
+	}
+	
 	conf.OverrideDefaultConfig(listenAddress, storageAddress, logToFile, secondsBetweenCaptures)
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
@@ -123,4 +130,11 @@ func initVersion() {
 	} else {
 		version = fmt.Sprintf("%s built at %s", gitCommit, builtAt)
 	}
+}
+
+func validateCLIFlags(secondsBetweenCaptures *int) error {
+	if secondsBetweenCaptures != nil && *secondsBetweenCaptures < conf.MinSecondsBetweenCaptures {
+		return fmt.Errorf("secondsBetweenCaptures must be at least %d seconds to allow sufficient exposure time (got %d)", conf.MinSecondsBetweenCaptures, *secondsBetweenCaptures)
+	}
+	return nil
 }

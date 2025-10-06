@@ -12,6 +12,12 @@ const (
 	DefaultStorageFolder          = "timelapse-pictures"
 	TempFilesFolder               = "/tmp"
 	LogFile                       = "timelapse.log"
+	// Validation bounds
+	MinSecondsBetweenCaptures = 10  // Allow sufficient exposure time
+	MinQuality                = 1   // Quality must be at least 1
+	MaxQuality                = 100 // Quality cannot exceed 100
+	MinOffsetWithinHour       = 0   // Offset within hour minimum
+	MaxOffsetWithinHour       = 3599 // Offset within hour maximum (59 minutes 59 seconds)
 )
 
 var (

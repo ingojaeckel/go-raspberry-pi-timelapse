@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	minSecondsBetweenCaptures = 60
+	minSecondsBetweenCaptures = MinSecondsBetweenCaptures // Use the constant from conf package
 	boldIoTimeout             = 1 * time.Second
 )
 
@@ -36,16 +36,17 @@ func LoadConfiguration() (*Settings, error) {
 	var existingSettings Settings
 	err = json.Unmarshal([]byte(val), &existingSettings)
 
-	if existingSettings.SecondsBetweenCaptures < minSecondsBetweenCaptures {
-		// Enforce min time between captures. this also protects for errors as a result of this being 0.
-		existingSettings.SecondsBetweenCaptures = minSecondsBetweenCaptures
-	}
+	// Sanitize loaded configuration to ensure all values are within bounds
+	existingSettings = existingSettings.Sanitize()
 
 	return &existingSettings, err
 }
 
 // WriteConfiguration Persist the provided settings. Returns the updated settings or an error.
 func WriteConfiguration(s Settings) (*Settings, error) {
+	// Sanitize settings before persisting to prevent broken config
+	s = s.Sanitize()
+	
 	log.Printf("Write configuration: %s\n", s.String())
 	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boldIoTimeout})
 	defer db.Close()
