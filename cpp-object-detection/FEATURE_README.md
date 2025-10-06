@@ -44,6 +44,7 @@ Application → Gather Stats → ViewfinderWindow/NetworkStreamer → Display Ov
   start_time   ObjectDetector   showFrameWithStats          drawDebugInfo
                PerformanceMonitor updateFrameWithStats
                FrameProcessor
+               SystemMonitor
 ```
 
 ### Statistics Tracking
@@ -60,6 +61,11 @@ Application → Gather Stats → ViewfinderWindow/NetworkStreamer → Display Ov
 **ApplicationContext:**
 - Tracks application start time for uptime
 - Stores detection resolution
+
+**SystemMonitor:**
+- Monitors disk usage percentage
+- Tracks CPU temperature in Celsius
+- Provides real-time system health metrics
 
 ## 📁 Files Modified
 
