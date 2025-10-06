@@ -1,6 +1,7 @@
 #include "object_detector.hpp"
 #include "google_sheets_client.hpp"
 #include "yolo_v5_model.hpp"
+#include "efficientdet_d3_model.hpp"
 #include <fstream>
 #include <iostream>
 #include <algorithm>
@@ -45,7 +46,7 @@ bool ObjectDetector::initialize() {
         }
         
         // Set GPU preference before initialization
-        // Cast to YoloV5 models to access setEnableGpu
+        // Cast to specific models to access setEnableGpu
         if (model_type_ == DetectionModelFactory::ModelType::YOLO_V5_SMALL) {
             auto* yolo_model = dynamic_cast<YoloV5SmallModel*>(detection_model_.get());
             if (yolo_model) {
@@ -55,6 +56,11 @@ bool ObjectDetector::initialize() {
             auto* yolo_model = dynamic_cast<YoloV5LargeModel*>(detection_model_.get());
             if (yolo_model) {
                 yolo_model->setEnableGpu(enable_gpu_);
+            }
+        } else if (model_type_ == DetectionModelFactory::ModelType::EFFICIENTDET_D3) {
+            auto* efficientdet_model = dynamic_cast<EfficientDetD3Model*>(detection_model_.get());
+            if (efficientdet_model) {
+                efficientdet_model->setEnableGpu(enable_gpu_);
             }
         }
         

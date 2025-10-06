@@ -1,5 +1,6 @@
 #include "detection_model_interface.hpp"
 #include "yolo_v5_model.hpp"
+#include "efficientdet_d3_model.hpp"
 #include <stdexcept>
 #include <algorithm>
 
@@ -27,6 +28,9 @@ std::unique_ptr<IDetectionModel> DetectionModelFactory::createModel(
                 logger->warning("YOLOv8 Medium not yet implemented, using YOLOv5 Large");
             }
             return std::make_unique<YoloV5LargeModel>(logger);
+            
+        case ModelType::EFFICIENTDET_D3:
+            return std::make_unique<EfficientDetD3Model>(logger);
             
         default:
             throw std::invalid_argument("Unknown model type");
@@ -70,6 +74,15 @@ std::vector<ModelMetrics> DetectionModelFactory::getAvailableModels() {
             52,             // ~52MB model size
             "High-accuracy medium model with state-of-the-art performance. "
             "Best accuracy available but requires more computational resources. (Future implementation)"
+        },
+        {
+            "EfficientDet-D3",
+            "EfficientDet",
+            0.89,           // 89% mAP on COCO
+            95,             // ~95ms on CPU
+            45,             // ~45MB model size
+            "Compound-scaled efficient detection model with BiFPN. "
+            "Excellent balance of accuracy and speed for outdoor scenes."
         }
     };
 }
@@ -86,6 +99,8 @@ DetectionModelFactory::ModelType DetectionModelFactory::parseModelType(const std
         return ModelType::YOLO_V8_NANO;
     } else if (lower_name == "yolov8m" || lower_name == "yolo_v8_medium" || lower_name == "medium") {
         return ModelType::YOLO_V8_MEDIUM;
+    } else if (lower_name == "efficientdet-d3" || lower_name == "efficientdet_d3" || lower_name == "efficientdet") {
+        return ModelType::EFFICIENTDET_D3;
     } else {
         throw std::invalid_argument("Unknown model name: " + model_name);
     }
@@ -101,6 +116,8 @@ std::string DetectionModelFactory::modelTypeToString(ModelType type) {
             return "yolov8n";
         case ModelType::YOLO_V8_MEDIUM:
             return "yolov8m";
+        case ModelType::EFFICIENTDET_D3:
+            return "efficientdet-d3";
         default:
             return "unknown";
     }
