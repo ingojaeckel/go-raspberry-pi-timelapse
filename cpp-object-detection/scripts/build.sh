@@ -35,6 +35,20 @@ fi
 
 echo -e "${GREEN}OpenCV found: $(pkg-config --modversion opencv4)${NC}"
 
+# Check for CURL
+if ! pkg-config --exists libcurl; then
+    echo -e "${RED}Error: libcurl not found. Please install libcurl development libraries.${NC}"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo -e "${YELLOW}macOS: brew install curl${NC}"
+    else
+        echo -e "${YELLOW}Ubuntu/Debian: sudo apt-get install libcurl4-openssl-dev${NC}"
+        echo -e "${YELLOW}CentOS/RHEL: sudo yum install libcurl-devel${NC}"
+    fi
+    exit 1
+fi
+
+echo -e "${GREEN}libcurl found: $(pkg-config --modversion libcurl)${NC}"
+
 # Check for CMake
 if ! command -v cmake &> /dev/null; then
     echo -e "${RED}Error: CMake not found. Please install CMake.${NC}"
