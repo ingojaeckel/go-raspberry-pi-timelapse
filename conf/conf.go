@@ -27,9 +27,10 @@ var (
 	SecondsBetweenCaptures = DefaultSecondsBetweenCaptures
 )
 
-// TODO merge values coming from different sources: config, settings, CLI
-
 // OverrideDefaultConfig Override default config values which were provided.
+// Note: These global values are used for initial configuration only. 
+// The Settings struct handles the actual runtime configuration with proper priority:
+// CLI flags → persisted settings → defaults (see CONFIGURATION.md for details)
 func OverrideDefaultConfig(listenAddressOverride *string, storageAddressOverride *string, logToFileOverride *bool, secondsBetweenCapturesOverride *int) {
 	if logToFileOverride != nil {
 		LogToFile = *logToFileOverride

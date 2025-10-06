@@ -77,3 +77,16 @@ func (s Settings) Sanitize() Settings {
 
 	return sanitized
 }
+
+// ApplyCLIOverrides applies CLI flag overrides to settings with proper priority.
+// CLI flags take precedence over persisted settings.
+func (s Settings) ApplyCLIOverrides(secondsBetweenCapturesOverride *int) Settings {
+	overridden := s
+	
+	// Apply secondsBetweenCaptures override if provided via CLI
+	if secondsBetweenCapturesOverride != nil {
+		overridden.SecondsBetweenCaptures = *secondsBetweenCapturesOverride
+	}
+	
+	return overridden
+}

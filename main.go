@@ -55,6 +55,10 @@ func main() {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
+	
+	// Apply CLI overrides with proper priority: CLI flags override persisted settings
+	*initialSettings = initialSettings.ApplyCLIOverrides(secondsBetweenCaptures)
+	
 	log.Printf("Settings:       %s\n", *initialSettings)
 	log.Printf("Listen address: %s\n", conf.ListenAddress)
 

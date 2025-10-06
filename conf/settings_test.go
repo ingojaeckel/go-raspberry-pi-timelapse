@@ -90,3 +90,28 @@ func TestSanitizeOffsetWithinHour(t *testing.T) {
 	sanitized = s.Sanitize()
 	ensure.DeepEqual(t, 3599, sanitized.OffsetWithinHour)
 }
+
+func TestApplyCLIOverrides(t *testing.T) {
+	// Test that CLI override takes precedence over persisted settings
+	s := Settings{SecondsBetweenCaptures: 300}
+	override := 600
+	overridden := s.ApplyCLIOverrides(&override)
+	ensure.DeepEqual(t, 600, overridden.SecondsBetweenCaptures)
+
+	// Test that nil override leaves settings unchanged
+	s = Settings{SecondsBetweenCaptures: 300}
+	overridden = s.ApplyCLIOverrides(nil)
+	ensure.DeepEqual(t, 300, overridden.SecondsBetweenCaptures)
+
+	// Test that other settings are not affected
+	s = Settings{
+		SecondsBetweenCaptures: 300,
+		Quality:                75,
+		OffsetWithinHour:       900,
+	}
+	override = 600
+	overridden = s.ApplyCLIOverrides(&override)
+	ensure.DeepEqual(t, 600, overridden.SecondsBetweenCaptures)
+	ensure.DeepEqual(t, 75, overridden.Quality)
+	ensure.DeepEqual(t, 900, overridden.OffsetWithinHour)
+}
