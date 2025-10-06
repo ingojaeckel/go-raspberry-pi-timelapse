@@ -33,6 +33,7 @@ set(TEST_SOURCES
     test_long_term_operation.cpp
     test_stationary_detection.cpp
     test_google_sheets_client.cpp
+    test_night_mode.cpp
 )
 
 # Create test executable
