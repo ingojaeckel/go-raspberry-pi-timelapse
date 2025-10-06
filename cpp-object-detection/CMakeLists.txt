@@ -31,6 +31,14 @@ else()
         find_package(OpenCV QUIET PATHS /usr/lib/x86_64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
     endif()
     if(NOT OpenCV_FOUND)
+        # Try aarch64 path for ARM64 builds (Raspberry Pi)
+        find_package(OpenCV QUIET PATHS /usr/lib/aarch64-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
+    endif()
+    if(NOT OpenCV_FOUND)
+        # Try arm-linux-gnueabihf path for 32-bit ARM builds
+        find_package(OpenCV QUIET PATHS /usr/lib/arm-linux-gnueabihf/cmake/opencv4 NO_DEFAULT_PATH)
+    endif()
+    if(NOT OpenCV_FOUND)
         # Try i386 path for 32-bit builds
         find_package(OpenCV QUIET PATHS /usr/lib/i386-linux-gnu/cmake/opencv4 NO_DEFAULT_PATH)
     endif()
@@ -47,8 +55,9 @@ else()
     endif()
     if(NOT OpenCV_FOUND)
         message(FATAL_ERROR "OpenCV not found. Please install OpenCV development libraries:\n"
-                "  Ubuntu/Debian (64-bit): sudo apt-get install libopencv-dev\n"
-                "  Ubuntu/Debian (32-bit): sudo apt-get install libopencv-dev:i386\n"
+                "  Ubuntu/Debian (64-bit x86): sudo apt-get install libopencv-dev\n"
+                "  Ubuntu/Debian (32-bit x86): sudo apt-get install libopencv-dev:i386\n"
+                "  Raspberry Pi OS (ARM64): sudo apt-get install libopencv-dev\n"
                 "  CentOS/RHEL: sudo yum install opencv-devel")
     endif()
 endif()
@@ -144,6 +153,14 @@ else()
         # 32-bit x86 - use conservative optimizations for compatibility
         message(STATUS "Building for 32-bit x86 (${CMAKE_SYSTEM_PROCESSOR})")
         target_compile_options(object_detection PRIVATE -mtune=generic)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+        # ARM64 (Raspberry Pi 4/5) - use conservative optimizations for compatibility
+        message(STATUS "Building for ARM64/aarch64 (${CMAKE_SYSTEM_PROCESSOR})")
+        target_compile_options(object_detection PRIVATE -mtune=cortex-a72)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+        # 32-bit ARM - use conservative optimizations for compatibility
+        message(STATUS "Building for ARM 32-bit (${CMAKE_SYSTEM_PROCESSOR})")
+        target_compile_options(object_detection PRIVATE -mtune=cortex-a53)
     else()
         # 64-bit or other architectures - use native optimizations
         message(STATUS "Building for ${CMAKE_SYSTEM_PROCESSOR}")
