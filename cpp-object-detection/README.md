@@ -17,6 +17,10 @@ A standalone C++ executable for real-time object detection from webcam data at 7
   - **Toggle overlay** with SPACE key for minimal screen coverage
 - **Network streaming** - MJPEG HTTP streaming to view feed on any device on local network (--enable-streaming)
 - **🆕 Google Sheets Integration** - Optional cloud logging of detection events to Google Sheets (--enable-google-sheets)
+- **🆕 Scene Persistence** - Recognize and persist scenes in SQLite database for long-term scene tracking (--enable-scene-persistence)
+  - Fuzzy matching to identify return to familiar scenes even with slight camera angle changes
+  - Analyzes stationary objects, measures distances/angles, extracts colors and shapes
+  - Logs "new scene identified" or "recognized return to earlier scene"
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
 - **Structured logging** with timestamps and detailed position tracking
@@ -309,12 +313,12 @@ public:
 **Ubuntu/Debian:**
 ```bash
 sudo apt-get update
-sudo apt-get install -y cmake build-essential libopencv-dev pkg-config
+sudo apt-get install -y cmake build-essential libopencv-dev libsqlite3-dev pkg-config
 ```
 
 **CentOS/RHEL:**
 ```bash
-sudo yum install -y cmake gcc-c++ opencv-devel pkgconfig
+sudo yum install -y cmake gcc-c++ opencv-devel sqlite-devel pkgconfig
 ```
 
 **macOS (Intel-based):**
@@ -324,7 +328,7 @@ sudo yum install -y cmake gcc-c++ opencv-devel pkgconfig
 
 # Install dependencies
 brew update
-brew install cmake opencv pkg-config
+brew install cmake opencv sqlite3 pkg-config
 ```
 
 **For testing (optional):**
@@ -495,6 +499,36 @@ When enabled, detection events (object entries and movements) are automatically 
 | 2024-10-05T14:30:16.456 | person | movement | 325.2 | 245.3 | 6.8 | From (320,240) to (325,245) |
 
 For detailed setup instructions, security considerations, and troubleshooting, see [GOOGLE_SHEETS_FEATURE.md](GOOGLE_SHEETS_FEATURE.md).
+
+### Scene Persistence
+
+The application supports **scene recognition and persistence** using SQLite for long-term scene tracking:
+
+```bash
+# Enable scene persistence (default database: scenes.db)
+./object_detection --enable-scene-persistence
+
+# Custom database path
+./object_detection --enable-scene-persistence --scene-db-path /data/scenes.db
+```
+
+When enabled, the system:
+- Analyzes scenes after 1 minute of stationary objects
+- Extracts detailed properties: colors, positions, sizes, orientations
+- Calculates spatial relationships between objects (distances, angles)
+- Uses fuzzy matching to recognize return to familiar scenes (75% similarity threshold)
+- Logs "new scene identified: id=1 (2x cars, 1x person)" or "recognized return to earlier scene: id=1"
+
+**Scene Matching Algorithm:**
+- Object count similarity (40% weight): Compares types and counts
+- Spatial distribution (40% weight): 4x4 grid histogram matching
+- Relationship similarity (20% weight): Distance/angle comparisons
+
+**Recommended Models:**
+- YOLOv5l (`--model-type yolov5l`): Best balance of accuracy and speed
+- YOLOv8m (`--model-type yolov8m`): Maximum accuracy for detailed analysis
+
+For complete details on scene analysis, database schema, and fuzzy matching algorithm, see [SCENE_PERSISTENCE_FEATURE.md](SCENE_PERSISTENCE_FEATURE.md).
 
 ### CPU Rate Limiting
 
