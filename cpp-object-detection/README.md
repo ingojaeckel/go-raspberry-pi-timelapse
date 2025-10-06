@@ -16,6 +16,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
   - **Debug overlay** with performance metrics, detection counts, uptime, and top detected objects
   - **Toggle overlay** with SPACE key for minimal screen coverage
 - **Network streaming** - MJPEG HTTP streaming to view feed on any device on local network (--enable-streaming)
+- **🆕 Google Sheets Integration** - Optional cloud logging of detection events to Google Sheets (--enable-google-sheets)
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
 - **Structured logging** with timestamps and detailed position tracking
@@ -467,6 +468,33 @@ Stream live video with object detection bounding boxes to any device on your loc
 - `http://10.0.0.5:9000/stream`
 
 For detailed information about network streaming, see [NETWORK_STREAMING_FEATURE.md](NETWORK_STREAMING_FEATURE.md).
+
+### Google Sheets Integration
+
+The application supports optional **Google Sheets integration** for cloud-based logging of detection events:
+
+```bash
+# Enable Google Sheets logging
+./object_detection \
+  --enable-google-sheets \
+  --google-sheets-id "YOUR_SPREADSHEET_ID" \
+  --google-sheets-api-key "YOUR_API_KEY"
+```
+
+When enabled, detection events (object entries and movements) are automatically logged to a Google Sheet with:
+- Timestamp (ISO 8601 format)
+- Object type (person, cat, car, etc.)
+- Event type (entry or movement)
+- Coordinates and movement distance
+- Confidence scores and movement details
+
+**Example Sheet Output:**
+| Timestamp | Object Type | Event Type | X | Y | Distance | Description |
+|-----------|-------------|------------|---|---|----------|-------------|
+| 2024-10-05T14:30:15.123 | person | entry | 320.5 | 240.8 | | Confidence: 87% |
+| 2024-10-05T14:30:16.456 | person | movement | 325.2 | 245.3 | 6.8 | From (320,240) to (325,245) |
+
+For detailed setup instructions, security considerations, and troubleshooting, see [GOOGLE_SHEETS_FEATURE.md](GOOGLE_SHEETS_FEATURE.md).
 
 ### CPU Rate Limiting
 

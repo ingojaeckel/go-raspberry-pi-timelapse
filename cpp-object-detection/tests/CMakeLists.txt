@@ -2,6 +2,21 @@
 find_package(GTest REQUIRED)
 find_package(OpenCV REQUIRED)
 
+# CURL is already found in parent CMakeLists.txt
+# Use the same approach as parent
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(CURL REQUIRED libcurl)
+    if(CURL_FOUND)
+        # Use pkg-config results
+        include_directories(${CURL_INCLUDE_DIRS})
+        link_directories(${CURL_LIBRARY_DIRS})
+    endif()
+else()
+    # Fall back to find_package
+    find_package(CURL REQUIRED)
+endif()
+
 # Test sources
 set(TEST_SOURCES
     test_config_manager.cpp
@@ -17,6 +32,7 @@ set(TEST_SOURCES
     test_network_streamer.cpp
     test_long_term_operation.cpp
     test_stationary_detection.cpp
+    test_google_sheets_client.cpp
 )
 
 # Create test executable
@@ -27,14 +43,32 @@ target_include_directories(object_detection_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${OpenCV_INCLUDE_DIRS}
 )
+if(PKG_CONFIG_FOUND AND CURL_FOUND)
+    target_include_directories(object_detection_tests PRIVATE ${CURL_INCLUDE_DIRS})
+else()
+    target_include_directories(object_detection_tests PRIVATE ${CURL_INCLUDE_DIRS})
+endif()
 
 # Link libraries
-target_link_libraries(object_detection_tests 
-    GTest::gtest
-    GTest::gtest_main
-    ${OpenCV_LIBS}
-    pthread
-)
+if(PKG_CONFIG_FOUND AND CURL_FOUND)
+    # Link using pkg-config results
+    target_link_libraries(object_detection_tests 
+        GTest::gtest
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+        pthread
+        ${CURL_LIBRARIES}
+    )
+else()
+    # Link using find_package results
+    target_link_libraries(object_detection_tests 
+        GTest::gtest
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+        pthread
+        CURL::libcurl
+    )
+endif()
 
 # Add individual source files we want to test
 target_sources(object_detection_tests PRIVATE
@@ -49,6 +83,7 @@ target_sources(object_detection_tests PRIVATE
     ../src/viewfinder_window.cpp
     ../src/network_streamer.cpp
     ../src/system_monitor.cpp
+    ../src/google_sheets_client.cpp
 )
 
 # Code coverage support for tests

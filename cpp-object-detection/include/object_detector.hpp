@@ -116,6 +116,11 @@ public:
      * Check if an object has been stationary for longer than the timeout period
      */
     bool isStationaryPastTimeout(const ObjectTracker& tracker, int stationary_timeout_seconds) const;
+    
+    /**
+     * Set Google Sheets client for logging detection events
+     */
+    void setGoogleSheetsClient(std::shared_ptr<class GoogleSheetsClient> client);
 
 private:
     std::string model_path_;
@@ -126,6 +131,7 @@ private:
     bool enable_gpu_;
     std::shared_ptr<Logger> logger_;
     DetectionModelFactory::ModelType model_type_;
+    std::shared_ptr<class GoogleSheetsClient> google_sheets_client_;  // Optional Google Sheets integration
     
     std::unique_ptr<IDetectionModel> detection_model_;
     std::vector<ObjectTracker> tracked_objects_;

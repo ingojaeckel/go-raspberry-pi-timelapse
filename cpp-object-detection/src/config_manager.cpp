@@ -50,6 +50,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->enable_brightness_filter = true;
         } else if (arg == "--enable-burst-mode") {
             config_->enable_burst_mode = true;
+        } else if (arg == "--enable-google-sheets") {
+            config_->enable_google_sheets = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -106,6 +108,12 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->streaming_port = std::stoi(value);
         } else if (arg == "--stationary-timeout") {
             config_->stationary_timeout_seconds = std::stoi(value);
+        } else if (arg == "--google-sheets-id") {
+            config_->google_sheets_id = value;
+        } else if (arg == "--google-sheets-api-key") {
+            config_->google_sheets_api_key = value;
+        } else if (arg == "--google-sheets-name") {
+            config_->google_sheets_name = value;
         } else {
             return false;
         }
@@ -162,7 +170,11 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --streaming-port N             Port for HTTP streaming server (default: 8080)\n"
               << "  --enable-brightness-filter     Enable high brightness filter to reduce glass reflections (default: disabled)\n"
               << "  --stationary-timeout N         Seconds before stopping photos of stationary objects (default: 120)\n"
-              << "  --enable-burst-mode            Enable burst mode to max out FPS when new objects enter (default: disabled)\n\n"
+              << "  --enable-burst-mode            Enable burst mode to max out FPS when new objects enter (default: disabled)\n"
+              << "  --enable-google-sheets         Enable Google Sheets integration for detection logging (default: disabled)\n"
+              << "  --google-sheets-id ID          Google Sheets spreadsheet ID or full URL (required if --enable-google-sheets)\n"
+              << "  --google-sheets-api-key KEY    Google API key for Sheets API access (required if --enable-google-sheets)\n"
+              << "  --google-sheets-name NAME      Sheet name/tab within spreadsheet (default: Sheet1)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"
@@ -177,6 +189,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  " << program_name << " --show-preview  # Development mode with real-time viewfinder\n"
               << "  " << program_name << " --max-fps 1 --frame-width 640 --frame-height 480  # Low-resource mode (32-bit)\n"
               << "  " << program_name << " --enable-streaming --streaming-port 8080  # Network streaming mode\n"
+              << "  " << program_name << " --enable-google-sheets --google-sheets-id YOUR_SHEET_ID --google-sheets-api-key YOUR_API_KEY  # Google Sheets logging\n"
               << "SUPPORTED PLATFORMS:\n"
               << "  - Linux x86_64 (Intel Core i7, AMD Ryzen 5 3600)\n"
               << "  - Linux 386 (Intel Pentium M with 1.5GB RAM)\n"
@@ -251,6 +264,18 @@ bool ConfigManager::validateConfig() const {
     if (config_->streaming_port <= 0 || config_->streaming_port > 65535) {
         std::cerr << "Invalid streaming_port: " << config_->streaming_port << " (must be 1-65535)" << std::endl;
         return false;
+    }
+    
+    // Validate Google Sheets configuration
+    if (config_->enable_google_sheets) {
+        if (config_->google_sheets_id.empty()) {
+            std::cerr << "Google Sheets enabled but no spreadsheet ID provided. Use --google-sheets-id" << std::endl;
+            return false;
+        }
+        if (config_->google_sheets_api_key.empty()) {
+            std::cerr << "Google Sheets enabled but no API key provided. Use --google-sheets-api-key" << std::endl;
+            return false;
+        }
     }
     
     // Enable parallel processing automatically if more than 1 thread is specified

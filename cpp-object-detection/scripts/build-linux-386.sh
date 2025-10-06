@@ -60,6 +60,16 @@ if [ "$OPENCV_FOUND" = false ]; then
     echo -e "${YELLOW}Note: This build will likely fail without 32-bit OpenCV libraries${NC}"
 fi
 
+# Check for CURL development libraries
+echo -e "${YELLOW}Checking for libcurl development libraries...${NC}"
+if ! dpkg -l | grep -q libcurl.*-dev; then
+    echo -e "${YELLOW}Warning: libcurl development libraries not found${NC}"
+    echo -e "${YELLOW}To install: sudo apt-get install libcurl4-openssl-dev${NC}"
+    echo -e "${YELLOW}Note: This build will likely fail without libcurl development libraries${NC}"
+else
+    echo -e "${GREEN}libcurl development libraries found${NC}"
+fi
+
 # Configure build for 32-bit
 echo -e "${YELLOW}Configuring 32-bit build...${NC}"
 

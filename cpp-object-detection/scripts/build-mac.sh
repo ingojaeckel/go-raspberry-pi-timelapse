@@ -37,6 +37,15 @@ fi
 
 echo -e "${GREEN}OpenCV found: $(pkg-config --modversion opencv4)${NC}"
 
+# Check for CURL
+if ! pkg-config --exists libcurl; then
+    echo -e "${RED}Error: libcurl not found. Please install libcurl development libraries.${NC}"
+    echo -e "${YELLOW}macOS: brew install curl${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}libcurl found: $(pkg-config --modversion libcurl)${NC}"
+
 # Check for CMake
 if ! command -v cmake &> /dev/null; then
     echo -e "${RED}Error: CMake not found. Please install CMake.${NC}"

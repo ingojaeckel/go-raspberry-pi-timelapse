@@ -45,6 +45,7 @@ jobs:
             cmake \
             build-essential \
             libopencv-dev \
+            libcurl4-openssl-dev \
             pkg-config \
             libgtest-dev \
             lcov \
@@ -58,6 +59,7 @@ jobs:
           brew install \
             cmake \
             opencv \
+            curl \
             pkg-config \
             googletest \
             lcov \
@@ -145,6 +147,7 @@ jobs:
           sudo apt-get install -y \
             cmake \
             build-essential \
+            libcurl4-openssl-dev \
             pkg-config
 
           # Install OpenCV for dynamic linking (static linking can be custom built)
@@ -157,6 +160,7 @@ jobs:
           brew install \
             cmake \
             opencv \
+            curl \
             pkg-config
 
       - name: Configure for static linking
@@ -248,7 +252,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libopencv-dev pkg-config
+          sudo apt-get install -y cmake build-essential libopencv-dev libcurl4-openssl-dev pkg-config
 
       - name: Build application
         working-directory: cpp-object-detection
@@ -328,6 +332,7 @@ jobs:
             gcc-multilib \
             g++-multilib \
             pkg-config \
+            libcurl4-openssl-dev \
             libgtest-dev
 
       - name: Check for 32-bit OpenCV availability

@@ -1,8 +1,12 @@
 #include "object_detector.hpp"
+#include "google_sheets_client.hpp"
 #include "yolo_v5_model.hpp"
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
+#include <ctime>
 
 // Maximum distance (in pixels) an object can move between frames to be considered the same object
 // This assumes objects don't teleport across large portions of the frame
@@ -338,6 +342,26 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
 
 
 void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detections) {
+    // Helper lambda to get ISO 8601 timestamp
+    auto getTimestamp = []() -> std::string {
+        auto now = std::chrono::system_clock::now();
+        auto time_t_now = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()) % 1000;
+        
+        std::tm tm_now;
+        #ifdef _WIN32
+        localtime_s(&tm_now, &time_t_now);
+        #else
+        localtime_r(&time_t_now, &tm_now);
+        #endif
+        
+        std::ostringstream oss;
+        oss << std::put_time(&tm_now, "%Y-%m-%dT%H:%M:%S");
+        oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
+        return oss.str();
+    };
+    
     // Log enter/movement events based on tracking
     for (const auto& tracked : tracked_objects_) {
         // Find the current detection for this tracked object
@@ -365,6 +389,21 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                 );
                 // Record for hourly summary (new objects are typically moving/dynamic)
                 logger_->recordDetection(tracked.object_type, false);
+                
+                // Log to Google Sheets if enabled
+                if (google_sheets_client_ && google_sheets_client_->isEnabled()) {
+                    std::string description = "Confidence: " + 
+                        std::to_string(static_cast<int>(detection_it->confidence * 100)) + "%";
+                    google_sheets_client_->logDetection(
+                        getTimestamp(),
+                        tracked.object_type,
+                        "entry",
+                        tracked.center.x,
+                        tracked.center.y,
+                        0.0f,
+                        description
+                    );
+                }
             } else {
                 // Object was seen before - check if it moved
                 float distance = cv::norm(tracked.center - tracked.previous_center);
@@ -418,6 +457,24 @@ void ObjectDetector::logObjectEvents(const std::vector<Detection>& current_detec
                     );
                     // Record as dynamic object
                     logger_->recordDetection(tracked.object_type, false);
+                    
+                    // Log to Google Sheets if enabled
+                    if (google_sheets_client_ && google_sheets_client_->isEnabled()) {
+                        std::string description = "From (" + 
+                            std::to_string(static_cast<int>(tracked.previous_center.x)) + "," + 
+                            std::to_string(static_cast<int>(tracked.previous_center.y)) + ") to (" +
+                            std::to_string(static_cast<int>(tracked.center.x)) + "," + 
+                            std::to_string(static_cast<int>(tracked.center.y)) + ")" + movement_info;
+                        google_sheets_client_->logDetection(
+                            getTimestamp(),
+                            tracked.object_type,
+                            "movement",
+                            tracked.center.x,
+                            tracked.center.y,
+                            distance,
+                            description
+                        );
+                    }
                 } else {
                     logger_->debug("Movement below threshold (" + std::to_string(distance) + 
                                  " < 5.0 pixels) - not logging");
@@ -588,4 +645,8 @@ void ObjectDetector::enrichDetectionsWithStationaryStatus(std::vector<Detection>
             detection.stationary_duration_seconds = 0;
         }
     }
+}
+
+void ObjectDetector::setGoogleSheetsClient(std::shared_ptr<GoogleSheetsClient> client) {
+    google_sheets_client_ = client;
 }
