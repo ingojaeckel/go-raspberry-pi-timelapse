@@ -162,6 +162,25 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.detector->setGoogleSheetsClient(ctx.google_sheets_client);
     }
 
+    // Initialize notification manager if enabled
+    if (ctx.config.enable_notifications) {
+        NotificationManager::NotificationConfig notif_config;
+        notif_config.enable_webhook = ctx.config.enable_webhook;
+        notif_config.webhook_url = ctx.config.webhook_url;
+        notif_config.enable_sse = ctx.config.enable_sse;
+        notif_config.sse_port = ctx.config.sse_port;
+        notif_config.enable_file_notification = ctx.config.enable_file_notification;
+        notif_config.notification_file_path = ctx.config.notification_file_path;
+        notif_config.enable_stdio_notification = ctx.config.enable_stdio_notification;
+        
+        ctx.notification_manager = std::make_shared<NotificationManager>(ctx.logger, notif_config);
+        if (!ctx.notification_manager->initialize()) {
+            ctx.logger->error("Failed to initialize notification manager");
+            return false;
+        }
+        ctx.logger->info("Notification system initialized");
+    }
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
     ctx.start_time = std::chrono::steady_clock::now();
@@ -313,6 +332,65 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.config.enable_gpu,
                             ctx.config.enable_burst_mode
                         );
+                    }
+                    
+                    // Send notifications for newly detected objects
+                    if (ctx.config.enable_notifications && ctx.notification_manager) {
+                        const auto& tracked = ctx.detector->getTrackedObjects();
+                        
+                        for (const auto& obj : tracked) {
+                            // Only notify for newly entered objects in current frame
+                            if (obj.is_new && obj.was_present_last_frame && obj.frames_since_detection == 0) {
+                                // Create frame with bounding boxes for notification
+                                cv::Mat frame_with_boxes = ctx.frame.clone();
+                                
+                                // Draw all current detections on the frame
+                                for (const auto& det : result.detections) {
+                                    cv::rectangle(frame_with_boxes, det.bbox, cv::Scalar(0, 255, 0), 2);
+                                    std::string label = det.class_name + " " + 
+                                        std::to_string(static_cast<int>(det.confidence * 100)) + "%";
+                                    cv::putText(frame_with_boxes, label, 
+                                        cv::Point(det.bbox.x, det.bbox.y - 10),
+                                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+                                }
+                                
+                                // Gather status information
+                                auto top_objects = ctx.detector->getTopDetectedObjects(10);
+                                int total_objects = ctx.detector->getTotalObjectsDetected();
+                                int total_images = ctx.frame_processor->getTotalImagesSaved();
+                                bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                                
+                                // Create notification data
+                                NotificationManager::NotificationData notif_data;
+                                notif_data.object_type = obj.object_type;
+                                notif_data.x = obj.center.x;
+                                notif_data.y = obj.center.y;
+                                notif_data.confidence = 0.0;  // Will be set from detection if available
+                                
+                                // Find corresponding detection to get confidence
+                                for (const auto& det : result.detections) {
+                                    if (det.class_name == obj.object_type) {
+                                        notif_data.confidence = det.confidence;
+                                        break;
+                                    }
+                                }
+                                
+                                notif_data.timestamp = std::chrono::system_clock::now();
+                                notif_data.frame_with_boxes = frame_with_boxes;
+                                notif_data.all_detections = result.detections;
+                                notif_data.current_fps = ctx.perf_monitor->getCurrentFPS();
+                                notif_data.avg_processing_time_ms = ctx.perf_monitor->getAverageProcessingTime();
+                                notif_data.total_objects_detected = total_objects;
+                                notif_data.total_images_saved = total_images;
+                                notif_data.top_objects = top_objects;
+                                notif_data.brightness_filter_active = brightness_filter_active;
+                                notif_data.gpu_enabled = ctx.config.enable_gpu;
+                                notif_data.burst_mode_enabled = ctx.config.enable_burst_mode;
+                                
+                                // Send notification
+                                ctx.notification_manager->notifyNewObject(notif_data);
+                            }
+                        }
                     }
                 }
             } catch (const std::exception& e) {

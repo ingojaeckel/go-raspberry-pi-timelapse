@@ -90,6 +90,7 @@ set(SOURCES
     src/network_streamer.cpp
     src/system_monitor.cpp
     src/google_sheets_client.cpp
+    src/notification_manager.cpp
 )
 
 # Create executable
