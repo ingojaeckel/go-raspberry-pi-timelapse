@@ -252,7 +252,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             camera_name,
                             ctx.detection_width,
                             ctx.detection_height,
-                            brightness_filter_active
+                            brightness_filter_active,
+                            ctx.config.enable_gpu,
+                            ctx.config.enable_burst_mode
                         );
                         
                         // Check if user wants to close the viewfinder
@@ -288,7 +290,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             camera_name,
                             ctx.detection_width,
                             ctx.detection_height,
-                            brightness_filter_active
+                            brightness_filter_active,
+                            ctx.config.enable_gpu,
+                            ctx.config.enable_burst_mode
                         );
                     }
                 }
