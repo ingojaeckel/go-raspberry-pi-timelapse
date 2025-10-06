@@ -25,6 +25,8 @@ public:
         std::chrono::high_resolution_clock::time_point capture_time;
         bool processed;
         std::vector<Detection> detections;
+        bool night_mode_active = false;
+        cv::Mat preprocessed_frame;  // Enhanced frame when night mode is active
     };
 
     ParallelFrameProcessor(std::shared_ptr<ObjectDetector> detector,
@@ -122,4 +124,10 @@ private:
     // Brightness detection and filtering
     bool detectHighBrightness(const cv::Mat& frame);
     cv::Mat applyBrightnessFilter(const cv::Mat& frame);
+    
+    // Night mode detection and preprocessing
+    bool isNightTime() const;
+    double calculateBrightness(const cv::Mat& frame) const;
+    bool isNightMode(const cv::Mat& frame) const;
+    cv::Mat preprocessForNight(const cv::Mat& frame) const;
 };

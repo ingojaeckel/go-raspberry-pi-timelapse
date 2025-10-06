@@ -273,7 +273,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.detection_height,
                             brightness_filter_active,
                             ctx.config.enable_gpu,
-                            ctx.config.enable_burst_mode
+                            ctx.config.enable_burst_mode,
+                            result.night_mode_active,
+                            result.preprocessed_frame
                         );
                         
                         // Check if user wants to close the viewfinder
@@ -311,7 +313,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.detection_height,
                             brightness_filter_active,
                             ctx.config.enable_gpu,
-                            ctx.config.enable_burst_mode
+                            ctx.config.enable_burst_mode,
+                            result.night_mode_active,
+                            result.preprocessed_frame
                         );
                     }
                 }
