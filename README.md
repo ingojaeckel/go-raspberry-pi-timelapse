@@ -9,18 +9,17 @@ This repository contains documentation and source code to help running a [Raspbe
 ## How does it work?
 
 ```mermaid
-graph LR
-    A[Raspberry Pi Zero W] -->|Camera Module| B[Capture Images]
-    B -->|Store Locally| C[SD Card Storage]
-    A -->|WiFi Hotspot| D[Web Interface]
-    D -->|Control & Download| E[User Device]
-    C -->|Image Archive| D
-    A -->|Scheduled Tasks| F[Timelapse Automation]
-    F -->|Trigger| B
+graph TD
+    A[Raspberry Pi Zero W<br/>with Camera Module] --> B[Capture Images]
+    B --> C[Store on SD Card]
+    A --> D[WiFi Access Point]
+    D --> E[Web Interface<br/>192.168.50.1:8080]
+    E --> F[Control Camera &<br/>Download Photos]
+    C -.Image Archive.-> E
     
     style A fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
-    style D fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
-    style E fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    style E fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    style F fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
 ```
 
 **System Overview:**
