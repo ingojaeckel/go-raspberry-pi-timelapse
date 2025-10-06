@@ -140,7 +140,9 @@ void NetworkStreamer::updateFrameWithStats(const cv::Mat& frame,
                                           const std::string& camera_name,
                                           int detection_width,
                                           int detection_height,
-                                          bool brightness_filter_active) {
+                                          bool brightness_filter_active,
+                                          bool gpu_enabled,
+                                          bool burst_mode_enabled) {
     if (frame.empty()) {
         return;
     }
@@ -152,7 +154,8 @@ void NetworkStreamer::updateFrameWithStats(const cv::Mat& frame,
     drawDebugInfo(annotated_frame, current_fps, avg_processing_time_ms,
                  total_objects_detected, total_images_saved, start_time,
                  top_objects, camera_width, camera_height, camera_id,
-                 camera_name, detection_width, detection_height, brightness_filter_active);
+                 camera_name, detection_width, detection_height, brightness_filter_active,
+                 gpu_enabled, burst_mode_enabled);
 
     // Update current frame (thread-safe)
     std::lock_guard<std::mutex> lock(frame_mutex_);
@@ -331,7 +334,9 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
                                    const std::string& camera_name,
                                    int detection_width,
                                    int detection_height,
-                                   bool brightness_filter_active) {
+                                   bool brightness_filter_active,
+                                   bool gpu_enabled,
+                                   bool burst_mode_enabled) {
     // Use small font to minimize screen coverage
     const double font_scale = 0.4;
     const int font_thickness = 1;
@@ -354,7 +359,9 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
     std::vector<std::string> lines;
     
     // Performance metrics
-    lines.push_back("FPS: " + std::to_string(static_cast<int>(current_fps)));
+    char fps_str[32];
+    snprintf(fps_str, sizeof(fps_str), "FPS: %.1f", current_fps);
+    lines.push_back(std::string(fps_str));
     lines.push_back("Avg proc: " + std::to_string(static_cast<int>(avg_processing_time_ms)) + " ms");
     
     // Counters
@@ -372,6 +379,10 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
     
     // Detection resolution
     lines.push_back("Detection: " + std::to_string(detection_width) + "x" + std::to_string(detection_height));
+    
+    // GPU and burst mode status
+    lines.push_back("GPU: " + std::string(gpu_enabled ? "ON" : "OFF"));
+    lines.push_back("Burst: " + std::string(burst_mode_enabled ? "ON" : "OFF"));
     
     // Top detected objects
     if (!top_objects.empty()) {

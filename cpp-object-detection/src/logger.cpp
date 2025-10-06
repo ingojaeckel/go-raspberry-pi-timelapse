@@ -147,6 +147,71 @@ std::string Logger::formatTime(const std::chrono::system_clock::time_point& time
     return ss.str();
 }
 
+void Logger::generateTimeline(std::stringstream& summary, const std::vector<DetectionEvent>& events) {
+    // Generate timeline with stationary object fusion
+    std::string current_stationary_type;
+    std::chrono::system_clock::time_point stationary_start;
+    
+    for (size_t i = 0; i < events.size(); ++i) {
+        const auto& event = events[i];
+        
+        if (event.is_stationary) {
+            // Start or continue a stationary period
+            if (current_stationary_type.empty() || current_stationary_type != event.object_type) {
+                // Start new stationary period
+                if (!current_stationary_type.empty()) {
+                    // End previous stationary period
+                    auto prev_end = events[i-1].timestamp;
+                    summary << "from " << formatTime(stationary_start) 
+                           << "-" << formatTime(prev_end) 
+                           << " a " << current_stationary_type << " was detected\n";
+                }
+                current_stationary_type = event.object_type;
+                stationary_start = event.timestamp;
+            }
+            // Continue current stationary period
+        } else {
+            // Non-stationary (dynamic) object
+            if (!current_stationary_type.empty()) {
+                // End current stationary period
+                auto prev_end = events[i-1].timestamp;
+                summary << "from " << formatTime(stationary_start) 
+                       << "-" << formatTime(prev_end) 
+                       << " a " << current_stationary_type << " was detected\n";
+                current_stationary_type.clear();
+            }
+            
+            // Count consecutive detections of the same dynamic object at similar times
+            int same_type_count = 1;
+            while (i + 1 < events.size() && 
+                   events[i + 1].object_type == event.object_type &&
+                   !events[i + 1].is_stationary &&
+                   std::chrono::duration_cast<std::chrono::seconds>(
+                       events[i + 1].timestamp - event.timestamp).count() < 10) {
+                same_type_count++;
+                i++;
+            }
+            
+            summary << "at " << formatTime(event.timestamp) << ", ";
+            if (same_type_count == 1) {
+                summary << "a " << event.object_type;
+            } else if (same_type_count == 2) {
+                summary << "two " << (event.object_type == "person" ? "people" : event.object_type + "s");
+            } else {
+                summary << same_type_count << " " << (event.object_type == "person" ? "people" : event.object_type + "s");
+            }
+            summary << " were detected\n";
+        }
+    }
+    
+    // Handle trailing stationary period
+    if (!current_stationary_type.empty()) {
+        summary << "from " << formatTime(stationary_start) 
+               << "-" << formatTime(events.back().timestamp) 
+               << " a " << current_stationary_type << " was detected\n";
+    }
+}
+
 void Logger::printHourlySummary() {
     std::lock_guard<std::mutex> lock(summary_mutex_);
     
@@ -184,68 +249,8 @@ void Logger::printHourlySummary() {
     }
     summary << " were detected.\n\nTimeline:\n";
     
-    // Generate timeline with stationary object fusion
-    std::string current_stationary_type;
-    std::chrono::system_clock::time_point stationary_start;
-    
-    for (size_t i = 0; i < detection_events_.size(); ++i) {
-        const auto& event = detection_events_[i];
-        
-        if (event.is_stationary) {
-            // Start or continue a stationary period
-            if (current_stationary_type.empty() || current_stationary_type != event.object_type) {
-                // Start new stationary period
-                if (!current_stationary_type.empty()) {
-                    // End previous stationary period
-                    auto prev_end = detection_events_[i-1].timestamp;
-                    summary << "from " << formatTime(stationary_start) 
-                           << "-" << formatTime(prev_end) 
-                           << " a " << current_stationary_type << " was detected\n";
-                }
-                current_stationary_type = event.object_type;
-                stationary_start = event.timestamp;
-            }
-            // Continue current stationary period
-        } else {
-            // Non-stationary (dynamic) object
-            if (!current_stationary_type.empty()) {
-                // End current stationary period
-                auto prev_end = detection_events_[i-1].timestamp;
-                summary << "from " << formatTime(stationary_start) 
-                       << "-" << formatTime(prev_end) 
-                       << " a " << current_stationary_type << " was detected\n";
-                current_stationary_type.clear();
-            }
-            
-            // Count consecutive detections of the same dynamic object at similar times
-            int same_type_count = 1;
-            while (i + 1 < detection_events_.size() && 
-                   detection_events_[i + 1].object_type == event.object_type &&
-                   !detection_events_[i + 1].is_stationary &&
-                   std::chrono::duration_cast<std::chrono::seconds>(
-                       detection_events_[i + 1].timestamp - event.timestamp).count() < 10) {
-                same_type_count++;
-                i++;
-            }
-            
-            summary << "at " << formatTime(event.timestamp) << ", ";
-            if (same_type_count == 1) {
-                summary << "a " << event.object_type;
-            } else if (same_type_count == 2) {
-                summary << "two " << (event.object_type == "person" ? "people" : event.object_type + "s");
-            } else {
-                summary << same_type_count << " " << (event.object_type == "person" ? "people" : event.object_type + "s");
-            }
-            summary << " were detected\n";
-        }
-    }
-    
-    // Handle trailing stationary period
-    if (!current_stationary_type.empty()) {
-        summary << "from " << formatTime(stationary_start) 
-               << "-" << formatTime(detection_events_.back().timestamp) 
-               << " a " << current_stationary_type << " was detected\n";
-    }
+    // Generate timeline using helper function
+    generateTimeline(summary, detection_events_);
     
     summary << "========================================\n";
     
@@ -324,68 +329,8 @@ void Logger::printFinalSummary() {
     }
     summary << " were detected.\n\nTimeline:\n";
     
-    // Generate timeline with stationary object fusion (same logic as hourly summary)
-    std::string current_stationary_type;
-    std::chrono::system_clock::time_point stationary_start;
-    
-    for (size_t i = 0; i < all_detection_events_.size(); ++i) {
-        const auto& event = all_detection_events_[i];
-        
-        if (event.is_stationary) {
-            // Start or continue a stationary period
-            if (current_stationary_type.empty() || current_stationary_type != event.object_type) {
-                // Start new stationary period
-                if (!current_stationary_type.empty()) {
-                    // End previous stationary period
-                    auto prev_end = all_detection_events_[i-1].timestamp;
-                    summary << "from " << formatTime(stationary_start) 
-                           << "-" << formatTime(prev_end) 
-                           << " a " << current_stationary_type << " was detected\n";
-                }
-                current_stationary_type = event.object_type;
-                stationary_start = event.timestamp;
-            }
-            // Continue current stationary period
-        } else {
-            // Non-stationary (dynamic) object
-            if (!current_stationary_type.empty()) {
-                // End current stationary period
-                auto prev_end = all_detection_events_[i-1].timestamp;
-                summary << "from " << formatTime(stationary_start) 
-                       << "-" << formatTime(prev_end) 
-                       << " a " << current_stationary_type << " was detected\n";
-                current_stationary_type.clear();
-            }
-            
-            // Count consecutive detections of the same dynamic object at similar times
-            int same_type_count = 1;
-            while (i + 1 < all_detection_events_.size() && 
-                   all_detection_events_[i + 1].object_type == event.object_type &&
-                   !all_detection_events_[i + 1].is_stationary &&
-                   std::chrono::duration_cast<std::chrono::seconds>(
-                       all_detection_events_[i + 1].timestamp - event.timestamp).count() < 10) {
-                same_type_count++;
-                i++;
-            }
-            
-            summary << "at " << formatTime(event.timestamp) << ", ";
-            if (same_type_count == 1) {
-                summary << "a " << event.object_type;
-            } else if (same_type_count == 2) {
-                summary << "two " << (event.object_type == "person" ? "people" : event.object_type + "s");
-            } else {
-                summary << same_type_count << " " << (event.object_type == "person" ? "people" : event.object_type + "s");
-            }
-            summary << " were detected\n";
-        }
-    }
-    
-    // Handle trailing stationary period
-    if (!current_stationary_type.empty()) {
-        summary << "from " << formatTime(stationary_start) 
-               << "-" << formatTime(all_detection_events_.back().timestamp) 
-               << " a " << current_stationary_type << " was detected\n";
-    }
+    // Generate timeline using helper function
+    generateTimeline(summary, all_detection_events_);
     
     summary << "========================================\n";
     

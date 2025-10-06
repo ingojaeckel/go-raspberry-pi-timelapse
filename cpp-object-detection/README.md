@@ -26,6 +26,7 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **🆕 Speed vs Accuracy Trade-offs** - Select optimal model for your use case
 - **🆕 Parallel Processing** - Multi-threaded frame processing support
 - **🆕 CPU Rate Limiting** - Energy-efficient analysis with configurable sleep intervals
+- **🆕 GPU Acceleration** - Optional CUDA (Linux) or OpenCL (macOS) backend support for 2-4x faster inference
 - **🆕 Burst Mode** - Automatically max out FPS when new objects enter the scene
 - **🆕 Detection Scale Factor** - In-memory image downscaling for 4x faster processing
 - **🆕 Long-Term Operation Optimizations**:
@@ -157,6 +158,8 @@ The application supports multiple detection models with different speed/accuracy
 | YOLOv5l  | Slow (~120ms)| 85%    | 47MB | High-accuracy security |
 | YOLOv8n  | Fastest (~35ms) | 70% | 6MB  | Embedded systems |
 | YOLOv8m  | Slowest (~150ms) | 88% | 52MB | Maximum accuracy |
+
+> **📊 Exploring Alternative Models?** See [ALTERNATIVE_MODELS_ANALYSIS.md](ALTERNATIVE_MODELS_ANALYSIS.md) for an in-depth analysis of 3 additional model architectures (EfficientDet, Faster R-CNN, DETR) optimized for outdoor scenes, fine-grained classification, and handling occlusions.
 
 ### Model Selection Examples
 
@@ -585,6 +588,20 @@ See [BURST_MODE_FEATURE.md](BURST_MODE_FEATURE.md) for detailed documentation.
 # Streaming with high-accuracy model
 ./object_detection --enable-streaming --model-type yolov5l --min-confidence 0.7
 ```
+
+**🆕 GPU-accelerated inference:**
+```bash
+# Enable GPU acceleration (Linux CUDA or macOS OpenCL)
+./object_detection --enable-gpu
+
+# GPU with high-accuracy model for 2-4x speedup
+./object_detection --enable-gpu --model-type yolov5l
+
+# GPU with maximum quality settings
+./object_detection --enable-gpu --model-type yolov5l --detection-scale 1.0 --max-fps 15
+```
+
+See [GPU_ACCELERATION.md](GPU_ACCELERATION.md) for detailed performance benchmarks and platform-specific information.
 
 ## Webcam Setup
 

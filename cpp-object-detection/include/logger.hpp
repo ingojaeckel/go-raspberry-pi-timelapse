@@ -106,4 +106,5 @@ private:
     std::string levelToString(Level level) const;
     void writeLog(Level level, const std::string& message);
     std::string formatTime(const std::chrono::system_clock::time_point& time) const;
+    void generateTimeline(std::stringstream& summary, const std::vector<DetectionEvent>& events);
 };
