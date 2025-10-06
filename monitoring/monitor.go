@@ -30,10 +30,10 @@ type SystemStats struct {
 
 // Monitor handles periodic system monitoring and logging
 type Monitor struct {
-	startTime      time.Time
-	lastLogTime    time.Time
-	debugLogFile   *os.File
-	dailyStartTime time.Time
+	startTime       time.Time
+	lastLogTime     time.Time
+	debugLogFile    *os.File
+	dailyStartTime  time.Time
 	maxDailyRuntime int64
 }
 
@@ -68,7 +68,7 @@ func (m *Monitor) Close() error {
 // PeriodicCheck performs periodic system monitoring and logs the information
 func (m *Monitor) PeriodicCheck() {
 	now := time.Now()
-	
+
 	// Check if we've moved to a new day to reset daily runtime tracking
 	if now.Day() != m.dailyStartTime.Day() {
 		m.logEvent("DAILY_RUNTIME", fmt.Sprintf("Max runtime for previous day: %d seconds", m.maxDailyRuntime))
@@ -122,10 +122,10 @@ func (m *Monitor) logStats(stats SystemStats) {
 	if _, err := m.debugLogFile.WriteString(logLine); err != nil {
 		log.Printf("Error writing to debug log: %s\n", err)
 	}
-	
+
 	// Also log to main log for visibility
-	log.Printf("System stats recorded - Runtime: %ds, CPU temp: %s, Disk: %s", 
-		stats.RuntimeSeconds, 
+	log.Printf("System stats recorded - Runtime: %ds, CPU temp: %s, Disk: %s",
+		stats.RuntimeSeconds,
 		stats.CpuTemperature,
 		stats.FreeDiskSpace)
 }
@@ -134,12 +134,12 @@ func (m *Monitor) logStats(stats SystemStats) {
 func (m *Monitor) logEvent(eventType, message string) {
 	timestamp := time.Now().Format(time.RFC3339)
 	logLine := fmt.Sprintf("[%s] %s - %s\n", eventType, timestamp, message)
-	
+
 	if m.debugLogFile != nil {
 		if _, err := m.debugLogFile.WriteString(logLine); err != nil {
 			log.Printf("Error writing event to debug log: %s\n", err)
 		}
 	}
-	
+
 	log.Printf("[%s] %s", eventType, message)
 }

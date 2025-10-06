@@ -37,7 +37,7 @@ func (t Timelapse) CapturePeriodically() {
 				if t.Monitor != nil {
 					t.Monitor.PeriodicCheck()
 				}
-				
+
 				camera, err := NewCamera(t.Folder, t.Settings.PhotoResolutionWidth, t.Settings.PhotoResolutionHeight, t.Settings.RotateBy == 180, t.Settings.Quality)
 				if err != nil {
 					log.Printf("Error instantiating camera: %s\n", err)
@@ -62,7 +62,7 @@ func (t Timelapse) CapturePeriodically() {
 				if t.Monitor != nil {
 					t.Monitor.PeriodicCheck()
 				}
-				
+
 				t.waitForCapture()
 
 				beforeCapture := time.Now()
