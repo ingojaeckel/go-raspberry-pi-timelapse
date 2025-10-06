@@ -162,6 +162,16 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.detector->setGoogleSheetsClient(ctx.google_sheets_client);
     }
 
+    // Initialize Scene Manager if enabled
+    if (ctx.config.enable_scene_persistence) {
+        ctx.scene_manager = std::make_shared<SceneManager>(ctx.logger, ctx.config.scene_db_path);
+        if (!ctx.scene_manager->initialize()) {
+            ctx.logger->error("Failed to initialize Scene Manager");
+            return false;
+        }
+        ctx.logger->info("Scene persistence enabled - scenes will be stored in: " + ctx.config.scene_db_path);
+    }
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
     ctx.start_time = std::chrono::steady_clock::now();
@@ -402,6 +412,18 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
             
             // Update previous object types for next iteration
             ctx.previous_object_types = current_object_types;
+        }
+
+        // Scene persistence: analyze and match scenes if enabled
+        if (ctx.config.enable_scene_persistence && ctx.scene_manager) {
+            const auto& tracked = ctx.detector->getTrackedObjects();
+            
+            // Check if we should analyze the scene (after 1 minute with stationary objects)
+            if (ctx.scene_manager->shouldAnalyzeScene(tracked)) {
+                // Analyze and match scene in background (non-blocking)
+                int scene_id = ctx.scene_manager->analyzeAndMatchScene(ctx.frame, tracked);
+                // Logging is handled within the scene manager
+            }
         }
 
         // Apply rate limiting with evenly distributed sleep time

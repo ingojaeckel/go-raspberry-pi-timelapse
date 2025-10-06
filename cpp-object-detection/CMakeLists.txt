@@ -70,6 +70,25 @@ else()
     include_directories(${CURL_INCLUDE_DIRS})
 endif()
 
+# Find SQLite3 library
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(SQLITE3 REQUIRED sqlite3)
+    if(SQLITE3_FOUND)
+        include_directories(${SQLITE3_INCLUDE_DIRS})
+        link_directories(${SQLITE3_LIBRARY_DIRS})
+    endif()
+else()
+    # Fall back to find_library
+    find_library(SQLITE3_LIBRARY NAMES sqlite3)
+    if(NOT SQLITE3_LIBRARY)
+        message(FATAL_ERROR "SQLite3 not found. Please install sqlite3 development libraries:\n"
+                "  Ubuntu/Debian: sudo apt-get install libsqlite3-dev\n"
+                "  CentOS/RHEL: sudo yum install sqlite-devel\n"
+                "  macOS: brew install sqlite3")
+    endif()
+endif()
+
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -90,6 +109,7 @@ set(SOURCES
     src/network_streamer.cpp
     src/system_monitor.cpp
     src/google_sheets_client.cpp
+    src/scene_manager.cpp
 )
 
 # Create executable
@@ -102,6 +122,7 @@ if(PKG_CONFIG_FOUND AND CURL_FOUND)
         ${OpenCV_LIBS}
         Threads::Threads
         ${CURL_LIBRARIES}
+        ${SQLITE3_LIBRARIES}
     )
 else()
     # Link using find_package results
@@ -109,6 +130,7 @@ else()
         ${OpenCV_LIBS}
         Threads::Threads
         CURL::libcurl
+        ${SQLITE3_LIBRARY}
     )
 endif()
 

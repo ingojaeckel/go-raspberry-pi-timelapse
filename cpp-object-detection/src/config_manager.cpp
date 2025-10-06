@@ -52,6 +52,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->enable_burst_mode = true;
         } else if (arg == "--enable-google-sheets") {
             config_->enable_google_sheets = true;
+        } else if (arg == "--enable-scene-persistence") {
+            config_->enable_scene_persistence = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -114,6 +116,8 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->google_sheets_api_key = value;
         } else if (arg == "--google-sheets-name") {
             config_->google_sheets_name = value;
+        } else if (arg == "--scene-db-path") {
+            config_->scene_db_path = value;
         } else {
             return false;
         }
@@ -174,7 +178,9 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --enable-google-sheets         Enable Google Sheets integration for detection logging (default: disabled)\n"
               << "  --google-sheets-id ID          Google Sheets spreadsheet ID or full URL (required if --enable-google-sheets)\n"
               << "  --google-sheets-api-key KEY    Google API key for Sheets API access (required if --enable-google-sheets)\n"
-              << "  --google-sheets-name NAME      Sheet name/tab within spreadsheet (default: Sheet1)\n\n"
+              << "  --google-sheets-name NAME      Sheet name/tab within spreadsheet (default: Sheet1)\n"
+              << "  --enable-scene-persistence     Enable scene recognition and persistence to SQLite (default: disabled)\n"
+              << "  --scene-db-path PATH           Path to SQLite database for scenes (default: scenes.db)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"
@@ -190,6 +196,7 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  " << program_name << " --max-fps 1 --frame-width 640 --frame-height 480  # Low-resource mode (32-bit)\n"
               << "  " << program_name << " --enable-streaming --streaming-port 8080  # Network streaming mode\n"
               << "  " << program_name << " --enable-google-sheets --google-sheets-id YOUR_SHEET_ID --google-sheets-api-key YOUR_API_KEY  # Google Sheets logging\n"
+              << "  " << program_name << " --enable-scene-persistence --scene-db-path /path/to/scenes.db  # Scene recognition\n"
               << "SUPPORTED PLATFORMS:\n"
               << "  - Linux x86_64 (Intel Core i7, AMD Ryzen 5 3600)\n"
               << "  - Linux 386 (Intel Pentium M with 1.5GB RAM)\n"
