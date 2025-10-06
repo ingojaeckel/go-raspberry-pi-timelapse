@@ -161,7 +161,11 @@ TEST_F(ConfigManagerTest, EnableGoogleSheetsArgument) {
     const char* argv[] = {"program", "--enable-google-sheets", 
                          "--google-sheets-id", "test_id",
                          "--google-sheets-api-key", "test_key"};
-
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
     EXPECT_TRUE(config.enable_google_sheets);
     EXPECT_EQ(config.google_sheets_id, "test_id");
     EXPECT_EQ(config.google_sheets_api_key, "test_key");

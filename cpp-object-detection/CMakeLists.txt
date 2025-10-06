@@ -55,12 +55,24 @@ endif()
 find_package(Threads REQUIRED)
 
 # Find CURL library
-find_package(CURL REQUIRED)
+# Try using pkg-config first, then fall back to find_package
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(CURL REQUIRED libcurl)
+    if(CURL_FOUND)
+        # Use pkg-config results
+        include_directories(${CURL_INCLUDE_DIRS})
+        link_directories(${CURL_LIBRARY_DIRS})
+    endif()
+else()
+    # Fall back to find_package
+    find_package(CURL REQUIRED)
+    include_directories(${CURL_INCLUDE_DIRS})
+endif()
 
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${OpenCV_INCLUDE_DIRS})
-include_directories(${CURL_INCLUDE_DIRS})
 
 # Source files
 set(SOURCES
@@ -84,11 +96,21 @@ set(SOURCES
 add_executable(object_detection ${SOURCES})
 
 # Link libraries
-target_link_libraries(object_detection 
-    ${OpenCV_LIBS}
-    Threads::Threads
-    CURL::libcurl
-)
+if(PKG_CONFIG_FOUND AND CURL_FOUND)
+    # Link using pkg-config results
+    target_link_libraries(object_detection 
+        ${OpenCV_LIBS}
+        Threads::Threads
+        ${CURL_LIBRARIES}
+    )
+else()
+    # Link using find_package results
+    target_link_libraries(object_detection 
+        ${OpenCV_LIBS}
+        Threads::Threads
+        CURL::libcurl
+    )
+endif()
 
 # Compiler flags for optimization and warnings
 if(APPLE)
