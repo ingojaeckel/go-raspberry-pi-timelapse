@@ -142,20 +142,49 @@ void NetworkStreamer::updateFrameWithStats(const cv::Mat& frame,
                                           int detection_height,
                                           bool brightness_filter_active,
                                           bool gpu_enabled,
-                                          bool burst_mode_enabled) {
+                                          bool burst_mode_enabled,
+                                          bool night_mode_active,
+                                          const cv::Mat& preprocessed_frame) {
     if (frame.empty()) {
         return;
     }
 
+    // Use preprocessed frame if night mode is active and preprocessed frame is available
+    cv::Mat display_frame = frame;
+    if (night_mode_active && !preprocessed_frame.empty()) {
+        display_frame = preprocessed_frame;
+    }
+
     // Draw bounding boxes on the frame
-    cv::Mat annotated_frame = drawBoundingBoxes(frame, detections);
+    cv::Mat annotated_frame = drawBoundingBoxes(display_frame, detections);
+    
+    // Add night mode indicator in top-right corner if active
+    if (night_mode_active) {
+        std::string night_indicator = "NIGHT MODE";
+        int baseline;
+        cv::Size text_size = cv::getTextSize(night_indicator, cv::FONT_HERSHEY_SIMPLEX, 0.7, 2, &baseline);
+        
+        // Position in top-right corner with padding
+        int padding = 10;
+        cv::Point text_origin(annotated_frame.cols - text_size.width - padding, 30);
+        
+        // Draw background rectangle
+        cv::rectangle(annotated_frame, 
+                     cv::Point(text_origin.x - 5, text_origin.y - text_size.height - 5),
+                     cv::Point(text_origin.x + text_size.width + 5, text_origin.y + 5),
+                     cv::Scalar(0, 0, 0), cv::FILLED);
+        
+        // Draw text in yellow
+        cv::putText(annotated_frame, night_indicator, text_origin, 
+                   cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 2);
+    }
     
     // Draw debug info overlay
     drawDebugInfo(annotated_frame, current_fps, avg_processing_time_ms,
                  total_objects_detected, total_images_saved, start_time,
                  top_objects, camera_width, camera_height, camera_id,
                  camera_name, detection_width, detection_height, brightness_filter_active,
-                 gpu_enabled, burst_mode_enabled);
+                 gpu_enabled, burst_mode_enabled, night_mode_active);
 
     // Update current frame (thread-safe)
     std::lock_guard<std::mutex> lock(frame_mutex_);
@@ -336,7 +365,8 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
                                    int detection_height,
                                    bool brightness_filter_active,
                                    bool gpu_enabled,
-                                   bool burst_mode_enabled) {
+                                   bool burst_mode_enabled,
+                                   bool night_mode_active) {
     // Use small font to minimize screen coverage
     const double font_scale = 0.4;
     const int font_thickness = 1;

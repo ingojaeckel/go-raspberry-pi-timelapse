@@ -54,7 +54,9 @@ public:
                              int detection_height,
                              bool brightness_filter_active = false,
                              bool gpu_enabled = false,
-                             bool burst_mode_enabled = false);
+                             bool burst_mode_enabled = false,
+                             bool night_mode_active = false,
+                             const cv::Mat& preprocessed_frame = cv::Mat());
     
     /**
      * Stop the streaming server
@@ -105,7 +107,8 @@ private:
                       int detection_height,
                       bool brightness_filter_active = false,
                       bool gpu_enabled = false,
-                      bool burst_mode_enabled = false);
+                      bool burst_mode_enabled = false,
+                      bool night_mode_active = false);
     cv::Scalar getColorForClass(const std::string& class_name) const;
     std::string getLocalIpAddress() const;
 };
