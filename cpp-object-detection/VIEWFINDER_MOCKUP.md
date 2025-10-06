@@ -12,6 +12,10 @@
 │░ Uptime: 00:15:32     ░░░░░                                          │
 │░ Camera 0: 1280x720   ░░░░░                                          │
 │░ Detection: 640x360   ░░░░░                                          │
+│░ GPU: ON              ░░░░░                                          │
+│░ Burst: OFF           ░░░░░                                          │
+│░ Disk: 45.2%          ░░░░░                                          │
+│░ CPU: 58.3°C          ░░░░░                                          │
 │░ --- Top Objects ---  ░░░░░                                          │
 │░ person: 85           ░░░░░                                          │
 │░ cat: 24              ░░░░░                                          │
@@ -45,7 +49,8 @@
 - ░ = Semi-transparent black background (60% opacity)
 - Bounding boxes shown in color (person=green, cat=red, dog=blue, etc.)
 - Debug overlay uses small font (0.4 scale) to minimize coverage
-- Stats overlay ~200x300 pixels in top-left corner
+- Stats overlay ~200x330 pixels in top-left corner
+- **NEW:** GPU, Burst mode, Disk usage, and CPU temperature metrics now displayed
 
 ## Example 2: Debug Info Disabled (After Pressing SPACE)
 
@@ -99,6 +104,10 @@
 │░ Uptime: 02:34:18     ░░░░░                                          │
 │░ Camera 0: 1280x720   ░░░░░                                          │
 │░ Detection: 640x360   ░░░░░                                          │
+│░ GPU: ON              ░░░░░                                          │
+│░ Burst: ON            ░░░░░                                          │
+│░ Disk: 87.5%          ░░░░░                                          │
+│░ CPU: 72.8°C          ░░░░░                                          │
 │░ --- Top Objects ---  ░░░░░                                          │
 │░ person: 842          ░░░░░                                          │
 │░ car: 357             ░░░░░                                          │
@@ -134,6 +143,7 @@
 - Many different object types detected
 - Extended uptime (2+ hours)
 - Multiple detections in single frame
+- **NEW:** High disk usage (87.5%) and elevated CPU temp (72.8°C) showing system stress
 
 ## Color Coding
 
@@ -191,6 +201,30 @@ FPS: 3                ← Low FPS (< 5 indicates problems)
 Avg proc: 250 ms      ← Very slow processing
 ```
 
+## System Health Indicators
+
+The debug overlay includes system monitoring metrics to track resource usage:
+
+### Normal System Health
+```
+Disk: 45.2%           ← Moderate disk usage
+CPU: 58.3°C           ← Normal operating temperature
+```
+
+### Elevated Usage (Monitor)
+```
+Disk: 87.5%           ← High disk usage - consider cleanup
+CPU: 72.8°C           ← Elevated temperature - check cooling
+```
+
+### Critical (Action Required)
+```
+Disk: 95.0%           ← Critical! Free up space immediately
+CPU: 85.0°C           ← Warning! Thermal throttling likely
+```
+
+**Note:** System monitor metrics only appear when available. On systems without thermal sensors, CPU temperature won't be displayed.
+
 ## Usage Scenarios
 
 ### Development & Debugging
@@ -198,12 +232,15 @@ Avg proc: 250 ms      ← Very slow processing
 - Track processing time to identify bottlenecks
 - Verify objects are being detected correctly
 - Check detection resolution matches expectations
+- Monitor system resources (disk space, CPU temperature)
 
 ### Field Deployment
 - Verify camera is working (uptime increases)
 - Monitor detection accuracy (which objects are seen)
 - Validate image saving (images counter increases)
 - Quick performance check without log files
+- Track disk usage to prevent storage issues
+- Monitor CPU temperature for thermal problems
 
 ### Demonstrations
 - Show real-time statistics to stakeholders
