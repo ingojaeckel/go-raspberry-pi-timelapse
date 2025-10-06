@@ -52,7 +52,8 @@
       "src/**/*.{ts,tsx}",
       "!src/index.tsx",
       "!src/react-app-env.d.ts",
-      "!src/**/*.test.{ts,tsx}"
+      "!src/**/*.test.{ts,tsx}",
+      "!src/models/**"
     ]
   }
 }
