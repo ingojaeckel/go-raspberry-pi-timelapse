@@ -45,3 +45,48 @@ func (s Settings) String() string {
 	jsonStr, _ := json.Marshal(s)
 	return string(jsonStr)
 }
+
+// Sanitize ensures all configuration values are within acceptable bounds.
+// This prevents broken configuration from being persisted or used.
+func (s Settings) Sanitize() Settings {
+	sanitized := s
+
+	// Enforce minimum quality (cannot be 0 or negative)
+	if sanitized.Quality < MinQuality {
+		sanitized.Quality = MinQuality
+	}
+	// Enforce maximum quality
+	if sanitized.Quality > MaxQuality {
+		sanitized.Quality = MaxQuality
+	}
+
+	// Enforce minimum seconds between captures
+	if sanitized.SecondsBetweenCaptures < MinSecondsBetweenCaptures {
+		sanitized.SecondsBetweenCaptures = MinSecondsBetweenCaptures
+	}
+
+	// Enforce offset within hour bounds (-1 is allowed to disable, otherwise 0-3599)
+	if sanitized.OffsetWithinHour != -1 {
+		if sanitized.OffsetWithinHour < MinOffsetWithinHour {
+			sanitized.OffsetWithinHour = MinOffsetWithinHour
+		}
+		if sanitized.OffsetWithinHour > MaxOffsetWithinHour {
+			sanitized.OffsetWithinHour = MaxOffsetWithinHour
+		}
+	}
+
+	return sanitized
+}
+
+// ApplyCLIOverrides applies CLI flag overrides to settings with proper priority.
+// CLI flags take precedence over persisted settings.
+func (s Settings) ApplyCLIOverrides(secondsBetweenCapturesOverride *int) Settings {
+	overridden := s
+	
+	// Apply secondsBetweenCaptures override if provided via CLI
+	if secondsBetweenCapturesOverride != nil {
+		overridden.SecondsBetweenCaptures = *secondsBetweenCapturesOverride
+	}
+	
+	return overridden
+}
