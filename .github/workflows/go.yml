@@ -31,8 +31,29 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: '18'
+    - name: Install frontend dependencies
+      run: cd frontend && npm install
+    - name: Run frontend tests with coverage
+      run: |
+        cd frontend
+        npm test -- --coverage --watchAll=false > test-output.txt 2>&1 || true
+        cat test-output.txt
+        # Extract and display coverage summary
+        echo ""
+        echo "================================"
+        echo "Frontend Test Coverage Summary:"
+        echo "================================"
+        grep -A 20 "File.*Stmts.*Branch.*Funcs.*Lines" test-output.txt || echo "Coverage summary not found"
+        echo "================================"
+    - name: Upload frontend coverage artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: frontend-coverage-report
+        path: frontend/coverage/
+        retention-days: 7
     - name: Build frontend
-      run: cd frontend && npm install && npm run build && cd ../
+      run: cd frontend && npm run build && cd ../
     - uses: actions/setup-go@v5
       with:
         go-version: 1.24.x
