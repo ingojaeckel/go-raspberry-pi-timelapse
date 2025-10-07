@@ -50,7 +50,7 @@ function App() {
       <CssBaseline />
       <Container>
         <Grid container spacing={0}>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Tabs value={value} onChange={handleChange} variant="scrollable" scrollButtons allowScrollButtonsMobile aria-label="scrollable icon label tabs">
               <Tab label="home" icon={<Home />} />
               <Tab label="preview" icon={<PhotoCamera />} />
