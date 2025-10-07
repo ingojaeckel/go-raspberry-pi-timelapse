@@ -1,0 +1,1592 @@
+
+> frontend@0.1.0 test
+> react-scripts test --coverage --watchAll=false
+
+PASS src/components/LogComponent.test.tsx
+  ● Console
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+PASS src/components/SetupComponent.test.tsx
+  ● Console
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      Settings updated to  {
+        SecondsBetweenCaptures: 300,
+        OffsetWithinHour: 0,
+        PhotoResolutionWidth: 3280,
+        PhotoResolutionHeight: 2464,
+        PreviewResolutionWidth: 640,
+        PreviewResolutionHeight: 480,
+        RotateBy: 0,
+        ResolutionSetting: 0,
+        Quality: 100,
+        DebugEnabled: false
+      }
+
+      at src/components/SetupComponent.tsx:48:17
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      restart clicked
+
+      at handleRestartClicked (src/components/SetupComponent.tsx:35:13)
+
+    console.log
+      restart initiated
+
+      at src/components/SetupComponent.tsx:36:62
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      shutdown clicked
+
+      at handleShutdownClicked (src/components/SetupComponent.tsx:40:13)
+
+    console.log
+      shutdown initiated
+
+      at src/components/SetupComponent.tsx:41:63
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.error
+      Warning: An update to SetupComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at SetupComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/SetupComponent.tsx:8:37)
+
+    [0m [90m 26 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 27 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 28 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 29 |[39m           updateForm(resp[33m.[39mdata)[33m;[39m
+     [90m 30 |[39m         }
+     [90m 31 |[39m       })[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/SetupComponent.tsx:28:11
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+PASS src/components/MonitoringComponent.test.tsx
+  ● Console
+
+    console.error
+      Warning: An update to MonitoringComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at MonitoringComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/MonitoringComponent.tsx:7:37)
+
+    [0m [90m 18 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 19 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 20 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 21 |[39m         }
+     [90m 22 |[39m       })[33m;[39m
+     [90m 23 |[39m   }[33m,[39m [])[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/MonitoringComponent.tsx:20:11
+
+    console.error
+      Warning: An update to MonitoringComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at MonitoringComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/MonitoringComponent.tsx:7:37)
+
+    [0m [90m 18 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 19 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 20 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 21 |[39m         }
+     [90m 22 |[39m       })[33m;[39m
+     [90m 23 |[39m   }[33m,[39m [])[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/MonitoringComponent.tsx:20:11
+
+    console.error
+      Warning: An update to MonitoringComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at MonitoringComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/MonitoringComponent.tsx:7:37)
+
+    [0m [90m 18 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 19 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 20 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 21 |[39m         }
+     [90m 22 |[39m       })[33m;[39m
+     [90m 23 |[39m   }[33m,[39m [])[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/MonitoringComponent.tsx:20:11
+
+    console.error
+      Warning: An update to MonitoringComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at MonitoringComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/MonitoringComponent.tsx:7:37)
+
+    [0m [90m 18 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 19 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 20 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 21 |[39m         }
+     [90m 22 |[39m       })[33m;[39m
+     [90m 23 |[39m   }[33m,[39m [])[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/MonitoringComponent.tsx:20:11
+
+    console.error
+      Warning: An update to MonitoringComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at MonitoringComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/MonitoringComponent.tsx:7:37)
+
+    [0m [90m 18 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 19 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 20 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 21 |[39m         }
+     [90m 22 |[39m       })[33m;[39m
+     [90m 23 |[39m   }[33m,[39m [])[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/MonitoringComponent.tsx:20:11
+
+    console.error
+      Warning: An update to MonitoringComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at MonitoringComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/MonitoringComponent.tsx:7:37)
+
+    [0m [90m 18 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 19 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 20 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 21 |[39m         }
+     [90m 22 |[39m       })[33m;[39m
+     [90m 23 |[39m   }[33m,[39m [])[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/MonitoringComponent.tsx:20:11
+
+    console.error
+      Warning: An update to MonitoringComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at MonitoringComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/MonitoringComponent.tsx:7:37)
+
+    [0m [90m 18 |[39m       [33m.[39mthen(resp [33m=>[39m {
+     [90m 19 |[39m         [36mif[39m (resp[33m.[39mdata) {
+    [31m[1m>[22m[39m[90m 20 |[39m           setState(resp[33m.[39mdata)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 21 |[39m         }
+     [90m 22 |[39m       })[33m;[39m
+     [90m 23 |[39m   }[33m,[39m [])[33m;[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/MonitoringComponent.tsx:20:11
+
+PASS src/components/PreviewComponent.test.tsx
+PASS src/models/response.test.tsx
+PASS src/conf/config.test.tsx
+PASS src/components/PhotoComponent.test.tsx
+  ● Console
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+PASS src/App.test.tsx (7.862 s)
+  ● Console
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      Getting previous configuration...
+
+      at src/components/SetupComponent.tsx:23:13
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.log
+      Getting logs...
+
+      at getLogs (src/components/LogComponent.tsx:11:13)
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+    console.log
+      BaseUrl:  http://localhost:8080
+
+      at getPhotos (src/components/PhotoComponent.tsx:30:11)
+
+    console.error
+      Warning: An update to PhotosComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+          at PhotosComponent (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/components/PhotoComponent.tsx:22:37)
+          at span
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Typography (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/material/Typography/Typography.js:138:49)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Box (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/createBox/createBox.js:27:41)
+          at div
+          at TabPanel (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:24:11)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Grid (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Grid/createGrid.js:84:19)
+          at div
+          at /home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@emotion/react/dist/emotion-element-a1829a1e.cjs.js:58:23
+          at Container (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/node_modules/@mui/system/Container/createContainer.js:111:19)
+          at App (/home/runner/work/go-raspberry-pi-timelapse/go-raspberry-pi-timelapse/frontend/src/App.tsx:44:35)
+
+    [0m [90m 46 |[39m         }
+     [90m 47 |[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         setState({
+     [90m    |[39m         [31m[1m^[22m[39m
+     [90m 49 |[39m           [33mShowDeletionDialog[39m[33m:[39m [36mfalse[39m[33m,[39m
+     [90m 50 |[39m           [33mPhotos[39m[33m:[39m rows[33m,[39m
+     [90m 51 |[39m           [33mSelected[39m[33m:[39m { type[33m:[39m [32m'include'[39m[33m,[39m ids[33m:[39m [36mnew[39m [33mSet[39m[33m<[39m[33mGridRowId[39m[33m>[39m() }[33m,[39m[0m
+
+      at printWarning (node_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (node_modules/react-dom/cjs/react-dom.development.js:60:7)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom.development.js:27628:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom.development.js:25547:5)
+      at setState (node_modules/react-dom/cjs/react-dom.development.js:16708:7)
+      at src/components/PhotoComponent.tsx:48:9
+
+--------------------------|---------|----------|---------|---------|---------------------------
+File                      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s         
+--------------------------|---------|----------|---------|---------|---------------------------
+All files                 |   81.81 |    55.55 |    77.5 |   80.89 |                           
+ src                      |   77.77 |      100 |      75 |   77.77 |                           
+  App.tsx                 |   77.77 |      100 |      75 |   77.77 | 13-14                     
+ src/components           |   82.02 |    42.85 |   77.77 |   81.01 |                           
+  LogComponent.tsx        |     100 |       50 |     100 |     100 | 15                        
+  MonitoringComponent.tsx |     100 |       50 |     100 |     100 | 19                        
+  PhotoComponent.tsx      |   56.75 |    16.66 |   38.46 |   55.88 | 16,63-74,84-85,94,102-111 
+  PreviewComponent.tsx    |     100 |      100 |     100 |     100 |                           
+  SetupComponent.tsx      |     100 |       75 |     100 |     100 | 27                        
+ src/conf                 |     100 |      100 |     100 |     100 |                           
+  config.tsx              |     100 |      100 |     100 |     100 |                           
+--------------------------|---------|----------|---------|---------|---------------------------
+
+Test Suites: 8 passed, 8 total
+Tests:       88 passed, 88 total
+Snapshots:   0 total
+Time:        8.88 s
+Ran all test suites.
