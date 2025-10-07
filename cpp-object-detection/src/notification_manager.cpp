@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <cerrno>
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -156,6 +157,14 @@ void NotificationManager::startSSEServer() {
     running_ = true;
     
     sse_server_thread_ = std::thread([this]() {
+        // Helper to cleanup socket on error
+        auto cleanup_socket = [this]() {
+            if (sse_server_socket_ >= 0) {
+                close(sse_server_socket_);
+                sse_server_socket_ = -1;
+            }
+        };
+        
         // Create socket
         sse_server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
         if (sse_server_socket_ < 0) {
@@ -167,7 +176,7 @@ void NotificationManager::startSSEServer() {
         int opt = 1;
         if (setsockopt(sse_server_socket_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
             logger_->error("Failed to set SSE socket options");
-            close(sse_server_socket_);
+            cleanup_socket();
             return;
         }
         
@@ -179,14 +188,14 @@ void NotificationManager::startSSEServer() {
         
         if (bind(sse_server_socket_, (struct sockaddr*)&address, sizeof(address)) < 0) {
             logger_->error("Failed to bind SSE server socket to port " + std::to_string(config_.sse_port));
-            close(sse_server_socket_);
+            cleanup_socket();
             return;
         }
         
         // Listen
         if (listen(sse_server_socket_, 10) < 0) {
             logger_->error("Failed to listen on SSE server socket");
-            close(sse_server_socket_);
+            cleanup_socket();
             return;
         }
         
