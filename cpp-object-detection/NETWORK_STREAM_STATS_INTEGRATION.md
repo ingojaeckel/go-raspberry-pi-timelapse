@@ -52,6 +52,9 @@ The network stream now displays (same as viewfinder):
 - Application uptime (HH:MM:SS)
 - Camera ID, name, and resolution
 - Detection resolution
+- GPU and burst mode status
+- Disk usage percentage
+- CPU temperature (°C)
 
 ## Key Differences from Viewfinder
 

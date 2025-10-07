@@ -142,7 +142,9 @@ void NetworkStreamer::updateFrameWithStats(const cv::Mat& frame,
                                           int detection_height,
                                           bool brightness_filter_active,
                                           bool gpu_enabled,
-                                          bool burst_mode_enabled) {
+                                          bool burst_mode_enabled,
+                                          double disk_usage_percent,
+                                          double cpu_temp_celsius) {
     if (frame.empty()) {
         return;
     }
@@ -155,7 +157,7 @@ void NetworkStreamer::updateFrameWithStats(const cv::Mat& frame,
                  total_objects_detected, total_images_saved, start_time,
                  top_objects, camera_width, camera_height, camera_id,
                  camera_name, detection_width, detection_height, brightness_filter_active,
-                 gpu_enabled, burst_mode_enabled);
+                 gpu_enabled, burst_mode_enabled, disk_usage_percent, cpu_temp_celsius);
 
     // Update current frame (thread-safe)
     std::lock_guard<std::mutex> lock(frame_mutex_);
@@ -336,7 +338,9 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
                                    int detection_height,
                                    bool brightness_filter_active,
                                    bool gpu_enabled,
-                                   bool burst_mode_enabled) {
+                                   bool burst_mode_enabled,
+                                   double disk_usage_percent,
+                                   double cpu_temp_celsius) {
     // Use small font to minimize screen coverage
     const double font_scale = 0.4;
     const int font_thickness = 1;
@@ -383,6 +387,18 @@ void NetworkStreamer::drawDebugInfo(cv::Mat& frame,
     // GPU and burst mode status
     lines.push_back("GPU: " + std::string(gpu_enabled ? "ON" : "OFF"));
     lines.push_back("Burst: " + std::string(burst_mode_enabled ? "ON" : "OFF"));
+    
+    // System monitor metrics
+    if (disk_usage_percent >= 0.0) {
+        char disk_str[32];
+        snprintf(disk_str, sizeof(disk_str), "Disk: %.1f%%", disk_usage_percent);
+        lines.push_back(std::string(disk_str));
+    }
+    if (cpu_temp_celsius >= 0.0) {
+        char temp_str[32];
+        snprintf(temp_str, sizeof(temp_str), "CPU: %.1f°C", cpu_temp_celsius);
+        lines.push_back(std::string(temp_str));
+    }
     
     // Top detected objects
     if (!top_objects.empty()) {
