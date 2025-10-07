@@ -10,7 +10,7 @@
 #include <ctime>
 
 NotificationManager::NotificationManager(std::shared_ptr<Logger> logger, const NotificationConfig& config)
-    : logger_(logger), config_(config), running_(false), initialized_(false), sse_server_socket_(-1) {
+    : logger_(logger), config_(config), running_(false), initialized_(false), sse_server_socket_(-1), sse_clients_() {
 }
 
 NotificationManager::~NotificationManager() {
