@@ -45,7 +45,9 @@ public:
                            int detection_height,
                            bool brightness_filter_active = false,
                            bool gpu_enabled = false,
-                           bool burst_mode_enabled = false);
+                           bool burst_mode_enabled = false,
+                           double disk_usage_percent = -1.0,
+                           double cpu_temp_celsius = -1.0);
     
     /**
      * Check if the window should be closed (user pressed a key)
@@ -82,7 +84,9 @@ private:
                       int detection_height,
                       bool brightness_filter_active = false,
                       bool gpu_enabled = false,
-                      bool burst_mode_enabled = false);
+                      bool burst_mode_enabled = false,
+                      double disk_usage_percent = -1.0,
+                      double cpu_temp_celsius = -1.0);
     
     // Get color for different object classes
     cv::Scalar getColorForClass(const std::string& class_name) const;

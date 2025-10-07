@@ -256,6 +256,14 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         // Check if brightness filter is active
                         bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
                         
+                        // Get system monitor metrics
+                        double disk_usage_percent = -1.0;
+                        double cpu_temp_celsius = -1.0;
+                        if (ctx.system_monitor) {
+                            disk_usage_percent = ctx.system_monitor->getDiskUsagePercent();
+                            cpu_temp_celsius = ctx.system_monitor->getCPUTemperature();
+                        }
+                        
                         ctx.viewfinder->showFrameWithStats(
                             ctx.frame, 
                             result.detections,
@@ -273,7 +281,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.detection_height,
                             brightness_filter_active,
                             ctx.config.enable_gpu,
-                            ctx.config.enable_burst_mode
+                            ctx.config.enable_burst_mode,
+                            disk_usage_percent,
+                            cpu_temp_celsius
                         );
                         
                         // Check if user wants to close the viewfinder
@@ -294,6 +304,14 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         // Check if brightness filter is active
                         bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
                         
+                        // Get system monitor metrics
+                        double disk_usage_percent = -1.0;
+                        double cpu_temp_celsius = -1.0;
+                        if (ctx.system_monitor) {
+                            disk_usage_percent = ctx.system_monitor->getDiskUsagePercent();
+                            cpu_temp_celsius = ctx.system_monitor->getCPUTemperature();
+                        }
+                        
                         ctx.network_streamer->updateFrameWithStats(
                             ctx.frame,
                             result.detections,
@@ -311,7 +329,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.detection_height,
                             brightness_filter_active,
                             ctx.config.enable_gpu,
-                            ctx.config.enable_burst_mode
+                            ctx.config.enable_burst_mode,
+                            disk_usage_percent,
+                            cpu_temp_celsius
                         );
                     }
                 }
