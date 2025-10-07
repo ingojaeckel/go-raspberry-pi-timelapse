@@ -448,3 +448,93 @@ jobs:
           name: object-detection-linux-386-release
           path: cpp-object-detection/release/object-detection-linux-386.tar.gz
           retention-days: 7
+
+  build-rpi-arm64:
+    name: Build Raspberry Pi (ARM64)
+    runs-on: ubuntu-latest
+    # This job runs last, after 64-bit builds have succeeded
+    needs: [build-test, build-static]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build in ARM64 container
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace/cpp-object-detection \
+            arm64v8/ubuntu:22.04 \
+            bash -c "
+              export DEBIAN_FRONTEND=noninteractive && \
+              apt-get update && \
+              apt-get install -y cmake build-essential libopencv-dev libcurl4-openssl-dev pkg-config file && \
+              mkdir -p build-rpi && \
+              cd build-rpi && \
+              cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS='-static-libgcc -static-libstdc++' && \
+              make -j\$(nproc) && \
+              file object_detection && \
+              ls -lh object_detection && \
+              ldd object_detection || true
+            "
+
+      - name: Verify ARM64 binary
+        run: |
+          if [ -f "cpp-object-detection/build-rpi/object_detection" ]; then
+            echo "Checking binary architecture..."
+            file cpp-object-detection/build-rpi/object_detection
+            
+            if file cpp-object-detection/build-rpi/object_detection | grep -q "ARM aarch64"; then
+              echo "✓ Successfully built ARM64 binary"
+            else
+              echo "✗ Warning: Binary may not be ARM64"
+            fi
+          else
+            echo "Error: object_detection binary not found after build"
+            exit 1
+          fi
+
+      - name: Create ARM64 release package
+        working-directory: cpp-object-detection
+        run: |
+          mkdir -p release/object-detection-rpi-arm64
+          
+          if [ -f "build-rpi/object_detection" ]; then
+            cp build-rpi/object_detection release/object-detection-rpi-arm64/
+            cp README.md release/object-detection-rpi-arm64/
+            cp -r models release/object-detection-rpi-arm64/ || mkdir -p release/object-detection-rpi-arm64/models
+            cp -r scripts release/object-detection-rpi-arm64/
+            
+            # Create download script for YOLO model
+            cat << 'EOF' > release/object-detection-rpi-arm64/download_model.sh
+          #!/bin/bash
+          echo "Downloading YOLOv5s model..."
+          if command -v curl >/dev/null; then
+            curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
+          elif command -v wget >/dev/null; then
+            wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
+          else
+            echo "Please install curl or wget to download the model"
+            exit 1
+          fi
+          echo "Model downloaded successfully!"
+          EOF
+            chmod +x release/object-detection-rpi-arm64/download_model.sh
+            
+            # Create tar archive
+            cd release
+            tar -czf object-detection-rpi-arm64.tar.gz object-detection-rpi-arm64/
+          fi
+
+      - name: Upload ARM64 release package
+        if: success() && hashFiles('cpp-object-detection/release/object-detection-rpi-arm64.tar.gz') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-detection-rpi-arm64-release
+          path: cpp-object-detection/release/object-detection-rpi-arm64.tar.gz
+          retention-days: 7

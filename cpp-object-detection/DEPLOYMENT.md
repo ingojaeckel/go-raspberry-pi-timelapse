@@ -34,20 +34,25 @@ cd cpp-object-detection
 
 ### Hardware
 
-- **CPU Architectures**: x86_64, 386 (32-bit)
-- **Memory**: Minimum 2GB RAM (4GB+ recommended)
+- **CPU Architectures**: x86_64, 386 (32-bit), ARM64 (Raspberry Pi)
+- **Memory**: Minimum 2GB RAM (4GB+ recommended, 8GB for Raspberry Pi 5)
 - **Storage**: 500MB for application and models
 - **Camera**: USB Video Class (UVC) compatible webcam
   - Recommended: Logitech C920 or similar
   - 720p resolution support required
+  - Raspberry Pi Camera Module v2/v3 (requires libcamera support, not yet implemented)
 
 ### Software
 
-- **Operating System**: Linux (Ubuntu 18.04+, CentOS 7+, Debian 9+)
+- **Operating System**: 
+  - Linux (Ubuntu 18.04+, CentOS 7+, Debian 9+)
+  - Raspberry Pi OS 64-bit (Bookworm or later)
+  - Ubuntu Server 22.04 LTS ARM64
 - **Dependencies**: 
   - OpenCV 4.x development libraries
   - CMake 3.16+
   - GCC 7+ or Clang 6+
+  - libcurl4-openssl-dev (for Google Sheets integration)
 
 ### Network
 
@@ -83,6 +88,61 @@ sudo yum install -y cmake gcc-c++ opencv-devel pkgconfig
 # Build and setup (same as Ubuntu)
 ./scripts/build.sh
 ./scripts/download_model.sh
+```
+
+### Raspberry Pi OS
+
+```bash
+# Install dependencies
+sudo apt-get update
+sudo apt-get install -y cmake build-essential libopencv-dev libcurl4-openssl-dev pkg-config
+
+# Clone repository
+git clone https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git
+cd go-raspberry-pi-timelapse/cpp-object-detection
+
+# Build (optimized for ARM64)
+./scripts/build-rpi.sh
+
+# Download model
+./scripts/download_model.sh
+
+# Test
+cd build-rpi
+./object_detection --help
+```
+
+**Raspberry Pi Specific Configuration:**
+
+For Raspberry Pi 5 (8GB):
+```bash
+./object_detection \
+  --max-fps 5 \
+  --min-confidence 0.6 \
+  --detection-scale 0.5 \
+  --analysis-rate-limit 2 \
+  --heartbeat-interval 10
+```
+
+For Raspberry Pi 4 (4GB):
+```bash
+./object_detection \
+  --max-fps 3 \
+  --min-confidence 0.65 \
+  --detection-scale 0.5 \
+  --frame-width 960 \
+  --frame-height 540 \
+  --analysis-rate-limit 1
+```
+
+For battery-powered operation:
+```bash
+./object_detection \
+  --max-fps 2 \
+  --min-confidence 0.7 \
+  --detection-scale 0.5 \
+  --analysis-rate-limit 0.5 \
+  --heartbeat-interval 15
 ```
 
 ## Configuration
