@@ -16,6 +16,17 @@ void setupSignalHandlers() {
     std::signal(SIGTERM, signalHandler);
 }
 
+SystemStats gatherSystemStats(ApplicationContext& ctx) {
+    SystemStats stats;
+    stats.top_objects = ctx.detector->getTopDetectedObjects(10);
+    stats.total_objects_detected = ctx.detector->getTotalObjectsDetected();
+    stats.total_images_saved = ctx.frame_processor->getTotalImagesSaved();
+    stats.brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+    stats.current_fps = ctx.perf_monitor->getCurrentFPS();
+    stats.avg_processing_time_ms = ctx.perf_monitor->getAverageProcessingTime();
+    return stats;
+}
+
 bool parseAndValidateConfig(ApplicationContext& ctx, int argc, char* argv[]) {
     auto parse_result = ctx.config_manager.parseArgs(argc, argv);
     
@@ -265,32 +276,27 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                     // Display in viewfinder if enabled
                     if (ctx.config.show_preview && ctx.viewfinder) {
                         // Get statistics for display
-                        auto top_objects = ctx.detector->getTopDetectedObjects(10);
-                        int total_objects = ctx.detector->getTotalObjectsDetected();
-                        int total_images = ctx.frame_processor->getTotalImagesSaved();
+                        auto stats = gatherSystemStats(ctx);
                         
                         // Get camera name (empty string if not available)
                         std::string camera_name = "";  // Could be extended to get actual camera name
                         
-                        // Check if brightness filter is active
-                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
-                        
                         ctx.viewfinder->showFrameWithStats(
                             ctx.frame, 
                             result.detections,
-                            ctx.perf_monitor->getCurrentFPS(),
-                            ctx.perf_monitor->getAverageProcessingTime(),
-                            total_objects,
-                            total_images,
+                            stats.current_fps,
+                            stats.avg_processing_time_ms,
+                            stats.total_objects_detected,
+                            stats.total_images_saved,
                             ctx.start_time,
-                            top_objects,
+                            stats.top_objects,
                             ctx.config.frame_width,
                             ctx.config.frame_height,
                             ctx.config.camera_id,
                             camera_name,
                             ctx.detection_width,
                             ctx.detection_height,
-                            brightness_filter_active,
+                            stats.brightness_filter_active,
                             ctx.config.enable_gpu,
                             ctx.config.enable_burst_mode
                         );
@@ -305,30 +311,25 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                     // Update network streamer if enabled
                     if (ctx.config.enable_streaming && ctx.network_streamer) {
                         // Get statistics for display (same as viewfinder)
-                        auto top_objects = ctx.detector->getTopDetectedObjects(10);
-                        int total_objects = ctx.detector->getTotalObjectsDetected();
-                        int total_images = ctx.frame_processor->getTotalImagesSaved();
+                        auto stats = gatherSystemStats(ctx);
                         std::string camera_name = "";
-                        
-                        // Check if brightness filter is active
-                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
                         
                         ctx.network_streamer->updateFrameWithStats(
                             ctx.frame,
                             result.detections,
-                            ctx.perf_monitor->getCurrentFPS(),
-                            ctx.perf_monitor->getAverageProcessingTime(),
-                            total_objects,
-                            total_images,
+                            stats.current_fps,
+                            stats.avg_processing_time_ms,
+                            stats.total_objects_detected,
+                            stats.total_images_saved,
                             ctx.start_time,
-                            top_objects,
+                            stats.top_objects,
                             ctx.config.frame_width,
                             ctx.config.frame_height,
                             ctx.config.camera_id,
                             camera_name,
                             ctx.detection_width,
                             ctx.detection_height,
-                            brightness_filter_active,
+                            stats.brightness_filter_active,
                             ctx.config.enable_gpu,
                             ctx.config.enable_burst_mode
                         );
@@ -355,10 +356,7 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                                 }
                                 
                                 // Gather status information
-                                auto top_objects = ctx.detector->getTopDetectedObjects(10);
-                                int total_objects = ctx.detector->getTotalObjectsDetected();
-                                int total_images = ctx.frame_processor->getTotalImagesSaved();
-                                bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                                auto stats = gatherSystemStats(ctx);
                                 
                                 // Create notification data
                                 NotificationManager::NotificationData notif_data;
@@ -378,12 +376,12 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                                 notif_data.timestamp = std::chrono::system_clock::now();
                                 notif_data.frame_with_boxes = frame_with_boxes;
                                 notif_data.all_detections = result.detections;
-                                notif_data.current_fps = ctx.perf_monitor->getCurrentFPS();
-                                notif_data.avg_processing_time_ms = ctx.perf_monitor->getAverageProcessingTime();
-                                notif_data.total_objects_detected = total_objects;
-                                notif_data.total_images_saved = total_images;
-                                notif_data.top_objects = top_objects;
-                                notif_data.brightness_filter_active = brightness_filter_active;
+                                notif_data.current_fps = stats.current_fps;
+                                notif_data.avg_processing_time_ms = stats.avg_processing_time_ms;
+                                notif_data.total_objects_detected = stats.total_objects_detected;
+                                notif_data.total_images_saved = stats.total_images_saved;
+                                notif_data.top_objects = stats.top_objects;
+                                notif_data.brightness_filter_active = stats.brightness_filter_active;
                                 notif_data.gpu_enabled = ctx.config.enable_gpu;
                                 notif_data.burst_mode_enabled = ctx.config.enable_burst_mode;
                                 
