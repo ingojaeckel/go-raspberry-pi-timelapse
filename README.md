@@ -98,6 +98,9 @@ This project was created for a timelapse system consisting of the following core
 
 ## 🔬 Experimental: C++ Object Detection
 
+<details>
+<summary><b>Click to expand C++ Object Detection details</b></summary>
+
 This repository also includes an experimental C++ application for real-time object detection, located in the [`cpp-object-detection/`](cpp-object-detection/) directory.
 
 ### Purpose & Comparison
@@ -128,5 +131,7 @@ This repository also includes an experimental C++ application for real-time obje
 For more information about the C++ object detection application, see the [cpp-object-detection/README.md](cpp-object-detection/README.md).
 
 **Note:** The C++ application is experimental and designed for different use cases than the main timelapse project. It requires more powerful hardware and has different dependencies (OpenCV, ONNX runtime).
+
+</details>
 
 ---
