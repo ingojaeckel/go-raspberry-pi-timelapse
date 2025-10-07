@@ -44,7 +44,7 @@ jobs:
         echo "Coverage details available in artifacts." >> $GITHUB_STEP_SUMMARY
         cd ../
     - name: Upload frontend coverage
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-coverage
         path: frontend/coverage/
