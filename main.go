@@ -7,9 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/monitoring"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io"
@@ -41,6 +44,24 @@ func main() {
 	if err := initLogging(); err != nil {
 		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
 		return
+	}
+
+	// Initialize system monitoring for debug information tracking
+	monitor, err := monitoring.New()
+	if err != nil {
+		log.Printf("Warning: Failed to initialize system monitor: %s\n", err.Error())
+		// Continue without monitoring rather than failing completely
+	} else {
+		defer monitor.Close()
+		// Set up signal handling for graceful shutdown
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-sigChan
+			log.Println("Received shutdown signal")
+			monitor.Close()
+			os.Exit(0)
+		}()
 	}
 
 	initialSettings, err := conf.LoadConfiguration()
@@ -93,6 +114,10 @@ func main() {
 		log.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless
 	} else {
+		// Attach the monitor to the timelapse if available
+		if monitor != nil {
+			t.Monitor = monitor
+		}
 		// Start capturing since there were no issues
 		t.CapturePeriodically()
 	}

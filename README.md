@@ -4,6 +4,26 @@
 
 This repository contains documentation and source code to help running a [Raspberry Pi Zero](https://www.raspberrypi.org/products/raspberry-pi-zero-w/) based timelapse camera.
 
+## Features
+
+- **Automated timelapse photography** with configurable intervals
+- **Web interface** for camera alignment, settings, and photo management
+- **System monitoring and debug logging** for long-term remote deployments
+- **Battery-backed RTC support** for accurate timekeeping
+- **Remote management** via WiFi access point
+
+## System Monitoring for Remote Deployments
+
+For long-term, remote, or solar-powered deployments, the application includes comprehensive system monitoring and debug logging:
+
+- **Temperature tracking**: CPU and GPU temperature trends over time
+- **Disk usage monitoring**: Track available storage to prevent exhaustion
+- **Runtime tracking**: Monitor system uptime and max daily runtime (useful for battery capacity assessment)
+- **Startup/Shutdown logging**: Review when the Pi turned on/off and why
+- **System clock monitoring**: Track RTC drift and NTP sync status
+
+Debug information is automatically logged to `system-debug.log` every 5 minutes. See [monitoring/README.md](monitoring/README.md) for details.
+
 ## How does it work?
 
 ![The build](https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/master/docs/go-raspberry-pi-timelapse.jpg "How does it work?")

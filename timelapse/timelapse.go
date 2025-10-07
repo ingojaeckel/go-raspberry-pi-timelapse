@@ -33,6 +33,11 @@ func (t Timelapse) CapturePeriodically() {
 		log.Println("Offset is disabled. Will start taking pictures immediately.")
 		go func() {
 			for {
+				// Perform periodic system monitoring if available
+				if t.Monitor != nil {
+					t.Monitor.PeriodicCheck()
+				}
+
 				camera, err := NewCamera(t.Folder, t.Settings.PhotoResolutionWidth, t.Settings.PhotoResolutionHeight, t.Settings.RotateBy == 180, t.Settings.Quality)
 				if err != nil {
 					log.Printf("Error instantiating camera: %s\n", err)
@@ -53,6 +58,11 @@ func (t Timelapse) CapturePeriodically() {
 		log.Println("Offset is enabled. Will wait before taking first picture.")
 		go func() {
 			for {
+				// Perform periodic system monitoring if available
+				if t.Monitor != nil {
+					t.Monitor.PeriodicCheck()
+				}
+
 				t.waitForCapture()
 
 				beforeCapture := time.Now()
