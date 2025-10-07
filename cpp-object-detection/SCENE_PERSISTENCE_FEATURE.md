@@ -171,6 +171,95 @@ For optimal scene analysis and object property extraction, we recommend:
 - **CPU Impact**: Analysis adds 5-15ms per scene (infrequent)
 - **Storage**: SQLite database grows linearly with unique scenes
 
+## Adjusting Scene Matching Sensitivity
+
+The scene matching system uses a similarity threshold to determine when two scenes should be considered a match. This threshold controls how strict or lenient the matching algorithm is.
+
+### Current Threshold
+
+The default similarity threshold is **0.75 (75%)**, which means two scenes must be at least 75% similar across all comparison dimensions to be considered a match. This value is defined as a constant in `include/scene_manager.hpp`:
+
+```cpp
+static constexpr float MATCH_THRESHOLD = 0.75f;  // Similarity threshold for matching
+```
+
+### How to Modify the Threshold
+
+To adjust the matching sensitivity, modify the `MATCH_THRESHOLD` constant in `include/scene_manager.hpp` (line 93):
+
+**More Strict Matching (Higher Threshold)**
+```cpp
+static constexpr float MATCH_THRESHOLD = 0.85f;  // Requires 85% similarity
+```
+- **Effect**: Scenes must be more similar to match
+- **Result**: More unique scenes will be created, fewer matches
+- **Use Case**: When you need precise scene differentiation and want to catch subtle changes
+
+**More Lenient Matching (Lower Threshold)**
+```cpp
+static constexpr float MATCH_THRESHOLD = 0.65f;  // Requires 65% similarity
+```
+- **Effect**: Scenes can differ more and still match
+- **Result**: Fewer unique scenes, more matches to existing scenes
+- **Use Case**: When camera position varies frequently or you want to group similar scenes together
+
+### Threshold Guidelines
+
+| Threshold | Behavior | Best For |
+|-----------|----------|----------|
+| 0.90-1.00 | Very strict - near-perfect match required | Detecting minute changes in scenes |
+| 0.75-0.85 | **Default** - balanced matching | Most use cases with moderate camera stability |
+| 0.60-0.70 | Lenient - tolerates significant differences | Unstable camera or highly variable scenes |
+| <0.60 | Very lenient - may match dissimilar scenes | Not recommended (too many false matches) |
+
+### Understanding Similarity Components
+
+The similarity score combines three weighted components:
+- **40%** - Object type counts (e.g., same number of cars, people)
+- **40%** - Spatial distribution (objects in similar regions of frame)
+- **20%** - Object relationships (similar distances/angles between objects)
+
+A scene needs to score at least the threshold value across all these components combined.
+
+### Example Scenarios
+
+**Threshold = 0.75 (Default)**
+- Scene A: 2 cars at positions (100, 100) and (300, 200)
+- Scene B: 2 cars at positions (105, 105) and (305, 205)
+- **Result**: MATCH (very similar, ~95% similarity)
+
+**Threshold = 0.75 (Default)**
+- Scene A: 2 cars, 1 person
+- Scene B: 2 cars (missing person)
+- **Result**: NO MATCH (~67% similarity - missing object reduces score)
+
+**Threshold = 0.85 (Strict)**
+- Scene A: 2 cars at (100, 100) and (300, 200)
+- Scene B: 2 cars at (150, 120) and (350, 220)
+- **Result**: NO MATCH (~78% similarity - positions differ too much for strict threshold)
+
+### Rebuilding After Changes
+
+After modifying the threshold, rebuild the application:
+
+```bash
+cd cpp-object-detection/build
+make clean
+make
+```
+
+The new threshold will take effect immediately upon restart.
+
+### Testing Different Thresholds
+
+To find the optimal threshold for your use case:
+
+1. Start with the default (0.75)
+2. Monitor the logs for "new scene" vs. "recognized return" messages
+3. If too many new scenes are created (should be matches), lower the threshold
+4. If scenes are matching when they shouldn't, raise the threshold
+5. Adjust in increments of 0.05 and test
+
 ## Future Enhancements
 
 Potential improvements for future versions:

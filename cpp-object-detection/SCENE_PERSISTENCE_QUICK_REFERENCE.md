@@ -97,6 +97,32 @@ sqlite3 scenes.db "SELECT id, datetime(created_at, 'unixepoch'), description FRO
 sqlite3 scenes.db "SELECT * FROM scene_objects WHERE scene_id = 1;"
 ```
 
+## Adjusting Match Sensitivity
+
+**Location**: `include/scene_manager.hpp` line 93
+
+**Default Threshold**: 0.75 (75% similarity required)
+
+### Modify Threshold
+
+```cpp
+// More strict (85% similarity)
+static constexpr float MATCH_THRESHOLD = 0.85f;
+
+// More lenient (65% similarity)  
+static constexpr float MATCH_THRESHOLD = 0.65f;
+```
+
+### Guidelines
+
+| Threshold | Behavior | Use When |
+|-----------|----------|----------|
+| 0.85-0.90 | Very strict | Need precise differentiation |
+| 0.75 | **Default** | Balanced, most use cases |
+| 0.65-0.70 | Lenient | Camera position varies |
+
+**After changing**: Rebuild with `make clean && make`
+
 ## Troubleshooting
 
 | Issue | Solution |

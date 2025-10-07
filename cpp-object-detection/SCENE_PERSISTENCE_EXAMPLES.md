@@ -239,6 +239,22 @@ sqlite3 scenes.db "SELECT distance, angle FROM object_relationships WHERE scene_
 - Fuzzy matching already accounts for slight variations
 - Consider if scenes are actually different (different object counts, positions)
 
+**Adjusting Match Sensitivity:**
+
+If scenes should match but don't, you can lower the similarity threshold in `include/scene_manager.hpp`:
+
+```cpp
+// Current default (line 93)
+static constexpr float MATCH_THRESHOLD = 0.75f;  // 75% similarity required
+
+// More lenient matching (allows more variation)
+static constexpr float MATCH_THRESHOLD = 0.65f;  // 65% similarity required
+```
+
+After changing, rebuild: `cd build && make clean && make`
+
+See "Adjusting Scene Matching Sensitivity" in SCENE_PERSISTENCE_FEATURE.md for detailed guidance.
+
 ### Database Growing Too Large
 
 **Problem:** Database file getting too big
