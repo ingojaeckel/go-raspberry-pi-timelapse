@@ -59,26 +59,24 @@ function App() {
             <Tabs 
               value={value} 
               onChange={handleChange} 
-              variant="scrollable" 
-              scrollButtons 
-              allowScrollButtonsMobile 
-              aria-label="scrollable icon label tabs"
+              variant="fullWidth" 
+              aria-label="navigation tabs"
               sx={{
                 minHeight: { xs: '32px', sm: '64px' },
                 '& .MuiTab-root': {
                   minHeight: { xs: '32px', sm: '64px' },
-                  padding: { xs: '6px 8px', sm: '12px 16px' },
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  minWidth: { xs: '40px', sm: '90px' },
+                  padding: { xs: '4px 2px', sm: '12px 16px' },
+                  fontSize: { xs: '0.65rem', sm: '0.875rem' },
+                  minWidth: { xs: '0', sm: '90px' },
                   '& .MuiSvgIcon-root': {
-                    fontSize: { xs: '1.2rem', sm: '1.5rem' },
+                    fontSize: { xs: '1rem', sm: '1.5rem' },
                   },
                 },
               }}
             >
               <Tab label="home" icon={<Home />} />
               <Tab label="preview" icon={<PhotoCamera />} />
-              <Tab label="monitoring" icon={<Timeline />} />
+              <Tab label="monitor" icon={<Timeline />} />
               <Tab label="settings" icon={<Settings />} />
               <Tab label="logs" icon={<Description />} />
             </Tabs>
