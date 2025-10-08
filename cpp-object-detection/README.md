@@ -941,6 +941,10 @@ std::vector<std::string> ObjectDetector::getTargetClasses() {
 2. **Optimize post-processing** in `postProcess()` method
 3. **Add threading** for parallel processing
 
+For advanced performance analysis and optimization, see:
+- **[PROFILING.md](docs/PROFILING.md)** - Complete profiling guide with CPU and memory profiling tools
+- **[GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md)** - GPU acceleration setup and benchmarks
+
 ## Hardware Requirements and Platform Support
 
 ### Supported Platforms
