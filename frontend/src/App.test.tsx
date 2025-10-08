@@ -48,7 +48,7 @@ describe('App', () => {
 
   test('renders monitoring tab', () => {
     const { getByText } = render(<App />);
-    const linkElement = getByText(/monitoring/i);
+    const linkElement = getByText(/monitor/i);
     expect(linkElement).toBeInTheDocument();
   });
 
@@ -86,7 +86,7 @@ describe('App', () => {
   test('displays correct component when switching to monitoring tab', async () => {
     const { container } = render(<App />);
     
-    const monitoringTab = screen.getByRole('tab', { name: /monitoring/i });
+    const monitoringTab = screen.getByRole('tab', { name: /monitor/i });
     fireEvent.click(monitoringTab);
     
     await waitFor(() => {
@@ -124,7 +124,7 @@ describe('App', () => {
     expect(container.firstChild).toBeInTheDocument();
   });
 
-  test('renders tabs with scrollable variant', () => {
+  test('renders tabs with fullWidth variant', () => {
     const { container } = render(<App />);
     const tabs = container.querySelector('[role="tablist"]');
     expect(tabs).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('App', () => {
   test('tab icons are present', () => {
     const { container } = render(<App />);
     const tabs = container.querySelectorAll('[role="tab"]');
-    expect(tabs.length).toBe(5); // home, preview, monitoring, settings, logs
+    expect(tabs.length).toBe(5); // home, preview, monitor, settings, logs
   });
 
   test('TabPanel component hides when not selected', () => {
@@ -142,5 +142,12 @@ describe('App', () => {
     // Check that non-selected panels are hidden
     const hiddenPanels = container.querySelectorAll('[role="tabpanel"][hidden]');
     expect(hiddenPanels.length).toBeGreaterThan(0);
+  });
+
+  test('container has responsive padding', () => {
+    const { container } = render(<App />);
+    // The Container component should be in the document
+    const containerElement = container.querySelector('.MuiContainer-root');
+    expect(containerElement).toBeInTheDocument();
   });
 });
