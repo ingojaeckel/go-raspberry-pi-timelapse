@@ -6,6 +6,10 @@ go-raspberry-pi-timelapse
 timelapse-pictures/
 timelapse-settings.db
 
+# Benchmark results
+benchmark_results.txt
+*.prof
+
 # C++ build artifacts
 cpp-object-detection/build/
 cpp-object-detection/build-*/
