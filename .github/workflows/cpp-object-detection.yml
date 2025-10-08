@@ -5,10 +5,6 @@ on:
     paths:
       - 'cpp-object-detection/**'
       - '.github/workflows/cpp-object-detection.yml'
-  pull_request:
-    paths:
-      - 'cpp-object-detection/**'
-      - '.github/workflows/cpp-object-detection.yml'
 
 permissions:
   contents: read
