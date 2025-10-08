@@ -12,6 +12,17 @@ This directory contains Playwright-based end-to-end tests for the timelapse appl
 - **setup-component.spec.ts** - Tests for settings form interactions
 - **log-component.spec.ts** - Tests for log viewing
 
+## Timeout Configuration
+
+Tests are configured with the following timeouts to prevent hanging:
+
+- **Test timeout**: 30 seconds (maximum time for a single test)
+- **Action timeout**: 10 seconds (maximum time for page actions like click, fill)
+- **Navigation timeout**: 10 seconds (maximum time for page navigation)
+- **API wait timeout**: 10 seconds (explicit timeout on waitForRequest/waitForResponse)
+
+These timeouts ensure tests fail quickly if something goes wrong, rather than relying on external CI timeout.
+
 ## Running Tests
 
 ### Prerequisites

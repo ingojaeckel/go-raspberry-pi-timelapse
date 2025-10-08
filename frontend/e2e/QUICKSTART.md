@@ -179,7 +179,11 @@ await page.locator('#myCheckbox').check();
 - Run in headed mode to see what happened
 
 ### Tests timeout
-- Increase timeout in config
+- Tests are configured with automatic timeouts:
+  - Test timeout: 30 seconds
+  - Action timeout: 10 seconds
+  - API wait timeout: 10 seconds (on waitForRequest/waitForResponse)
+- These timeouts cause tests to fail quickly instead of hanging
 - Check if API is responding
 - Verify element selectors are correct
 
@@ -189,8 +193,9 @@ await page.locator('#myCheckbox').check();
 - Verify element is visible (not hidden)
 
 ### Flaky tests
-- Add proper waits (`waitForResponse`, `waitForSelector`)
-- Don't use hardcoded timeouts
+- Add proper waits (`waitForResponse`, `waitForSelector`) with explicit timeouts
+- All API waits include `{ timeout: 10000 }` to prevent hanging
+- Don't use hardcoded sleep/timeouts
 - Check for race conditions
 
 ## CI/CD Integration

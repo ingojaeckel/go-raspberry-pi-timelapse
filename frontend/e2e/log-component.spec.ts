@@ -8,8 +8,8 @@ test.describe('LogComponent', () => {
   });
 
   test('should display logs section', async ({ page }) => {
-    // Wait for the logs to load
-    await page.waitForResponse('**/logs');
+    // Wait for the logs to load with timeout
+    await page.waitForResponse('**/logs', { timeout: 10000 });
     
     // Check that the logs tab panel is visible
     const logsPanel = page.locator('[role="tabpanel"]').filter({ hasText: /sample log line/i });
@@ -17,7 +17,7 @@ test.describe('LogComponent', () => {
   });
 
   test('should fetch logs from API', async ({ page }) => {
-    const requestPromise = page.waitForRequest('**/logs');
+    const requestPromise = page.waitForRequest('**/logs', { timeout: 10000 });
     
     // Reload the component by switching tabs
     await page.getByRole('tab', { name: /home/i }).click();
@@ -28,7 +28,7 @@ test.describe('LogComponent', () => {
   });
 
   test('should display log content from API', async ({ page }) => {
-    await page.waitForResponse('**/logs');
+    await page.waitForResponse('**/logs', { timeout: 10000 });
     
     // Check if the mocked log content is displayed
     await expect(page.getByText(/sample log line 1/i)).toBeVisible();
@@ -37,7 +37,7 @@ test.describe('LogComponent', () => {
   });
 
   test('should display logs in a text format', async ({ page }) => {
-    await page.waitForResponse('**/logs');
+    await page.waitForResponse('**/logs', { timeout: 10000 });
     
     // Check if there's a text element containing logs
     const logsContainer = page.locator('text=/sample log line/i');

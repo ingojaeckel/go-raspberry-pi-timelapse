@@ -14,7 +14,7 @@ test.describe('SetupComponent', () => {
   });
 
   test('should fetch configuration on mount', async ({ page }) => {
-    const requestPromise = page.waitForRequest('**/configuration');
+    const requestPromise = page.waitForRequest('**/configuration', { timeout: 10000 });
     
     // Reload the component by switching tabs
     await page.getByRole('tab', { name: /home/i }).click();
@@ -25,14 +25,14 @@ test.describe('SetupComponent', () => {
   });
 
   test('should display action buttons', async ({ page }) => {
-    await page.waitForResponse('**/configuration');
+    await page.waitForResponse('**/configuration', { timeout: 10000 });
     
     await expect(page.getByRole('button', { name: /save/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /shutdown/i })).toBeVisible();
   });
 
   test('should allow entering time between captures', async ({ page }) => {
-    await page.waitForResponse('**/configuration');
+    await page.waitForResponse('**/configuration', { timeout: 10000 });
     
     // Find the time between captures input
     const input = page.locator('#tfTimeBetweenCaptures');
@@ -46,7 +46,7 @@ test.describe('SetupComponent', () => {
   });
 
   test('should allow changing rotation value', async ({ page }) => {
-    await page.waitForResponse('**/configuration');
+    await page.waitForResponse('**/configuration', { timeout: 10000 });
     
     // Find the rotation input
     const rotationInput = page.locator('#tfRotation');
@@ -60,7 +60,7 @@ test.describe('SetupComponent', () => {
   });
 
   test('should allow changing quality value', async ({ page }) => {
-    await page.waitForResponse('**/configuration');
+    await page.waitForResponse('**/configuration', { timeout: 10000 });
     
     // Find the quality input
     const qualityInput = page.locator('#tfQuality');
@@ -74,7 +74,7 @@ test.describe('SetupComponent', () => {
   });
 
   test('should populate form with fetched configuration data', async ({ page }) => {
-    await page.waitForResponse('**/configuration');
+    await page.waitForResponse('**/configuration', { timeout: 10000 });
     
     // Check if the form is populated with mocked data
     const timeInput = page.locator('#tfTimeBetweenCaptures');
@@ -88,7 +88,7 @@ test.describe('SetupComponent', () => {
   });
 
   test('should display version information when available', async ({ page }) => {
-    await page.waitForResponse('**/configuration');
+    await page.waitForResponse('**/configuration', { timeout: 10000 });
     
     // Version info may or may not be displayed depending on env vars
     // Just check that the component renders without errors
@@ -97,7 +97,7 @@ test.describe('SetupComponent', () => {
   });
 
   test('should handle save button click', async ({ page }) => {
-    await page.waitForResponse('**/configuration');
+    await page.waitForResponse('**/configuration', { timeout: 10000 });
     
     // Mock the save endpoint
     await page.route('**/configuration', async (route) => {
@@ -115,9 +115,10 @@ test.describe('SetupComponent', () => {
     const saveButton = page.getByRole('button', { name: /save/i });
     await saveButton.click();
     
-    // Should make a POST request
+    // Should make a POST request with timeout
     await page.waitForRequest(request => 
-      request.url().includes('/configuration') && request.method() === 'POST'
+      request.url().includes('/configuration') && request.method() === 'POST',
+      { timeout: 10000 }
     );
   });
 });

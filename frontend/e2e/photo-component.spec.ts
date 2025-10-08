@@ -76,8 +76,8 @@ test.describe('PhotoComponent', () => {
   });
 
   test('should make refresh API call when refresh button is clicked', async ({ page }) => {
-    // Set up request listener
-    const requestPromise = page.waitForRequest('**/photos');
+    // Set up request listener with timeout
+    const requestPromise = page.waitForRequest('**/photos', { timeout: 10000 });
     
     // Click refresh button
     await page.getByRole('button', { name: /refresh/i }).click();
