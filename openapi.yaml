@@ -1,0 +1,519 @@
+openapi: 3.0.3
+info:
+  title: Go Raspberry Pi Timelapse API
+  description: REST API for controlling and managing a Raspberry Pi timelapse camera system
+  version: 1.0.0
+  contact:
+    name: Ingo Jaeckel
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: camera
+    description: Camera capture operations
+  - name: files
+    description: File management operations
+  - name: configuration
+    description: Configuration management
+  - name: monitoring
+    description: System monitoring
+  - name: admin
+    description: Administrative operations
+
+paths:
+  /version:
+    get:
+      summary: Get application version
+      description: Returns the version information of the application
+      operationId: getVersion
+      tags:
+        - monitoring
+      responses:
+        '200':
+          description: Version information
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Hello from arm on linux [version:abc123 built at 2024-01-01]"
+
+  /capture:
+    get:
+      summary: Capture a preview photo
+      description: Takes a preview photo using configured preview resolution settings
+      operationId: capturePreview
+      tags:
+        - camera
+      responses:
+        '200':
+          description: Preview photo captured successfully
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '500':
+          description: Failed to capture photo
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /configuration:
+    get:
+      summary: Get current configuration
+      description: Returns the current timelapse configuration settings
+      operationId: getConfiguration
+      tags:
+        - configuration
+      responses:
+        '200':
+          description: Current configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+    
+    options:
+      summary: Get configuration options
+      description: Returns CORS options for configuration endpoint
+      operationId: getConfigurationOptions
+      tags:
+        - configuration
+      responses:
+        '200':
+          description: CORS preflight response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+    
+    post:
+      summary: Update configuration
+      description: Updates the timelapse configuration settings
+      operationId: updateConfiguration
+      tags:
+        - configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /monitoring:
+    get:
+      summary: Get system monitoring data
+      description: Returns current system monitoring information including CPU/GPU temperature, uptime, and disk space
+      operationId: getMonitoring
+      tags:
+        - monitoring
+      responses:
+        '200':
+          description: System monitoring data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitoringResponse'
+
+  /logs:
+    get:
+      summary: Get application logs
+      description: Returns the contents of the application log file
+      operationId: getLogs
+      tags:
+        - monitoring
+      responses:
+        '200':
+          description: Application logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogResponse'
+        '500':
+          description: Failed to read log file
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /photos:
+    get:
+      summary: Get list of photos
+      description: Returns a list of all captured timelapse photos with metadata
+      operationId: getPhotos
+      tags:
+        - files
+      responses:
+        '200':
+          description: List of photos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetPhotosResponse'
+
+  /file:
+    get:
+      summary: Get list of all files
+      description: Returns a list of all files in the storage folder
+      operationId: getFiles
+      tags:
+        - files
+      responses:
+        '200':
+          description: List of files
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListFilesResponse'
+
+  /file/last:
+    get:
+      summary: Get most recent file
+      description: Returns the most recently captured photo
+      operationId: getMostRecentFile
+      tags:
+        - files
+      responses:
+        '200':
+          description: Most recent photo
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: No files found
+
+  /file/{fileName}:
+    get:
+      summary: Get specific file
+      description: Downloads a specific file by name
+      operationId: getFile
+      tags:
+        - files
+      parameters:
+        - name: fileName
+          in: path
+          required: true
+          description: Name of the file to download
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /file/delete:
+    get:
+      summary: Delete files
+      description: Deletes specified files from storage
+      operationId: deleteFiles
+      tags:
+        - files
+      parameters:
+        - name: f
+          in: query
+          required: true
+          description: File names to delete (can be multiple)
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Number of files deleted
+          content:
+            application/json:
+              schema:
+                type: integer
+        '400':
+          description: No files specified
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /archive/zip:
+    get:
+      summary: Download files as ZIP archive
+      description: Creates and downloads a ZIP archive of selected or all timelapse photos
+      operationId: getArchiveZip
+      tags:
+        - files
+      parameters:
+        - name: f
+          in: query
+          required: false
+          description: File names to include in archive (if not provided, all files are included)
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: ZIP archive
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+
+  /archive/tar:
+    get:
+      summary: Download files as TAR archive
+      description: Creates and downloads a TAR archive of selected or all timelapse photos
+      operationId: getArchiveTar
+      tags:
+        - files
+      parameters:
+        - name: f
+          in: query
+          required: false
+          description: File names to include in archive (if not provided, all files are included)
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: TAR archive
+          content:
+            application/tar:
+              schema:
+                type: string
+                format: binary
+
+  /admin/{command}:
+    get:
+      summary: Execute admin command
+      description: Executes an administrative command (e.g., restart, shutdown)
+      operationId: executeAdminCommand
+      tags:
+        - admin
+      parameters:
+        - name: command
+          in: path
+          required: true
+          description: Administrative command to execute
+          schema:
+            type: string
+            enum:
+              - restart
+              - shutdown
+      responses:
+        '200':
+          description: Command executed successfully
+
+components:
+  schemas:
+    Settings:
+      type: object
+      required:
+        - SecondsBetweenCaptures
+        - OffsetWithinHour
+        - PhotoResolutionWidth
+        - PhotoResolutionHeight
+        - PreviewResolutionWidth
+        - PreviewResolutionHeight
+        - RotateBy
+        - ResolutionSetting
+        - Quality
+        - DebugEnabled
+      properties:
+        SecondsBetweenCaptures:
+          type: integer
+          description: Number of seconds between automatic captures
+          example: 300
+          minimum: 1
+        OffsetWithinHour:
+          type: integer
+          description: Offset in seconds within the hour for scheduled captures
+          example: 0
+          minimum: 0
+          maximum: 3599
+        PhotoResolutionWidth:
+          type: integer
+          description: Width of captured photos in pixels
+          example: 3280
+          minimum: 1
+        PhotoResolutionHeight:
+          type: integer
+          description: Height of captured photos in pixels
+          example: 2464
+          minimum: 1
+        PreviewResolutionWidth:
+          type: integer
+          description: Width of preview photos in pixels
+          example: 640
+          minimum: 1
+        PreviewResolutionHeight:
+          type: integer
+          description: Height of preview photos in pixels
+          example: 480
+          minimum: 1
+        RotateBy:
+          type: integer
+          description: Rotation angle in degrees
+          example: 0
+          enum: [0, 90, 180, 270]
+        ResolutionSetting:
+          type: integer
+          description: Resolution preset setting
+          example: 0
+          minimum: 0
+        Quality:
+          type: integer
+          description: JPEG quality (1-100)
+          example: 100
+          minimum: 1
+          maximum: 100
+        DebugEnabled:
+          type: boolean
+          description: Enable debug logging
+          example: false
+
+    MonitoringResponse:
+      type: object
+      required:
+        - Time
+        - Uptime
+        - CpuTemperature
+        - GpuTemperature
+        - FreeDiskSpace
+      properties:
+        Time:
+          type: string
+          description: Current system time
+          example: "Mon Jan 1 12:00:00 UTC 2024"
+        Uptime:
+          type: string
+          description: System uptime
+          example: "up 5 days, 3:24"
+        CpuTemperature:
+          type: string
+          description: CPU temperature
+          example: "45000"
+        GpuTemperature:
+          type: string
+          description: GPU temperature
+          example: "temp=43.0'C"
+        FreeDiskSpace:
+          type: string
+          description: Free disk space information
+          example: "/dev/root 29G 5.2G 22G 19% /"
+
+    LogResponse:
+      type: object
+      required:
+        - Logs
+      properties:
+        Logs:
+          type: string
+          description: Application log contents
+          example: "2024/01/01 12:00:00 Application started\n"
+
+    GetPhotosResponse:
+      type: object
+      required:
+        - Photos
+      properties:
+        Photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+
+    Photo:
+      type: object
+      required:
+        - Name
+        - ModTime
+        - Size
+      properties:
+        Name:
+          type: string
+          description: Photo file name
+          example: "photo_2024-01-01_120000.jpg"
+        ModTime:
+          type: string
+          description: Last modification time
+          example: "2024-01-01T12:00:00Z"
+        Size:
+          type: string
+          description: Human-readable file size
+          example: "2 MB"
+
+    ListFilesResponse:
+      type: object
+      required:
+        - files
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/File'
+
+    File:
+      type: object
+      required:
+        - name
+        - mod_time
+        - mod_time_epoch
+        - is_dir
+        - bytes
+      properties:
+        name:
+          type: string
+          description: File name
+          example: "photo_2024-01-01_120000.jpg"
+        mod_time:
+          type: string
+          description: Last modification time as string
+          example: "2024-01-01T12:00:00Z"
+        mod_time_epoch:
+          type: integer
+          format: int64
+          description: Last modification time as Unix epoch
+          example: 1704110400
+        is_dir:
+          type: boolean
+          description: Whether this is a directory
+          example: false
+        bytes:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 2097152

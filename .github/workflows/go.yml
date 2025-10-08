@@ -10,6 +10,7 @@ on:
       - 'timelapse/**'
       - 'main.go'
       - 'go.*'
+      - 'openapi.yaml'
       - '.github/workflows/go.yml'
 jobs:
   build:
@@ -20,16 +21,34 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: '22'
-    - name: Install frontend dependencies
-      run: cd frontend && npm install
-    - name: Run frontend tests
-      run: cd frontend && npm run test && cd ../
-    - name: Build frontend
-      run: cd frontend && npm run build && cd ../
+    
+    # OpenAPI linting
+    - name: Install Spectral CLI
+      run: npm install -g @stoplight/spectral-cli
+    - name: Lint OpenAPI specification
+      run: spectral lint openapi.yaml
+    
+    # Go code generation
     - uses: actions/setup-go@v5
       with:
         go-version: 1.25.2
       id: go
+    - name: Install oapi-codegen
+      run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+    - name: Generate Go server code
+      run: oapi-codegen -config codegen-config.yaml openapi.yaml
+    
+    # TypeScript code generation
+    - name: Install frontend dependencies
+      run: cd frontend && npm install --legacy-peer-deps
+    - name: Generate TypeScript client code
+      run: cd frontend && npm run generate:api
+    
+    # Build and test
+    - name: Run frontend tests
+      run: cd frontend && npm run test && cd ../
+    - name: Build frontend
+      run: cd frontend && npm run build && cd ../
     - name: Vet
       run: go vet ./...
     - name: Test

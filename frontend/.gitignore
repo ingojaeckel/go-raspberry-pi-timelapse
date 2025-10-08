@@ -12,6 +12,9 @@ test-output.txt
 # production
 /build
 
+# generated
+/src/generated
+
 # misc
 .DS_Store
 .env.local
