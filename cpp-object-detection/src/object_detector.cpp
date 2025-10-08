@@ -578,6 +578,8 @@ void ObjectDetector::updateStationaryStatus(ObjectTracker& tracker) {
         tracker.stationary_since = std::chrono::steady_clock::now();
         logger_->debug("Object " + tracker.object_type + " is now stationary (avg movement: " + 
                       std::to_string(avg_distance) + " pixels)");
+        // Record stationary detection for summary
+        logger_->recordDetection(tracker.object_type, true);
     } else if (!currently_stationary && tracker.is_stationary) {
         // Object started moving again
         tracker.is_stationary = false;
@@ -590,6 +592,10 @@ void ObjectDetector::updateStationaryStatus(ObjectTracker& tracker) {
         logger_->debug("Object " + tracker.object_type + " stationary for " + 
                       std::to_string(stationary_duration.count()) + " seconds (avg movement: " + 
                       std::to_string(avg_distance) + " pixels)");
+        // Record periodic stationary detection (every 10 seconds) for timeline continuity
+        if (stationary_duration.count() % 10 == 0 && stationary_duration.count() > 0) {
+            logger_->recordDetection(tracker.object_type, true);
+        }
     }
 }
 
