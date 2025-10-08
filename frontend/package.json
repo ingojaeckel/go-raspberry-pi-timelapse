@@ -19,16 +19,15 @@
     "axios": "^1.7.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-scripts": "^5.0.1",
     "source-map-explorer": "^2.5.3",
     "typescript": "^4.9.5"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "analyze": "source-map-explorer 'build/static/js/*.js'"
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "analyze": "source-map-explorer 'build/assets/*.js'"
   },
   "browserslist": {
     "production": [
@@ -42,27 +41,11 @@
       "last 1 safari version"
     ]
   },
-  "jest": {
-    "transformIgnorePatterns": [
-      "node_modules/(?!(axios)/)"
-    ],
-    "moduleNameMapper": {
-      "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js"
-    },
-    "collectCoverageFrom": [
-      "src/**/*.{ts,tsx}",
-      "!src/**/*.d.ts",
-      "!src/index.tsx",
-      "!src/react-app-env.d.ts",
-      "!src/models/response.tsx"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 50,
-        "functions": 75,
-        "lines": 80,
-        "statements": 80
-      }
-    }
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/ui": "^3.2.4",
+    "jsdom": "^26.1.0",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
   }
 }

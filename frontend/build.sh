@@ -1,5 +1,15 @@
 #!/bin/sh
 set -e -x
+
+# Load nvm and use the version specified in .nvmrc
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    . "$NVM_DIR/nvm.sh"
+    nvm use
+else
+    echo "Warning: nvm not found, using system Node/npm"
+fi
+
 COMMIT=`git rev-parse HEAD`
 COMMIT_ABBREV=`git rev-parse --short HEAD`
 COMMIT_TIME=`git log -1 --format=%cd`

@@ -32,7 +32,7 @@ const getPhotos = () => {
     .get<PhotosResponse>(BaseUrl + "/photos")
     .then(resp => {
       // After receiving a response, map the PhotosResponse to RowData[] which can be displayed in the data grid.
-      if (resp.data) {
+      if (resp.data && resp.data.Photos) {
         var rows: any[] = [];
 
         for (var i=0; i<resp.data.Photos.length; i++) {
