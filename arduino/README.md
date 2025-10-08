@@ -1,190 +1,105 @@
-# Arduino Giga R1 WiFi Projects
+# Arduino Projects
 
-This directory contains Arduino projects for the [Arduino Giga R1 WiFi](https://store.arduino.cc/products/giga-r1-wifi) board.
-
-## Board Specifications
-
-- **Microcontroller**: STM32H747XI dual-core
-  - Cortex-M7 core at 480 MHz
-  - Cortex-M4 core at 240 MHz
-- **WiFi/Bluetooth**: Murata 1DX module
-- **USB**: USB-C connector
-- **Built-in LED**: Pin LED_BUILTIN (typically pin 13 on Arduino boards)
+This directory contains Arduino projects for various boards.
 
 ## Project Structure
 
+Each project is in its own subdirectory with the following structure:
+
 ```
 arduino/
-├── src/
-│   └── hello-world.ino        # Hello World blink sketch
-├── scripts/
-│   ├── build.sh               # Build script (Arduino CLI)
-│   ├── deploy.sh              # Upload/deploy script (Arduino CLI)
-│   └── monitor.sh             # Serial monitor script (Arduino CLI)
-└── README.md                  # This file
+├── hello-world/                   # Example: Hello World blink project
+│   ├── arduino-cli.yaml          # Project configuration (FQBN, libraries, etc.)
+│   ├── src/
+│   │   └── hello-world.ino       # Arduino sketch
+│   └── scripts/
+│       ├── build.sh              # Build script
+│       ├── deploy.sh             # Deploy script
+│       └── monitor.sh            # Serial monitor script
+└── README.md                      # This file
 ```
 
-This structure supports adding multiple projects in the future while using the same Giga R1 WiFi platform configuration.
+## Projects
 
-## Prerequisites
+### hello-world
 
-### Option 1: Arduino CLI (Recommended)
-
-- **Arduino CLI** (auto-installed by build.sh)
-- Works with Arduino Giga R1 WiFi board package
-- Best for local development and deployment
-
-### Option 2: Arduino IDE
-
-- Arduino IDE 2.0 or later
-- Arduino Mbed OS Giga Boards package
-- Easy to use GUI interface
-
-## Getting Started
-
-### Using Arduino CLI (Recommended)
-
-Arduino CLI provides the best support for the Arduino Giga R1 WiFi board.
-
-1. **Build the project:**
-   ```bash
-   cd arduino
-   ./scripts/build.sh
-   ```
-   
-   The script will automatically:
-   - Download and install Arduino CLI if not present
-   - Install the Arduino Mbed OS Giga Boards package
-   - Compile the sketch for the Giga R1 WiFi
-
-2. **Deploy to board:**
-   ```bash
-   ./scripts/deploy.sh
-   ```
-   
-   Or specify a port manually:
-   ```bash
-   ./scripts/deploy.sh /dev/ttyACM0
-   ```
-
-3. **Monitor serial output:**
-   ```bash
-   ./scripts/monitor.sh
-   ```
-
-### Using Arduino IDE
-
-1. **Open Arduino IDE**
-
-2. **Install board support:**
-   - Go to Tools → Board → Boards Manager
-   - Search for "Arduino Giga" or "Mbed Giga"
-   - Install "Arduino Mbed OS Giga Boards"
-
-3. **Open the sketch:**
-   - File → Open
-   - Navigate to `arduino/src/hello-world.ino`
-
-4. **Select board:**
-   - Tools → Board → Arduino Mbed OS Giga Boards → Arduino Giga R1 WiFi
-
-5. **Select port:**
-   - Tools → Port → Select your board's port
-
-6. **Upload:**
-   - Click the Upload button or Sketch → Upload
-
-The sketch will compile and upload to your board.
-
-## Hello World Blink Project
-
-The `hello-world.ino` sketch is a simple blink program that:
-- Blinks the built-in LED on and off every second
+A simple blink program for the **Arduino Giga R1 WiFi** board that:
+- Blinks the built-in LED every second
 - Prints status messages to the serial monitor at 115200 baud
-- Demonstrates basic Arduino programming for the Giga R1 WiFi
 
-### Expected Output
+**Board:** Arduino Giga R1 WiFi (STM32H747XI dual-core)
 
-When running, you should see the built-in LED blinking and serial output:
-```
-Arduino Giga R1 WiFi - Hello World Blink
-Built-in LED will blink every second
-Setup complete!
-LED ON
-LED OFF
-LED ON
-LED OFF
-...
-```
-
-## Build & Deploy Options Summary
-
-| Method | Best For | Build Command | Deploy Command |
-|--------|----------|---------------|----------------|
-| **Arduino CLI** | Development & Production | `./scripts/build.sh` | `./scripts/deploy.sh` |
-| **Arduino IDE** | Beginners & Quick Testing | GUI Upload Button | GUI Upload Button |
-
-## CI/CD Integration
-
-The project includes a GitHub Actions workflow (`.github/workflows/arduino.yml`) that:
-- Automatically builds the project on code changes
-- Uses Arduino CLI to compile for the Arduino Giga R1 WiFi board
-- Validates the Arduino sketch syntax
-- Creates firmware artifacts
-- Works without physical hardware
+See [hello-world/README.md](hello-world/README.md) for details.
 
 ## Adding New Projects
 
-To add a new project for the Giga R1 WiFi:
+To add a new project:
 
 1. Create a new directory: `arduino/my-project/`
 2. Create a `src/` directory with your `.ino` sketch
-3. Copy and adapt the build scripts from the hello-world project
-4. Use the same Arduino CLI build pattern
+3. Create an `arduino-cli.yaml` configuration file:
+   ```yaml
+   # Arduino CLI Project Configuration
+   fqbn: arduino:mbed_giga:giga  # Your target board FQBN
+   ```
+4. Copy and adapt the build scripts from an existing project
+5. Add your project to the GitHub Actions workflow matrix in `.github/workflows/arduino.yml`
 
-The modular structure allows multiple independent projects while sharing the same board platform.
+The configuration file supports:
+- **fqbn**: Fully Qualified Board Name (required)
+- **libraries**: List of library dependencies (optional)
+- **build_properties**: Additional build properties (optional)
 
-## Troubleshooting
+## Prerequisites
 
-### Arduino CLI Issues
+### Arduino CLI (Recommended)
 
-- **Download failed:** Check internet connection or download manually from https://arduino.github.io/arduino-cli/
-- **Board package not found:** Run `arduino-cli core update-index`
-- **Upload failed:** 
-  - Check USB connection
-  - Try `arduino-cli board list` to see available boards
-  - Specify port manually: `./scripts/deploy.sh /dev/ttyACM0`
+- **Arduino CLI** (auto-installed by build scripts)
+- Works with any Arduino-compatible board
+- Best for local development and deployment
 
-### Arduino IDE Issues
+### Arduino IDE
 
-- **Board not showing:** 
-  - Ensure "Arduino Mbed OS Giga Boards" package is installed
-  - Restart Arduino IDE
-- **Upload failed:** 
-  - Try pressing reset button twice quickly to enter bootloader
-  - Check cable connection
-  - Verify correct port is selected
+- Arduino IDE 2.0 or later
+- Install required board packages from Boards Manager
+- Easy to use GUI interface
 
-### Permission Issues (Linux)
+## Building and Deploying
+
+Each project has its own build scripts:
 
 ```bash
-# Add user to dialout group for serial port access
-sudo usermod -a -G dialout $USER
-# Log out and back in for changes to take effect
+cd arduino/hello-world
+./scripts/build.sh      # Build the project
+./scripts/deploy.sh     # Deploy to connected board
+./scripts/monitor.sh    # Monitor serial output
 ```
 
-## Sketch Compatibility
+The build script automatically:
+- Installs Arduino CLI if not present
+- Reads the project configuration from `arduino-cli.yaml`
+- Installs the required board platform
+- Compiles the sketch for the target board
 
-The hello-world.ino sketch is designed to be compatible with:
-- ✅ Arduino Giga R1 WiFi (primary target)
-- ✅ Most Arduino boards (uses standard LED_BUILTIN)
-- ✅ Arduino IDE 1.8.x and 2.x
-- ✅ Arduino CLI
+## CI/CD Integration
+
+The GitHub Actions workflow (`.github/workflows/arduino.yml`):
+- Automatically builds all projects on code changes
+- Reads each project's `arduino-cli.yaml` for board configuration
+- Creates firmware artifacts for each project
+- Uses a matrix strategy to build multiple projects in parallel
+
+To add a project to CI/CD, add it to the workflow matrix:
+
+```yaml
+strategy:
+  matrix:
+    project:
+      - hello-world
+      - my-new-project  # Add your project here
+```
 
 ## Resources
 
-- [Arduino Giga R1 WiFi Official Page](https://store.arduino.cc/products/giga-r1-wifi)
-- [Arduino Giga R1 WiFi Documentation](https://docs.arduino.cc/hardware/giga-r1-wifi)
 - [Arduino CLI Documentation](https://arduino.github.io/arduino-cli/)
 - [Arduino Language Reference](https://www.arduino.cc/reference/en/)
-- [STM32H747 Datasheet](https://www.st.com/en/microcontrollers-microprocessors/stm32h747xi.html)

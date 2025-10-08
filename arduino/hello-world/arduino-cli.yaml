@@ -1,0 +1,19 @@
+# Arduino CLI Project Configuration
+# This file contains build configuration for the hello-world project
+# 
+# FQBN (Fully Qualified Board Name) - specifies the target board
+fqbn: arduino:mbed_giga:giga
+
+# Board platform to install (optional, auto-detected from FQBN)
+# platform: arduino:mbed_giga
+
+# Libraries to install (optional)
+# libraries:
+#   - name: WiFi
+#     version: latest
+
+# Build properties (optional)
+# build_properties:
+
+# Compiler warnings level (default, more, all)
+# warnings: default

@@ -7,7 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Serial Monitor for Arduino Giga R1 WiFi with Arduino CLI${NC}"
+echo -e "${GREEN}Serial Monitor for Arduino Board with Arduino CLI${NC}"
 
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -18,7 +18,7 @@ cd "$PROJECT_ROOT"
 # Check for Arduino CLI
 if ! command -v arduino-cli &> /dev/null; then
     echo -e "${RED}Error: Arduino CLI not found.${NC}"
-    echo -e "${YELLOW}Please run ./scripts/build-arduino-cli.sh first or install Arduino CLI manually.${NC}"
+    echo -e "${YELLOW}Please run ./scripts/build.sh first or install Arduino CLI manually.${NC}"
     exit 1
 fi
 
@@ -42,7 +42,7 @@ else
         arduino-cli monitor -p "$PORT" --config baudrate=115200
     else
         echo -e "${RED}No board detected!${NC}"
-        echo -e "${YELLOW}Please specify port manually: ./scripts/monitor-arduino-cli.sh /dev/ttyACM0${NC}"
+        echo -e "${YELLOW}Please specify port manually: ./scripts/monitor.sh /dev/ttyACM0${NC}"
         exit 1
     fi
 fi

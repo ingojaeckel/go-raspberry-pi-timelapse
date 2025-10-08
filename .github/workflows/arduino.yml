@@ -11,9 +11,14 @@ on:
       - '.github/workflows/arduino.yml'
 
 jobs:
-  build-with-arduino-cli:
-    name: Build with Arduino CLI
+  build-arduino-projects:
+    name: Build Arduino Projects
     runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        project:
+          - hello-world
     
     steps:
     - name: Checkout code
@@ -22,28 +27,43 @@ jobs:
     - name: Setup Arduino CLI
       uses: arduino/setup-arduino-cli@v2
     
-    - name: Install Arduino Mbed OS Giga Boards platform
+    - name: Read project configuration
+      id: config
+      run: |
+        cd arduino/${{ matrix.project }}
+        if [ ! -f arduino-cli.yaml ]; then
+          echo "Error: arduino-cli.yaml not found"
+          exit 1
+        fi
+        FQBN=$(grep "^fqbn:" arduino-cli.yaml | cut -d':' -f2- | xargs)
+        PLATFORM=$(echo "$FQBN" | cut -d':' -f1-2)
+        echo "fqbn=$FQBN" >> $GITHUB_OUTPUT
+        echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+        echo "Board FQBN: $FQBN"
+        echo "Platform: $PLATFORM"
+    
+    - name: Install board platform
       run: |
         arduino-cli core update-index
-        arduino-cli core install arduino:mbed_giga
+        arduino-cli core install ${{ steps.config.outputs.platform }}
     
     - name: Compile Arduino sketch
       run: |
-        cd arduino
-        arduino-cli compile --fqbn arduino:mbed_giga:giga src/hello-world.ino
+        cd arduino/${{ matrix.project }}
+        arduino-cli compile --fqbn ${{ steps.config.outputs.fqbn }} src/hello-world.ino
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: arduino-giga-r1-wifi-firmware
+        name: ${{ matrix.project }}-firmware
         path: |
-          arduino/src/build/**/*.bin
-          arduino/src/build/**/*.elf
-          arduino/src/build/**/*.hex
+          arduino/${{ matrix.project }}/src/build/**/*.bin
+          arduino/${{ matrix.project }}/src/build/**/*.elf
+          arduino/${{ matrix.project }}/src/build/**/*.hex
         retention-days: 30
     
     - name: Display build info
       run: |
-        echo "Build completed successfully!"
+        echo "Build completed successfully for ${{ matrix.project }}!"
         echo "Artifacts:"
-        find arduino/src/build -type f -name "*.bin" -o -name "*.elf" -o -name "*.hex" 2>/dev/null || echo "Build artifacts generated"
+        find arduino/${{ matrix.project }}/src/build -type f -name "*.bin" -o -name "*.elf" -o -name "*.hex" 2>/dev/null || echo "Build artifacts generated"
