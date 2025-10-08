@@ -64,12 +64,12 @@ function App() {
               allowScrollButtonsMobile 
               aria-label="scrollable icon label tabs"
               sx={{
-                minHeight: { xs: '48px', sm: '64px' },
+                minHeight: { xs: '32px', sm: '64px' },
                 '& .MuiTab-root': {
-                  minHeight: { xs: '48px', sm: '64px' },
+                  minHeight: { xs: '32px', sm: '64px' },
                   padding: { xs: '6px 8px', sm: '12px 16px' },
                   fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  minWidth: { xs: '60px', sm: '90px' },
+                  minWidth: { xs: '40px', sm: '90px' },
                   '& .MuiSvgIcon-root': {
                     fontSize: { xs: '1.2rem', sm: '1.5rem' },
                   },
