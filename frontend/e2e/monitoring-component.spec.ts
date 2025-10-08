@@ -8,8 +8,9 @@ test.describe('MonitoringComponent', () => {
   });
 
   test('should display monitoring data labels', async ({ page }) => {
-    await expect(page.getByText(/CPU:/i)).toBeVisible();
+    await expect(page.getByText(/Temperature:/i)).toBeVisible();
     await expect(page.getByText(/GPU:/i)).toBeVisible();
+    await expect(page.getByText(/CPU:/i)).toBeVisible();
   });
 
   test('should fetch and display monitoring data from API', async ({ page }) => {
