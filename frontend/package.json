@@ -46,7 +46,7 @@
     ]
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "^1.48.2",
     "@vitejs/plugin-react": "^5.0.4",
     "@vitest/ui": "^3.2.4",
     "jsdom": "^26.1.0",
