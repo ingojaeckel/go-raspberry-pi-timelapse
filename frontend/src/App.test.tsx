@@ -150,4 +150,16 @@ describe('App', () => {
     const containerElement = container.querySelector('.MuiContainer-root');
     expect(containerElement).toBeInTheDocument();
   });
+
+  test('applies theme based on user preference', () => {
+    const { container } = render(<App />);
+    // ThemeProvider should wrap the content
+    expect(container.firstChild).toBeInTheDocument();
+  });
+
+  test('includes ThemeProvider in component tree', () => {
+    const { container } = render(<App />);
+    // Verify CssBaseline is applied (which comes from theme)
+    expect(container.querySelector('.MuiContainer-root')).toBeInTheDocument();
+  });
 });

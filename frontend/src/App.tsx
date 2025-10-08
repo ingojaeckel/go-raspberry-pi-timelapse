@@ -1,6 +1,6 @@
 import React from 'react';
 import axios from 'axios';
-import { Box, Container, CssBaseline, Grid, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Container, CssBaseline, Grid, Tab, Tabs, Typography, ThemeProvider, createTheme, useMediaQuery } from '@mui/material';
 import { Home, PhotoCamera, Timeline, Settings, Description } from '@mui/icons-material'
 import PhotoComponent from './components/PhotoComponent';
 import MonitoringComponent from './components/MonitoringComponent';
@@ -45,8 +45,23 @@ function App() {
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
   };
+  
+  // Detect user's preferred color scheme
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+  
+  // Create theme based on user preference
+  const theme = React.useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: prefersDarkMode ? 'dark' : 'light',
+        },
+      }),
+    [prefersDarkMode],
+  );
+  
   return (
-    <React.Fragment>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <Container 
         sx={{ 
@@ -88,7 +103,7 @@ function App() {
           </Grid>
         </Grid>
       </Container>
-    </React.Fragment>
+    </ThemeProvider>
   );
 }
 
