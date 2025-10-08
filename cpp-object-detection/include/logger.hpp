@@ -24,6 +24,7 @@ public:
         std::string object_type;
         std::chrono::system_clock::time_point timestamp;
         bool is_stationary;  // True if object stayed in roughly same position
+        bool is_exit;        // True if object left the scene
     };
 
     Logger(const std::string& log_file, bool verbose = false);
@@ -71,7 +72,7 @@ public:
     /**
      * Record a detection event for hourly summary
      */
-    void recordDetection(const std::string& object_type, bool is_stationary = false);
+    void recordDetection(const std::string& object_type, bool is_stationary = false, bool is_exit = false);
     
     /**
      * Print hourly summary and reset tracking

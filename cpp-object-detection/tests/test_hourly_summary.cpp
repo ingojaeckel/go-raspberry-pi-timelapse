@@ -193,3 +193,32 @@ TEST_F(HourlySummaryTest, FinalSummaryWithStationaryObjectsCtrlCScenario) {
     // Verify manually by running test and checking output
     SUCCEED();
 }
+
+// Test case to verify entry and exit events are properly tracked
+TEST_F(HourlySummaryTest, EntryAndExitTimeline) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Person enters at 12:02
+    logger->recordDetection("person", false, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person becomes stationary
+    logger->recordDetection("person", true, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person leaves at 12:04
+    logger->recordDetection("person", false, true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person returns at 12:11
+    logger->recordDetection("person", false, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person leaves again
+    logger->recordDetection("person", false, true);
+    
+    // Trigger final summary
+    logger->printFinalSummary();
+    
+    SUCCEED();
+}

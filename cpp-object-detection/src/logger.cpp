@@ -130,12 +130,13 @@ void Logger::writeLog(Level level, const std::string& message) {
     }
 }
 
-void Logger::recordDetection(const std::string& object_type, bool is_stationary) {
+void Logger::recordDetection(const std::string& object_type, bool is_stationary, bool is_exit) {
     std::lock_guard<std::mutex> lock(summary_mutex_);
     DetectionEvent event;
     event.object_type = object_type;
     event.timestamp = std::chrono::system_clock::now();
     event.is_stationary = is_stationary;
+    event.is_exit = is_exit;
     detection_events_.push_back(event);
     all_detection_events_.push_back(event);  // Also track for final summary
 }
@@ -148,67 +149,58 @@ std::string Logger::formatTime(const std::chrono::system_clock::time_point& time
 }
 
 void Logger::generateTimeline(std::stringstream& summary, const std::vector<DetectionEvent>& events) {
-    // Generate timeline with stationary object fusion
-    std::string current_stationary_type;
-    std::chrono::system_clock::time_point stationary_start;
-    
+    // Generate timeline showing entry and exit events
     for (size_t i = 0; i < events.size(); ++i) {
         const auto& event = events[i];
         
-        if (event.is_stationary) {
-            // Start or continue a stationary period
-            if (current_stationary_type.empty() || current_stationary_type != event.object_type) {
-                // Start new stationary period
-                if (!current_stationary_type.empty()) {
-                    // End previous stationary period
-                    auto prev_end = events[i-1].timestamp;
-                    summary << "from " << formatTime(stationary_start) 
-                           << "-" << formatTime(prev_end) 
-                           << " a " << current_stationary_type << " was detected\n";
-                }
-                current_stationary_type = event.object_type;
-                stationary_start = event.timestamp;
-            }
-            // Continue current stationary period
-        } else {
-            // Non-stationary (dynamic) object
-            if (!current_stationary_type.empty()) {
-                // End current stationary period
-                auto prev_end = events[i-1].timestamp;
-                summary << "from " << formatTime(stationary_start) 
-                       << "-" << formatTime(prev_end) 
-                       << " a " << current_stationary_type << " was detected\n";
-                current_stationary_type.clear();
+        if (event.is_exit) {
+            // Object left the scene
+            summary << "at " << formatTime(event.timestamp) << ", ";
+            summary << event.object_type << " left\n";
+        } else if (event.is_stationary) {
+            // Skip individual stationary events - we'll summarize them as presence periods
+            // Look ahead to find when this stationary period ends
+            size_t j = i;
+            while (j + 1 < events.size() && 
+                   events[j + 1].object_type == event.object_type &&
+                   events[j + 1].is_stationary && 
+                   !events[j + 1].is_exit) {
+                j++;
             }
             
+            // Only show stationary period if it's longer than a single event
+            if (j > i) {
+                summary << "from " << formatTime(event.timestamp) 
+                       << "-" << formatTime(events[j].timestamp) 
+                       << " " << event.object_type << " was present\n";
+                i = j;  // Skip processed events
+            }
+        } else {
+            // Dynamic object detection (entry)
             // Count consecutive detections of the same dynamic object at similar times
             int same_type_count = 1;
-            while (i + 1 < events.size() && 
-                   events[i + 1].object_type == event.object_type &&
-                   !events[i + 1].is_stationary &&
+            size_t end_idx = i;
+            while (end_idx + 1 < events.size() && 
+                   events[end_idx + 1].object_type == event.object_type &&
+                   !events[end_idx + 1].is_stationary &&
+                   !events[end_idx + 1].is_exit &&
                    std::chrono::duration_cast<std::chrono::seconds>(
-                       events[i + 1].timestamp - event.timestamp).count() < 10) {
+                       events[end_idx + 1].timestamp - event.timestamp).count() < 10) {
                 same_type_count++;
-                i++;
+                end_idx++;
             }
             
             summary << "at " << formatTime(event.timestamp) << ", ";
             if (same_type_count == 1) {
-                summary << "a " << event.object_type;
+                summary << "a " << event.object_type << " was detected";
             } else if (same_type_count == 2) {
-                summary << "two " << (event.object_type == "person" ? "people" : event.object_type + "s");
+                summary << "two " << (event.object_type == "person" ? "people" : event.object_type + "s") << " were detected";
             } else {
-                summary << same_type_count << " " << (event.object_type == "person" ? "people" : event.object_type + "s");
+                summary << same_type_count << " " << (event.object_type == "person" ? "people" : event.object_type + "s") << " were detected";
             }
-            summary << " were detected\n";
+            summary << "\n";
+            i = end_idx;  // Skip processed events
         }
-    }
-    
-    // Handle trailing stationary period
-    if (!current_stationary_type.empty()) {
-        summary << "from " << formatTime(stationary_start) 
-               << "-" << formatTime(events.back().timestamp) 
-               << " a " << current_stationary_type << " was detected\n";
     }
 }
 

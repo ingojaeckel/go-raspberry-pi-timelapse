@@ -312,12 +312,14 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
     }
     
     // Remove objects that haven't been seen for too long
-    // First, log the objects that will be removed
+    // First, log the objects that will be removed and record exit events
     for (const auto& tracker : tracked_objects_) {
         if (tracker.frames_since_detection > 30) {
             logger_->debug("Removing " + tracker.object_type + 
                           " tracker (not seen for " + 
                           std::to_string(tracker.frames_since_detection) + " frames)");
+            // Record exit event for timeline
+            logger_->recordDetection(tracker.object_type, false, true);
         }
     }
     
