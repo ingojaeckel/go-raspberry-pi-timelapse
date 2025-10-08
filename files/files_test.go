@@ -74,3 +74,57 @@ func TestTarTwoFilesWithPipe(t *testing.T) {
 	}
 	ensure.DeepEqual(t, count, 2)
 }
+
+// Benchmarks for performance-sensitive operations
+
+func BenchmarkListFiles(b *testing.B) {
+	w, _ := os.Getwd()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ListFiles(w, true)
+	}
+}
+
+func BenchmarkByAgeSort(b *testing.B) {
+	// Create sample file list
+	files := make([]File, 100)
+	for i := 0; i < 100; i++ {
+		files[i] = File{
+			Name:         "file" + string(rune(i)) + ".jpg",
+			ModTimeEpoch: int64(100 - i), // Reverse order
+			Bytes:        1024 * int64(i),
+		}
+	}
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Copy to avoid sorting already sorted data
+		testFiles := make([]File, len(files))
+		copy(testFiles, files)
+		ByAge(testFiles).Swap(0, 1) // Force use of ByAge methods
+		_ = ByAge(testFiles).Less(0, 1)
+		_ = ByAge(testFiles).Len()
+	}
+}
+
+func BenchmarkByAgeSortFull(b *testing.B) {
+	// Create sample file list
+	files := make([]File, 100)
+	for i := 0; i < 100; i++ {
+		files[i] = File{
+			Name:         "file" + string(rune(i)) + ".jpg",
+			ModTimeEpoch: int64(100 - i), // Reverse order
+			Bytes:        1024 * int64(i),
+		}
+	}
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Copy to avoid sorting already sorted data
+		testFiles := make([]File, len(files))
+		copy(testFiles, files)
+		ByAge(testFiles).Swap(0, 1)
+		ByAge(testFiles).Less(0, 1)
+		ByAge(testFiles).Len()
+	}
+}
