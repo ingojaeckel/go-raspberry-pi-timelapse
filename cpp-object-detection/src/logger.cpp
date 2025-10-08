@@ -158,8 +158,15 @@ void Logger::generateTimeline(std::stringstream& summary, const std::vector<Dete
             summary << "at " << formatTime(event.timestamp) << ", ";
             summary << event.object_type << " left\n";
         } else if (event.is_stationary) {
-            // Skip individual stationary events - we'll summarize them as presence periods
-            // Look ahead to find when this stationary period ends
+            // For stationary events, check if this is part of a longer stationary period
+            // or if it follows immediately after a dynamic entry (in which case skip it)
+            
+            // Check if previous event was a dynamic entry of the same type
+            bool follows_dynamic_entry = (i > 0 && 
+                                          events[i-1].object_type == event.object_type &&
+                                          !events[i-1].is_stationary && 
+                                          !events[i-1].is_exit);
+            
             size_t j = i;
             while (j + 1 < events.size() && 
                    events[j + 1].object_type == event.object_type &&
@@ -168,13 +175,19 @@ void Logger::generateTimeline(std::stringstream& summary, const std::vector<Dete
                 j++;
             }
             
-            // Only show stationary period if it's longer than a single event
+            // If this is a multi-event stationary period, show it as a presence period
             if (j > i) {
                 summary << "from " << formatTime(event.timestamp) 
                        << "-" << formatTime(events[j].timestamp) 
                        << " " << event.object_type << " was present\n";
                 i = j;  // Skip processed events
+            } else if (!follows_dynamic_entry) {
+                // Single stationary event that doesn't follow a dynamic entry
+                // Treat it as initial detection (object was already there when recording started)
+                summary << "at " << formatTime(event.timestamp) << ", ";
+                summary << "a " << event.object_type << " was detected\n";
             }
+            // If it follows a dynamic entry and is a single event, skip it (already shown as entry)
         } else {
             // Dynamic object detection (entry)
             // Count consecutive detections of the same dynamic object at similar times

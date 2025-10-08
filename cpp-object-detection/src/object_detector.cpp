@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <sstream>
 #include <ctime>
+#include <set>
 
 // Maximum distance (in pixels) an object can move between frames to be considered the same object
 // This assumes objects don't teleport across large portions of the frame
@@ -313,13 +314,18 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
     
     // Remove objects that haven't been seen for too long
     // First, log the objects that will be removed and record exit events
+    // Track which object types we've already recorded exits for to avoid duplicates
+    std::set<std::string> exit_recorded;
     for (const auto& tracker : tracked_objects_) {
         if (tracker.frames_since_detection > 30) {
             logger_->debug("Removing " + tracker.object_type + 
                           " tracker (not seen for " + 
                           std::to_string(tracker.frames_since_detection) + " frames)");
-            // Record exit event for timeline
-            logger_->recordDetection(tracker.object_type, false, true);
+            // Record exit event for timeline (once per object type)
+            if (exit_recorded.find(tracker.object_type) == exit_recorded.end()) {
+                logger_->recordDetection(tracker.object_type, false, true);
+                exit_recorded.insert(tracker.object_type);
+            }
         }
     }
     

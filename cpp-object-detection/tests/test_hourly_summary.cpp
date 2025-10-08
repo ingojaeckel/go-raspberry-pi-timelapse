@@ -222,3 +222,25 @@ TEST_F(HourlySummaryTest, EntryAndExitTimeline) {
     
     SUCCEED();
 }
+
+// Test case for user's specific scenario: person detected at start, leaves, returns later
+TEST_F(HourlySummaryTest, PersonDetectedLeavesReturns) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Person detected at beginning (12:25)
+    logger->recordDetection("person", false, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person leaves (12:26)  
+    logger->recordDetection("person", false, true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person returns (12:30)
+    logger->recordDetection("person", false, false);
+    
+    // Print final summary
+    logger->printFinalSummary();
+    
+    // Timeline should show 3 events: entered, left, entered
+    SUCCEED();
+}
