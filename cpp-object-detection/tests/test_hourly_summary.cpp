@@ -167,3 +167,29 @@ TEST_F(HourlySummaryTest, FinalSummaryEmpty) {
     
     SUCCEED();
 }
+
+// Test case to reproduce the CTRL-C issue where detections are not shown in final summary
+TEST_F(HourlySummaryTest, FinalSummaryWithStationaryObjectsCtrlCScenario) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Simulate: person detected on program launch (recorded as dynamic/new)
+    logger->recordDetection("person", false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Simulate: person becomes stationary (should be recorded as stationary)
+    logger->recordDetection("person", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Simulate: person continues to be stationary
+    logger->recordDetection("person", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    logger->recordDetection("person", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Simulate CTRL-C: call printFinalSummary directly without clearing events
+    // This should show ALL detections including the stationary ones
+    logger->printFinalSummary();
+    
+    // Verify manually by running test and checking output
+    SUCCEED();
+}
