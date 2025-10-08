@@ -1,4 +1,16 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Timelapse Frontend
+
+This project is built with [Vite](https://vitejs.dev/) and React 18.
+
+## Prerequisites
+
+This project uses Node.js 22.20.0 LTS (as specified in `.nvmrc`).
+
+If you have [nvm](https://github.com/nvm-sh/nvm) installed, you can use the correct Node version by running:
+
+```bash
+nvm use
+```
 
 ## Available Scripts
 
@@ -6,39 +18,50 @@ In the project directory, you can run:
 
 ### `npm start`
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Runs the app in development mode using Vite dev server.<br />
+Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+The page will automatically reload when you make changes.<br />
+You will see build errors and lint warnings in the console.
 
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Runs the test suite using [Vitest](https://vitest.dev/).<br />
+Tests run in watch mode by default.
 
 ### `npm run build`
 
 Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+It correctly bundles React in production mode and optimizes the build for best performance.
 
-The build is minified and the filenames include the hashes.<br />
+The build is minified and the filenames include content hashes.<br />
 Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### `npm run preview`
 
-### `npm run eject`
+Preview the production build locally.<br />
+This serves the built files from the `build` folder.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### `npm run analyze`
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Analyzes the bundle size using source-map-explorer.<br />
+This helps identify large dependencies in your bundle.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## Building for Production
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+Use the `build.sh` script to build with proper git metadata:
+
+```bash
+./build.sh
+```
+
+This script:
+- Automatically loads the correct Node version via nvm (if available)
+- Sets git commit information as environment variables
+- Runs the production build
 
 ## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+- [Vite Documentation](https://vitejs.dev/)
+- [React Documentation](https://reactjs.org/)
+- [Vitest Documentation](https://vitest.dev/)

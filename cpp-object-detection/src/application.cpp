@@ -281,6 +281,17 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         // Get camera name (empty string if not available)
                         std::string camera_name = "";  // Could be extended to get actual camera name
                         
+                        // Check if brightness filter is active
+                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                        
+                        // Get system monitor metrics
+                        double disk_usage_percent = -1.0;
+                        double cpu_temp_celsius = -1.0;
+                        if (ctx.system_monitor) {
+                            disk_usage_percent = ctx.system_monitor->getDiskUsagePercent();
+                            cpu_temp_celsius = ctx.system_monitor->getCPUTemperature();
+                        }
+                        
                         ctx.viewfinder->showFrameWithStats(
                             ctx.frame, 
                             result.detections,
@@ -298,7 +309,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.detection_height,
                             stats.brightness_filter_active,
                             ctx.config.enable_gpu,
-                            ctx.config.enable_burst_mode
+                            ctx.config.enable_burst_mode,
+                            disk_usage_percent,
+                            cpu_temp_celsius
                         );
                         
                         // Check if user wants to close the viewfinder
@@ -313,6 +326,17 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         // Get statistics for display (same as viewfinder)
                         auto stats = gatherSystemStats(ctx);
                         std::string camera_name = "";
+                        
+                        // Check if brightness filter is active
+                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
+                        
+                        // Get system monitor metrics
+                        double disk_usage_percent = -1.0;
+                        double cpu_temp_celsius = -1.0;
+                        if (ctx.system_monitor) {
+                            disk_usage_percent = ctx.system_monitor->getDiskUsagePercent();
+                            cpu_temp_celsius = ctx.system_monitor->getCPUTemperature();
+                        }
                         
                         ctx.network_streamer->updateFrameWithStats(
                             ctx.frame,
@@ -331,7 +355,9 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                             ctx.detection_height,
                             stats.brightness_filter_active,
                             ctx.config.enable_gpu,
-                            ctx.config.enable_burst_mode
+                            ctx.config.enable_burst_mode,
+                            disk_usage_percent,
+                            cpu_temp_celsius
                         );
                     }
                     

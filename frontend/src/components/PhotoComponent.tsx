@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { DataGrid, GridColDef, GridRowData, GridRowId, GridCellParams, GridSelectionModel, GridCallbackDetails } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRowId, GridRenderCellParams, GridRowSelectionModel } from '@mui/x-data-grid';
 import { Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText } from '@mui/material';
 import { BaseUrl } from '../conf/config'
 import { PhotosResponse } from '../models/response';
 
 export interface PhotosRowData {
   ShowDeletionDialog: boolean,
-  Photos: GridRowData[], // TODO replace with GridRowModel
-  Selected: GridRowId[],
+  Photos: any[],
+  Selected: GridRowSelectionModel,
   SelectedFilesParameter: string,
 }
 
 const columns: GridColDef[] = [
-  { field: 'fileName', headerName: 'Name', width: 300, renderCell: (p: GridCellParams) => (<a href={BaseUrl + "/file/" + p.value}>{p.value}</a> ) },
+  { field: 'fileName', headerName: 'Name', width: 300, renderCell: (p: GridRenderCellParams) => (<a href={BaseUrl + "/file/" + p.value}>{p.value}</a> ) },
   { field: 'fileCreateTime', headerName: 'Created At', width: 300 },
   { field: 'fileSizeBytes', headerName: 'Size', width: 100 },
 ];
@@ -22,7 +22,7 @@ export default function PhotosComponent() {
   const [state, setState] = useState<PhotosRowData>({
     ShowDeletionDialog: false,
     Photos: [],
-    Selected: [],
+    Selected: { type: 'include', ids: new Set<GridRowId>() },
     SelectedFilesParameter: "",
   });
 
@@ -32,8 +32,8 @@ const getPhotos = () => {
     .get<PhotosResponse>(BaseUrl + "/photos")
     .then(resp => {
       // After receiving a response, map the PhotosResponse to RowData[] which can be displayed in the data grid.
-      if (resp.data) {
-        var rows: GridRowData[] = [];
+      if (resp.data && resp.data.Photos) {
+        var rows: any[] = [];
 
         for (var i=0; i<resp.data.Photos.length; i++) {
           let photo = resp.data.Photos[i];
@@ -48,7 +48,7 @@ const getPhotos = () => {
         setState({
           ShowDeletionDialog: false,
           Photos: rows,
-          Selected: [],
+          Selected: { type: 'include', ids: new Set<GridRowId>() },
           SelectedFilesParameter: "",
         });
       }
@@ -59,11 +59,11 @@ const getPhotos = () => {
     getPhotos()
   }, []);
 
-  const handleSelectionModelChanged = (selectionModel: GridSelectionModel, details: GridCallbackDetails) => {
-    console.log("selection changed: ", selectionModel, details);
+  const handleSelectionModelChanged = (selectionModel: GridRowSelectionModel) => {
+    console.log("selection changed: ", selectionModel);
 
     var link = "";
-    selectionModel.forEach(selected => {
+    selectionModel.ids.forEach(selected => {
       let selectedPhoto = state.Photos.find(e => e.id === selected);
       if (selectedPhoto) {
         let selectedPhotoFilename = selectedPhoto.fileName;
@@ -81,7 +81,7 @@ const getPhotos = () => {
 
   const handleRefreshClicked = () => getPhotos();
   const deletePhotosClicked = () => {
-    if (state.Selected.length > 0) {
+    if (state.Selected.ids.size > 0) {
       setState({
         ShowDeletionDialog: true,
         Photos: state.Photos,
@@ -116,24 +116,24 @@ const getPhotos = () => {
     <React.Fragment>
       <ButtonGroup color="primary" aria-label="outlined primary button group">
         <Button onClick={handleRefreshClicked}>Refresh</Button>
-        <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.length})</Button>
+        <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.ids.size})</Button>
       </ButtonGroup>
       <ul>
         <li><a href={BaseUrl + "/archive/zip"}>Download all (zip)</a></li>
         <li><a href={BaseUrl + "/archive/tar"}>Download all (tar)</a></li>
-        <li><a href={BaseUrl + "/archive/zip?" + state.SelectedFilesParameter}>Download selected ({state.Selected.length})</a></li>
+        <li><a href={BaseUrl + "/archive/zip?" + state.SelectedFilesParameter}>Download selected ({state.Selected.ids.size})</a></li>
       </ul>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid
           rows={state.Photos}
           columns={columns}
           checkboxSelection={true}
-          disableSelectionOnClick={true}
-          onSelectionModelChange={handleSelectionModelChanged} />
+          disableRowSelectionOnClick={true}
+          onRowSelectionModelChange={handleSelectionModelChanged} />
       </div>
       <Dialog open={state.ShowDeletionDialog} onClose={handleDeletionCancelled} aria-describedby="alert-dialog-description">
         <DialogContent>
-          <DialogContentText id="alert-dialog-description">Are you sure you want to delete the selected {state.Selected.length} files?</DialogContentText>
+          <DialogContentText id="alert-dialog-description">Are you sure you want to delete the selected {state.Selected.ids.size} files?</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDeletionCancelled} color="primary">Cancel</Button>

@@ -144,7 +144,12 @@ TEST_F(NetworkStreamerTest, UpdateFrameWithStats) {
         0,     // camera ID
         "Test Camera",
         320,   // detection width
-        240    // detection height
+        240,   // detection height
+        false, // brightness filter active
+        false, // GPU enabled
+        false, // burst mode enabled
+        75.5,  // disk usage percent
+        62.3   // CPU temp celsius
     ));
 }
 
