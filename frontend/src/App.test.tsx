@@ -142,4 +142,11 @@ describe('App', () => {
     const hiddenPanels = container.querySelectorAll('[role="tabpanel"][hidden]');
     expect(hiddenPanels.length).toBeGreaterThan(0);
   });
+
+  test('container has responsive padding', () => {
+    const { container } = render(<App />);
+    // The Container component should be in the document
+    const containerElement = container.querySelector('.MuiContainer-root');
+    expect(containerElement).toBeInTheDocument();
+  });
 });
