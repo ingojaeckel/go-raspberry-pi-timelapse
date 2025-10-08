@@ -11,17 +11,6 @@ on:
       - 'main.go'
       - 'go.*'
       - '.github/workflows/go-arm.yml'
-  pull_request:
-    paths:
-      - 'admin/**'
-      - 'conf/**'
-      - 'files/**'
-      - 'frontend/**'
-      - 'rest/**'
-      - 'timelapse/**'
-      - 'main.go'
-      - 'go.*'
-      - '.github/workflows/go-arm.yml'
 jobs:
   build:
     name: Build
