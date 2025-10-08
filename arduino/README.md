@@ -15,16 +15,12 @@ This directory contains Arduino projects for the [Arduino Giga R1 WiFi](https://
 
 ```
 arduino/
-├── platformio.ini              # PlatformIO configuration (for CI/CD syntax validation)
 ├── src/
 │   └── hello-world.ino        # Hello World blink sketch
 ├── scripts/
-│   ├── build.sh               # Build script (PlatformIO)
-│   ├── build-arduino-cli.sh   # Build script (Arduino CLI - RECOMMENDED)
-│   ├── deploy.sh              # Upload/deploy script (PlatformIO)
-│   ├── deploy-arduino-cli.sh  # Upload/deploy script (Arduino CLI - RECOMMENDED)
-│   ├── monitor.sh             # Serial monitor script (PlatformIO)
-│   └── monitor-arduino-cli.sh # Serial monitor script (Arduino CLI - RECOMMENDED)
+│   ├── build.sh               # Build script (Arduino CLI)
+│   ├── deploy.sh              # Upload/deploy script (Arduino CLI)
+│   └── monitor.sh             # Serial monitor script (Arduino CLI)
 └── README.md                  # This file
 ```
 
@@ -32,23 +28,17 @@ This structure supports adding multiple projects in the future while using the s
 
 ## Prerequisites
 
-### Option 1: Arduino CLI (Recommended for Development)
+### Option 1: Arduino CLI (Recommended)
 
-- **Arduino CLI** (auto-installed by build-arduino-cli.sh)
+- **Arduino CLI** (auto-installed by build.sh)
 - Works with Arduino Giga R1 WiFi board package
 - Best for local development and deployment
 
-### Option 2: Arduino IDE (Best for Beginners)
+### Option 2: Arduino IDE
 
 - Arduino IDE 2.0 or later
 - Arduino Mbed OS Giga Boards package
 - Easy to use GUI interface
-
-### Option 3: PlatformIO (For CI/CD)
-
-- Python 3.6 or later
-- PlatformIO CLI
-- Used for automated builds in GitHub Actions
 
 ## Getting Started
 
@@ -59,7 +49,7 @@ Arduino CLI provides the best support for the Arduino Giga R1 WiFi board.
 1. **Build the project:**
    ```bash
    cd arduino
-   ./scripts/build-arduino-cli.sh
+   ./scripts/build.sh
    ```
    
    The script will automatically:
@@ -69,17 +59,17 @@ Arduino CLI provides the best support for the Arduino Giga R1 WiFi board.
 
 2. **Deploy to board:**
    ```bash
-   ./scripts/deploy-arduino-cli.sh
+   ./scripts/deploy.sh
    ```
    
    Or specify a port manually:
    ```bash
-   ./scripts/deploy-arduino-cli.sh /dev/ttyACM0
+   ./scripts/deploy.sh /dev/ttyACM0
    ```
 
 3. **Monitor serial output:**
    ```bash
-   ./scripts/monitor-arduino-cli.sh
+   ./scripts/monitor.sh
    ```
 
 ### Using Arduino IDE
@@ -106,17 +96,6 @@ Arduino CLI provides the best support for the Arduino Giga R1 WiFi board.
 
 The sketch will compile and upload to your board.
 
-### Using PlatformIO (CI/CD)
-
-PlatformIO is configured primarily for CI/CD pipelines. For local development, use Arduino CLI or Arduino IDE.
-
-```bash
-cd arduino
-./scripts/build.sh
-```
-
-**Note:** The PlatformIO configuration uses a compatible board for build validation. For actual Giga R1 WiFi deployment, use Arduino CLI or Arduino IDE.
-
 ## Hello World Blink Project
 
 The `hello-world.ino` sketch is a simple blink program that:
@@ -142,14 +121,14 @@ LED OFF
 
 | Method | Best For | Build Command | Deploy Command |
 |--------|----------|---------------|----------------|
-| **Arduino CLI** | Development & Production | `./scripts/build-arduino-cli.sh` | `./scripts/deploy-arduino-cli.sh` |
+| **Arduino CLI** | Development & Production | `./scripts/build.sh` | `./scripts/deploy.sh` |
 | **Arduino IDE** | Beginners & Quick Testing | GUI Upload Button | GUI Upload Button |
-| **PlatformIO** | CI/CD & Automation | `./scripts/build.sh` | `./scripts/deploy.sh` |
 
 ## CI/CD Integration
 
 The project includes a GitHub Actions workflow (`.github/workflows/arduino.yml`) that:
 - Automatically builds the project on code changes
+- Uses Arduino CLI to compile for the Arduino Giga R1 WiFi board
 - Validates the Arduino sketch syntax
 - Creates firmware artifacts
 - Works without physical hardware
@@ -161,8 +140,7 @@ To add a new project for the Giga R1 WiFi:
 1. Create a new directory: `arduino/my-project/`
 2. Create a `src/` directory with your `.ino` sketch
 3. Copy and adapt the build scripts from the hello-world project
-4. For Arduino CLI: Use the same `build-arduino-cli.sh` pattern
-5. For Arduino IDE: Open the sketch directly
+4. Use the same Arduino CLI build pattern
 
 The modular structure allows multiple independent projects while sharing the same board platform.
 
@@ -175,13 +153,7 @@ The modular structure allows multiple independent projects while sharing the sam
 - **Upload failed:** 
   - Check USB connection
   - Try `arduino-cli board list` to see available boards
-  - Specify port manually: `./scripts/deploy-arduino-cli.sh /dev/ttyACM0`
-
-### PlatformIO Issues
-
-- **Platform not found:** Ensure internet connection for package downloads
-- **Board not found:** PlatformIO config uses a compatible board for validation
-- **For actual deployment:** Use Arduino CLI or Arduino IDE
+  - Specify port manually: `./scripts/deploy.sh /dev/ttyACM0`
 
 ### Arduino IDE Issues
 
@@ -208,13 +180,11 @@ The hello-world.ino sketch is designed to be compatible with:
 - ✅ Most Arduino boards (uses standard LED_BUILTIN)
 - ✅ Arduino IDE 1.8.x and 2.x
 - ✅ Arduino CLI
-- ✅ PlatformIO (with compatible board selection)
 
 ## Resources
 
 - [Arduino Giga R1 WiFi Official Page](https://store.arduino.cc/products/giga-r1-wifi)
 - [Arduino Giga R1 WiFi Documentation](https://docs.arduino.cc/hardware/giga-r1-wifi)
 - [Arduino CLI Documentation](https://arduino.github.io/arduino-cli/)
-- [PlatformIO Documentation](https://docs.platformio.org/)
 - [Arduino Language Reference](https://www.arduino.cc/reference/en/)
 - [STM32H747 Datasheet](https://www.st.com/en/microcontrollers-microprocessors/stm32h747xi.html)

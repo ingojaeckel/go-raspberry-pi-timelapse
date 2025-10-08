@@ -1,8 +1,6 @@
-# PlatformIO
-.pio/
+# Arduino CLI build artifacts
+build/
 .vscode/
-.clang_complete
-.gcc-flags.json
 
 # Build artifacts
 *.bin
@@ -12,7 +10,7 @@
 # Arduino IDE
 *.ino.cpp
 
-# Python
+# Python (for Arduino CLI installation)
 __pycache__/
 *.pyc
 
