@@ -1,11 +1,11 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
-import axios from 'axios';
-import { BaseUrl } from '../conf/config'
-import { SettingsResponse } from '../models/response'
+import { apiClient, components } from '../api-client';
 import { Button, ButtonGroup, Grid, MenuItem, Select, TextField, Typography } from '@mui/material';
 
+type Settings = components['schemas']['Settings'];
+
 export default function SetupComponent() {
-  const [state, setState] = useState<SettingsResponse>({
+  const [state, setState] = useState<Settings>({
     // Initial values shown while current config is loaded async
     SecondsBetweenCaptures:  60,
     OffsetWithinHour:        0,
@@ -21,37 +21,41 @@ export default function SetupComponent() {
 
   useEffect(() => {
     console.log("Getting previous configuration...");
-    axios
-      .get<SettingsResponse>(BaseUrl + "/configuration")
-      .then(resp => {
-        if (resp.data) {
-          setState(resp.data);
-          updateForm(resp.data);
+    apiClient
+      .GET("/configuration")
+      .then(({ data }) => {
+        if (data) {
+          setState(data);
+          updateForm(data);
         }
       });
   }, []);
 
   const handleRestartClicked = () => {
     console.log("restart clicked");
-    axios.get(BaseUrl + "/admin/restart").then(() => console.log("restart initiated"));
+    apiClient.GET("/admin/{command}", { params: { path: { command: "restart" } } })
+      .then(() => console.log("restart initiated"));
   };
 
   const handleShutdownClicked = () => {
     console.log("shutdown clicked");
-    axios.get(BaseUrl + "/admin/shutdown").then(() => console.log("shutdown initiated"));
+    apiClient.GET("/admin/{command}", { params: { path: { command: "shutdown" } } })
+      .then(() => console.log("shutdown initiated"));
   };
 
   function handleSaveSettingsClicked() {
-    axios
-      .post<SettingsResponse>(BaseUrl + "/configuration", state)
-      .then(resp => {
-        console.log("Settings updated to ", resp.data);
-        setState(resp.data);
+    apiClient
+      .POST("/configuration", { body: state })
+      .then(({ data }) => {
+        console.log("Settings updated to ", data);
+        if (data) {
+          setState(data);
+        }
       });
   };
 
   // TODO replace this with proper binding
-  function updateForm(data: SettingsResponse) {
+  function updateForm(data: Settings) {
     const fieldSecondsBetweenCaptures = document.getElementById("tfSecondsBetweenCaptures")! as HTMLInputElement
     const fieldOffset = document.getElementById("tfOffset")! as HTMLInputElement
     const fieldRotation = document.getElementById("tfRotation")! as HTMLInputElement

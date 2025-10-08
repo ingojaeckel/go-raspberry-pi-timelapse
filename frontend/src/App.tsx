@@ -1,5 +1,4 @@
 import React from 'react';
-import axios from 'axios';
 import { Box, Container, CssBaseline, Grid, Tab, Tabs, Typography, ThemeProvider, createTheme, useMediaQuery } from '@mui/material';
 import { Home, PhotoCamera, Timeline, Settings, Description } from '@mui/icons-material'
 import PhotoComponent from './components/PhotoComponent';
@@ -7,12 +6,15 @@ import MonitoringComponent from './components/MonitoringComponent';
 import SetupComponent from './components/SetupComponent';
 import PreviewComponent from './components/PreviewComponent';
 import LogComponent from './components/LogComponent';
+import { apiClient } from './api-client';
 
 // Register default request interceptors
-axios.interceptors.request.use(request => {
-  console.log('Starting Request', JSON.stringify(request, null, 2))
-  return request
-})
+apiClient.use({
+  onRequest({ request }) {
+    console.log('Starting Request', request.url, request.method);
+    return request;
+  }
+});
 
 interface TabPanelProps {
   children?: React.ReactNode;

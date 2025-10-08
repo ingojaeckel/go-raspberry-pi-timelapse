@@ -2,11 +2,16 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MonitoringComponent from './MonitoringComponent';
-import axios from 'axios';
+import { apiClient } from '../api-client';
 import { vi } from 'vitest';
 
-vi.mock('axios');
-const mockedAxios = axios as any;
+vi.mock('../api-client', () => ({
+  apiClient: {
+    GET: vi.fn(),
+  }
+}));
+
+const mockedApiClient = apiClient as any;
 
 describe('MonitoringComponent', () => {
   beforeEach(() => {
@@ -14,7 +19,7 @@ describe('MonitoringComponent', () => {
   });
 
   it('renders without crashing', () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
   });
 
@@ -27,51 +32,51 @@ describe('MonitoringComponent', () => {
       FreeDiskSpace: '10GB',
     };
 
-    mockedAxios.get.mockResolvedValue({ data: mockData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockData });
     render(<MonitoringComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/monitoring'));
+      expect(mockedApiClient.GET).toHaveBeenCalledWith('/monitoring');
     });
   });
 
   it('displays current time label', () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
     
     expect(screen.getByText(/Current Time:/)).toBeInTheDocument();
   });
 
   it('displays uptime label', () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
     
     expect(screen.getByText(/Uptime:/)).toBeInTheDocument();
   });
 
   it('displays free disk space label', () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
     
     expect(screen.getByText(/Free Disk Space:/)).toBeInTheDocument();
   });
 
   it('displays temperature section', () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
     
     expect(screen.getByText(/Temperature:/)).toBeInTheDocument();
   });
 
   it('displays GPU temperature label', () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
     
     expect(screen.getByText(/GPU:/)).toBeInTheDocument();
   });
 
   it('displays CPU temperature label', () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
     
     expect(screen.getByText(/CPU:/)).toBeInTheDocument();
@@ -86,7 +91,7 @@ describe('MonitoringComponent', () => {
       FreeDiskSpace: '10GB',
     };
 
-    mockedAxios.get.mockResolvedValue({ data: mockData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockData });
     render(<MonitoringComponent />);
 
     await waitFor(() => {
@@ -99,11 +104,11 @@ describe('MonitoringComponent', () => {
   });
 
   it('uses correct API endpoint', async () => {
-    mockedAxios.get.mockResolvedValue({ data: {} });
+    mockedApiClient.GET.mockResolvedValue({ data: {} });
     render(<MonitoringComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8080/monitoring');
+      expect(mockedApiClient.GET).toHaveBeenCalledWith('/monitoring');
     });
   });
 });

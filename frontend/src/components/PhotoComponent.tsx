@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { DataGrid, GridColDef, GridRowId, GridRenderCellParams, GridRowSelectionModel } from '@mui/x-data-grid';
 import { Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText } from '@mui/material';
-import { BaseUrl } from '../conf/config'
-import { PhotosResponse } from '../models/response';
+import { apiClient } from '../api-client';
+import { BaseUrl } from '../conf/config';
 
 export interface PhotosRowData {
   ShowDeletionDialog: boolean,
@@ -28,15 +27,15 @@ export default function PhotosComponent() {
 
 const getPhotos = () => {
   console.log("BaseUrl: ", BaseUrl)
-  axios
-    .get<PhotosResponse>(BaseUrl + "/photos")
-    .then(resp => {
-      // After receiving a response, map the PhotosResponse to RowData[] which can be displayed in the data grid.
-      if (resp.data && resp.data.Photos) {
+  apiClient
+    .GET("/photos")
+    .then(({ data }) => {
+      // After receiving a response, map the GetPhotosResponse to RowData[] which can be displayed in the data grid.
+      if (data && data.Photos) {
         var rows: any[] = [];
 
-        for (var i=0; i<resp.data.Photos.length; i++) {
-          let photo = resp.data.Photos[i];
+        for (var i=0; i<data.Photos.length; i++) {
+          let photo = data.Photos[i];
           rows.push({
             id: photo.Name,
             isSelected: false,
@@ -99,8 +98,21 @@ const getPhotos = () => {
     })
   };
   const handleDeletionConfirmed = () => {
-    axios
-    .get(BaseUrl + "/file/delete?" + state.SelectedFilesParameter)
+    // Extract file names from selection
+    const filesToDelete: string[] = [];
+    state.Selected.ids.forEach(selected => {
+      let selectedPhoto = state.Photos.find(e => e.id === selected);
+      if (selectedPhoto) {
+        filesToDelete.push(selectedPhoto.fileName);
+      }
+    });
+
+    apiClient
+    .GET("/file/delete", { 
+      params: { 
+        query: { f: filesToDelete } 
+      } 
+    })
     .then(_resp => {
       setState({
         ShowDeletionDialog: false,

@@ -2,11 +2,16 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import LogComponent from './LogComponent';
-import axios from 'axios';
+import { apiClient } from '../api-client';
 import { vi } from 'vitest';
 
-vi.mock('axios');
-const mockedAxios = axios as any;
+vi.mock('../api-client', () => ({
+  apiClient: {
+    GET: vi.fn(),
+  }
+}));
+
+const mockedApiClient = apiClient as any;
 
 describe('LogComponent', () => {
   beforeEach(() => {
@@ -14,21 +19,21 @@ describe('LogComponent', () => {
   });
 
   it('renders without crashing', () => {
-    mockedAxios.get.mockResolvedValue({ data: { Logs: '' } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Logs: '' } });
     render(<LogComponent />);
   });
 
   it('fetches logs on mount', async () => {
-    mockedAxios.get.mockResolvedValue({ data: { Logs: 'Test logs' } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Logs: 'Test logs' } });
     render(<LogComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/logs'));
+      expect(mockedApiClient.GET).toHaveBeenCalledWith('/logs');
     });
   });
 
   it('renders refresh button', () => {
-    mockedAxios.get.mockResolvedValue({ data: { Logs: '' } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Logs: '' } });
     render(<LogComponent />);
     
     const refreshButton = screen.getByText('Refresh');
@@ -36,20 +41,20 @@ describe('LogComponent', () => {
   });
 
   it('calls getLogs when refresh button is clicked', async () => {
-    mockedAxios.get.mockResolvedValue({ data: { Logs: '' } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Logs: '' } });
     render(<LogComponent />);
 
     const refreshButton = screen.getByText('Refresh');
     fireEvent.click(refreshButton);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledTimes(2); // Once on mount, once on click
+      expect(mockedApiClient.GET).toHaveBeenCalledTimes(2); // Once on mount, once on click
     });
   });
 
   it('displays logs in a pre element', async () => {
     const testLogs = 'Line 1\nLine 2\nLine 3';
-    mockedAxios.get.mockResolvedValue({ data: { Logs: testLogs } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Logs: testLogs } });
     
     const { container } = render(<LogComponent />);
 
@@ -66,14 +71,14 @@ describe('LogComponent', () => {
     const initialLogs = 'Initial logs';
     const updatedLogs = 'Updated logs';
     
-    mockedAxios.get.mockResolvedValueOnce({ data: { Logs: initialLogs } });
+    mockedApiClient.GET.mockResolvedValueOnce({ data: { Logs: initialLogs } });
     render(<LogComponent />);
 
     await waitFor(() => {
       expect(screen.getByText(initialLogs)).toBeInTheDocument();
     });
 
-    mockedAxios.get.mockResolvedValueOnce({ data: { Logs: updatedLogs } });
+    mockedApiClient.GET.mockResolvedValueOnce({ data: { Logs: updatedLogs } });
     const refreshButton = screen.getByText('Refresh');
     fireEvent.click(refreshButton);
 
@@ -83,16 +88,16 @@ describe('LogComponent', () => {
   });
 
   it('uses correct API endpoint', async () => {
-    mockedAxios.get.mockResolvedValue({ data: { Logs: '' } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Logs: '' } });
     render(<LogComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8080/logs');
+      expect(mockedApiClient.GET).toHaveBeenCalledWith('/logs');
     });
   });
 
   it('handles empty logs', async () => {
-    mockedAxios.get.mockResolvedValue({ data: { Logs: '' } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Logs: '' } });
     const { container } = render(<LogComponent />);
 
     await waitFor(() => {
