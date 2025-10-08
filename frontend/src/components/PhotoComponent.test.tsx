@@ -4,9 +4,10 @@ import '@testing-library/jest-dom';
 import PhotoComponent from './PhotoComponent';
 import axios from 'axios';
 import { GridRowSelectionModel } from '@mui/x-data-grid';
+import { vi } from 'vitest';
 
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mockedAxios = axios as any;
 
 describe('PhotoComponent', () => {
   const mockPhotosData = {
@@ -17,7 +18,7 @@ describe('PhotoComponent', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Default mock to prevent errors
     mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
   });

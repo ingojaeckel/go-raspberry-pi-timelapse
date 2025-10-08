@@ -22,7 +22,14 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/setupTests.ts',
-      css: true,
+      css: {
+        include: /.+/,
+      },
+      server: {
+        deps: {
+          inline: ['@mui/x-data-grid'],
+        },
+      },
     },
   };
 });
