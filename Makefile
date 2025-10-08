@@ -10,7 +10,7 @@ lint-api: ## Lint OpenAPI specification
 	spectral lint openapi.yaml
 
 generate-go: ## Generate Go server code from OpenAPI spec
-	oapi-codegen -config codegen-config.yaml openapi.yaml
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -config codegen-config.yaml openapi.yaml
 
 generate-ts: ## Generate TypeScript client code from OpenAPI spec
 	cd frontend && npm run generate:api
