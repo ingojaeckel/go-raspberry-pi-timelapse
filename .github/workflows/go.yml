@@ -52,6 +52,17 @@ jobs:
         name: frontend-coverage-report
         path: frontend/coverage/
         retention-days: 7
+    - name: Install Playwright browsers
+      run: cd frontend && npx playwright install --with-deps chromium
+    - name: Run Playwright E2E tests
+      run: cd frontend && npm run test:e2e
+    - name: Upload Playwright test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report
+        path: frontend/playwright-report/
+        retention-days: 7
     - name: Build frontend
       run: cd frontend && npm run build && cd ../
     - uses: actions/setup-go@v5
