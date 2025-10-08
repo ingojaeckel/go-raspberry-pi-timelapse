@@ -1,0 +1,49 @@
+name: Arduino Build
+
+on:
+  push:
+    paths:
+      - 'arduino/**'
+      - '.github/workflows/arduino.yml'
+  pull_request:
+    paths:
+      - 'arduino/**'
+      - '.github/workflows/arduino.yml'
+
+jobs:
+  build-with-arduino-cli:
+    name: Build with Arduino CLI
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Arduino CLI
+      uses: arduino/setup-arduino-cli@v2
+    
+    - name: Install Arduino Mbed OS Giga Boards platform
+      run: |
+        arduino-cli core update-index
+        arduino-cli core install arduino:mbed_giga
+    
+    - name: Compile Arduino sketch
+      run: |
+        cd arduino
+        arduino-cli compile --fqbn arduino:mbed_giga:giga src/hello-world.ino
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: arduino-giga-r1-wifi-firmware
+        path: |
+          arduino/src/build/**/*.bin
+          arduino/src/build/**/*.elf
+          arduino/src/build/**/*.hex
+        retention-days: 30
+    
+    - name: Display build info
+      run: |
+        echo "Build completed successfully!"
+        echo "Artifacts:"
+        find arduino/src/build -type f -name "*.bin" -o -name "*.elf" -o -name "*.hex" 2>/dev/null || echo "Build artifacts generated"
