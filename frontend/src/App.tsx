@@ -32,7 +32,7 @@ function TabPanel(props: TabPanelProps) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 1, sm: 3 } }}>
           <Typography component={'span'}>{children}</Typography>
         </Box>
       )}
@@ -48,10 +48,34 @@ function App() {
   return (
     <React.Fragment>
       <CssBaseline />
-      <Container>
+      <Container 
+        sx={{ 
+          padding: { xs: '0', sm: '16px' },
+          maxWidth: { xs: '100%', sm: 'lg' }
+        }}
+      >
         <Grid container spacing={0}>
           <Grid size={12}>
-            <Tabs value={value} onChange={handleChange} variant="scrollable" scrollButtons allowScrollButtonsMobile aria-label="scrollable icon label tabs">
+            <Tabs 
+              value={value} 
+              onChange={handleChange} 
+              variant="scrollable" 
+              scrollButtons 
+              allowScrollButtonsMobile 
+              aria-label="scrollable icon label tabs"
+              sx={{
+                minHeight: { xs: '48px', sm: '64px' },
+                '& .MuiTab-root': {
+                  minHeight: { xs: '48px', sm: '64px' },
+                  padding: { xs: '6px 8px', sm: '12px 16px' },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  minWidth: { xs: '60px', sm: '90px' },
+                  '& .MuiSvgIcon-root': {
+                    fontSize: { xs: '1.2rem', sm: '1.5rem' },
+                  },
+                },
+              }}
+            >
               <Tab label="home" icon={<Home />} />
               <Tab label="preview" icon={<PhotoCamera />} />
               <Tab label="monitoring" icon={<Timeline />} />
