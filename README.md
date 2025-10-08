@@ -96,6 +96,42 @@ This project was created for a timelapse system consisting of the following core
 
 ---
 
+## 📡 API Documentation
+
+This project uses **OpenAPI 3.0** specification for API definition with automated code generation.
+
+### Quick Overview
+- **API Specification**: [`openapi.yaml`](openapi.yaml) - Single source of truth for all 14 API endpoints
+- **Go Types**: Auto-generated from OpenAPI spec
+- **TypeScript Types**: Auto-generated for type-safe frontend development
+
+### Available API Endpoints
+The web interface interacts with the backend via REST API:
+- Configuration management (GET/POST `/configuration`)
+- Photo capture and retrieval (`/capture`, `/photos`, `/file/*`)
+- System monitoring (`/monitoring`, `/logs`)
+- File archives (`/archive/zip`, `/archive/tar`)
+- Admin operations (`/admin/*`)
+
+### For Developers
+- **Full Documentation**: See [`OPENAPI.md`](OPENAPI.md) for detailed usage
+- **Migration Guide**: See [`docs/OPENAPI_MIGRATION_SUMMARY.md`](docs/OPENAPI_MIGRATION_SUMMARY.md)
+- **Architecture Decision**: See [`docs/ADR-001-openapi-migration.md`](docs/ADR-001-openapi-migration.md)
+
+#### Development Workflow
+```bash
+# Lint OpenAPI spec and generate code
+make generate
+
+# Run tests
+make test
+
+# Build everything
+make build
+```
+
+---
+
 ## 🔬 Experimental: C++ Object Detection
 
 <details>

@@ -1,0 +1,5 @@
+package: generated
+output: generated/server.gen.go
+generate:
+  models: true
+  embedded-spec: true

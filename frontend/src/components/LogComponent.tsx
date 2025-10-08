@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Button, ButtonGroup } from '@mui/material';
-import { LogResponse } from '../models/response'
-import { BaseUrl } from '../conf/config'
+import { apiClient } from '../api-client';
 
 export default function LogComponent() {
   const [logs, setLogs] = useState<string>("");
 
   const getLogs = () => {
     console.log("Getting logs...");
-    axios
-      .get<LogResponse>(BaseUrl + "/logs")
-      .then(resp => {
-        if (resp.data) {
-          setLogs(resp.data.Logs);
+    apiClient
+      .GET("/logs")
+      .then(({ data }) => {
+        if (data) {
+          setLogs(data.Logs);
         }
       });
   }

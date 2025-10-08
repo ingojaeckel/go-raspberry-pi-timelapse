@@ -2,12 +2,17 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PhotoComponent from './PhotoComponent';
-import axios from 'axios';
+import { apiClient } from '../api-client';
 import { GridRowSelectionModel } from '@mui/x-data-grid';
 import { vi } from 'vitest';
 
-vi.mock('axios');
-const mockedAxios = axios as any;
+vi.mock('../api-client', () => ({
+  apiClient: {
+    GET: vi.fn(),
+  }
+}));
+
+const mockedApiClient = apiClient as any;
 
 describe('PhotoComponent', () => {
   const mockPhotosData = {
@@ -20,7 +25,7 @@ describe('PhotoComponent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default mock to prevent errors
-    mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Photos: [] } });
   });
 
   it('renders without crashing', () => {
@@ -28,11 +33,11 @@ describe('PhotoComponent', () => {
   });
 
   it('fetches and displays photos on mount', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     render(<PhotoComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/photos'));
+      expect(mockedApiClient.GET).toHaveBeenCalledWith('/photos');
     });
   });
 
@@ -50,7 +55,7 @@ describe('PhotoComponent', () => {
     fireEvent.click(refreshButton);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledTimes(2); // Once on mount, once on click
+      expect(mockedApiClient.GET).toHaveBeenCalledTimes(2); // Once on mount, once on click
     });
   });
 
@@ -70,11 +75,11 @@ describe('PhotoComponent', () => {
   });
 
   it('shows deletion dialog when delete is clicked with selection', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     const { container } = render(<PhotoComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalled();
+      expect(mockedApiClient.GET).toHaveBeenCalled();
     });
 
     // Verify the dialog component exists in the DOM
@@ -83,11 +88,11 @@ describe('PhotoComponent', () => {
   });
 
   it('handles deletion confirmation', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     render(<PhotoComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalled();
+      expect(mockedApiClient.GET).toHaveBeenCalled();
     });
   });
 
@@ -99,37 +104,37 @@ describe('PhotoComponent', () => {
   });
 
   it('formats photo data correctly', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     render(<PhotoComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8080/photos');
+      expect(mockedApiClient.GET).toHaveBeenCalledWith('/photos');
     });
   });
 
   it('handles selection model change', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     render(<PhotoComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalled();
+      expect(mockedApiClient.GET).toHaveBeenCalled();
     });
   });
 
   it('deletes photos when confirmed', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     render(<PhotoComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalled();
+      expect(mockedApiClient.GET).toHaveBeenCalled();
     });
     
     // Mock deletion endpoint
-    mockedAxios.get.mockResolvedValueOnce({ data: {} });
+    mockedApiClient.GET.mockResolvedValueOnce({ data: {} });
   });
 
   it('builds correct download URL for selected files', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     const { container } = render(<PhotoComponent />);
 
     await waitFor(() => {
@@ -142,7 +147,7 @@ describe('PhotoComponent', () => {
   });
 
   it('shows delete button with correct count', () => {
-    mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Photos: [] } });
     render(<PhotoComponent />);
     
     // Initially no selection
@@ -150,14 +155,14 @@ describe('PhotoComponent', () => {
   });
 
   it('renders download selected link with count', () => {
-    mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Photos: [] } });
     render(<PhotoComponent />);
     
     expect(screen.getByText('Download selected (0)')).toBeInTheDocument();
   });
 
   it('renders DataGrid with checkbox selection enabled', async () => {
-    mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
+    mockedApiClient.GET.mockResolvedValue({ data: mockPhotosData });
     const { container } = render(<PhotoComponent />);
 
     await waitFor(() => {
@@ -167,7 +172,7 @@ describe('PhotoComponent', () => {
   });
 
   it('renders ButtonGroup component', () => {
-    mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Photos: [] } });
     const { container } = render(<PhotoComponent />);
     
     const buttonGroup = container.querySelector('[role="group"]');
@@ -175,7 +180,7 @@ describe('PhotoComponent', () => {
   });
 
   it('renders dialog with correct structure', () => {
-    mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Photos: [] } });
     const { container } = render(<PhotoComponent />);
     
     // Dialog exists but is not open by default
@@ -184,11 +189,11 @@ describe('PhotoComponent', () => {
   });
 
   it('handles empty photos response', async () => {
-    mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
+    mockedApiClient.GET.mockResolvedValue({ data: { Photos: [] } });
     render(<PhotoComponent />);
 
     await waitFor(() => {
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8080/photos');
+      expect(mockedApiClient.GET).toHaveBeenCalledWith('/photos');
     });
   });
 });

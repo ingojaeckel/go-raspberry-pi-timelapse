@@ -2,17 +2,24 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
-import axios from 'axios';
+import { apiClient } from './api-client';
 import { vi } from 'vitest';
 
-vi.mock('axios');
-const mockedAxios = axios as any;
+vi.mock('./api-client', () => ({
+  apiClient: {
+    GET: vi.fn(),
+    POST: vi.fn(),
+    use: vi.fn(),
+  }
+}));
+
+const mockedApiClient = apiClient as any;
 
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Provide default mocks for all axios requests
-    mockedAxios.get.mockResolvedValue({ 
+    // Provide default mocks for all apiClient requests
+    mockedApiClient.GET.mockResolvedValue({ 
       data: { 
         Photos: [],
         Logs: '',

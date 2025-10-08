@@ -6,6 +6,9 @@ go-raspberry-pi-timelapse
 timelapse-pictures/
 timelapse-settings.db
 
+# Generated code
+generated/
+
 # C++ build artifacts
 cpp-object-detection/build/
 cpp-object-detection/build-*/

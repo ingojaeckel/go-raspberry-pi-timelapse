@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { BaseUrl } from '../conf/config'
-import { MonitoringResponse } from '../models/response'
+import { apiClient, components } from '../api-client';
+
+type MonitoringResponse = components['schemas']['MonitoringResponse'];
 
 export default function MonitoringComponent() {
   const [state, setState] = useState<MonitoringResponse>({
@@ -13,11 +13,11 @@ export default function MonitoringComponent() {
   });
 
   useEffect(() => {
-    axios
-      .get<MonitoringResponse>(BaseUrl + "/monitoring")
-      .then(resp => {
-        if (resp.data) {
-          setState(resp.data);
+    apiClient
+      .GET("/monitoring")
+      .then(({ data }) => {
+        if (data) {
+          setState(data);
         }
       });
   }, []);
