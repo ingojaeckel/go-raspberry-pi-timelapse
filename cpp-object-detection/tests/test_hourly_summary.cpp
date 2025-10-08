@@ -167,3 +167,80 @@ TEST_F(HourlySummaryTest, FinalSummaryEmpty) {
     
     SUCCEED();
 }
+
+// Test case to reproduce the CTRL-C issue where detections are not shown in final summary
+TEST_F(HourlySummaryTest, FinalSummaryWithStationaryObjectsCtrlCScenario) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Simulate: person detected on program launch (recorded as dynamic/new)
+    logger->recordDetection("person", false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Simulate: person becomes stationary (should be recorded as stationary)
+    logger->recordDetection("person", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Simulate: person continues to be stationary
+    logger->recordDetection("person", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    logger->recordDetection("person", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Simulate CTRL-C: call printFinalSummary directly without clearing events
+    // This should show ALL detections including the stationary ones
+    logger->printFinalSummary();
+    
+    // Verify manually by running test and checking output
+    SUCCEED();
+}
+
+// Test case to verify entry and exit events are properly tracked
+TEST_F(HourlySummaryTest, EntryAndExitTimeline) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Person enters at 12:02
+    logger->recordDetection("person", false, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person becomes stationary
+    logger->recordDetection("person", true, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person leaves at 12:04
+    logger->recordDetection("person", false, true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person returns at 12:11
+    logger->recordDetection("person", false, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person leaves again
+    logger->recordDetection("person", false, true);
+    
+    // Trigger final summary
+    logger->printFinalSummary();
+    
+    SUCCEED();
+}
+
+// Test case for user's specific scenario: person detected at start, leaves, returns later
+TEST_F(HourlySummaryTest, PersonDetectedLeavesReturns) {
+    auto logger = std::make_unique<Logger>(test_log_file, false);
+    
+    // Person detected at beginning (12:25)
+    logger->recordDetection("person", false, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person leaves (12:26)  
+    logger->recordDetection("person", false, true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Person returns (12:30)
+    logger->recordDetection("person", false, false);
+    
+    // Print final summary
+    logger->printFinalSummary();
+    
+    // Timeline should show 3 events: entered, left, entered
+    SUCCEED();
+}

@@ -1,6 +1,6 @@
 module github.com/ingojaeckel/go-raspberry-pi-timelapse
 
-go 1.24
+go 1.25.2
 
 require (
 	github.com/boltdb/bolt v1.3.2-0.20171120010307-9da317453632

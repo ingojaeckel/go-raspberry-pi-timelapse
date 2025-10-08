@@ -1,4 +1,4 @@
-name: Build
+name: Build TypeScript and Go
 on:
   push:
     paths:
@@ -48,3 +48,5 @@ jobs:
       run: go test -v -cover ./...
     - name: Go build
       run: go build -v .
+    - name: Build for Pi
+      run: ./build-for-pi.sh

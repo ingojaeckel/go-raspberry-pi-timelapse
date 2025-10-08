@@ -63,6 +63,16 @@ public:
         std::string google_sheets_id = "";      // Google Sheets spreadsheet ID or URL
         std::string google_sheets_api_key = ""; // Google API key for Sheets API
         std::string google_sheets_name = "Sheet1"; // Sheet name/tab within spreadsheet
+        
+        // Notification mechanisms
+        bool enable_notifications = false;          // Enable notification system
+        bool enable_webhook = false;                // Enable webhook/callback URL notifications
+        std::string webhook_url = "";               // Webhook URL to POST notifications
+        bool enable_sse = false;                    // Enable Server-Sent Events notifications
+        int sse_port = 8081;                        // Port for SSE server
+        bool enable_file_notification = false;      // Enable file-based notifications
+        std::string notification_file_path = "/tmp/object_notifications.json"; // Path for notification file
+        bool enable_stdio_notification = false;     // Enable stdio notifications
     };
 
     enum class ParseResult {

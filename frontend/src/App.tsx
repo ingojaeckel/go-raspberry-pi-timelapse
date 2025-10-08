@@ -1,6 +1,6 @@
 import React from 'react';
 import axios from 'axios';
-import { Box, Container, CssBaseline, Grid, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Container, CssBaseline, Grid, Tab, Tabs, Typography, ThemeProvider, createTheme, useMediaQuery } from '@mui/material';
 import { Home, PhotoCamera, Timeline, Settings, Description } from '@mui/icons-material'
 import PhotoComponent from './components/PhotoComponent';
 import MonitoringComponent from './components/MonitoringComponent';
@@ -32,7 +32,7 @@ function TabPanel(props: TabPanelProps) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 1, sm: 3 } }}>
           <Typography component={'span'}>{children}</Typography>
         </Box>
       )}
@@ -45,16 +45,53 @@ function App() {
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
   };
+  
+  // Detect user's preferred color scheme
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+  
+  // Create theme based on user preference
+  const theme = React.useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: prefersDarkMode ? 'dark' : 'light',
+        },
+      }),
+    [prefersDarkMode],
+  );
+  
   return (
-    <React.Fragment>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container>
+      <Container 
+        sx={{ 
+          padding: { xs: '0', sm: '16px' },
+          maxWidth: { xs: '100%', sm: 'lg' }
+        }}
+      >
         <Grid container spacing={0}>
           <Grid size={12}>
-            <Tabs value={value} onChange={handleChange} variant="scrollable" scrollButtons allowScrollButtonsMobile aria-label="scrollable icon label tabs">
+            <Tabs 
+              value={value} 
+              onChange={handleChange} 
+              variant="fullWidth" 
+              aria-label="navigation tabs"
+              sx={{
+                minHeight: { xs: '32px', sm: '64px' },
+                '& .MuiTab-root': {
+                  minHeight: { xs: '32px', sm: '64px' },
+                  padding: { xs: '4px 2px', sm: '12px 16px' },
+                  fontSize: { xs: '0.65rem', sm: '0.875rem' },
+                  minWidth: { xs: '0', sm: '90px' },
+                  '& .MuiSvgIcon-root': {
+                    fontSize: { xs: '1rem', sm: '1.5rem' },
+                  },
+                },
+              }}
+            >
               <Tab label="home" icon={<Home />} />
               <Tab label="preview" icon={<PhotoCamera />} />
-              <Tab label="monitoring" icon={<Timeline />} />
+              <Tab label="monitor" icon={<Timeline />} />
               <Tab label="settings" icon={<Settings />} />
               <Tab label="logs" icon={<Description />} />
             </Tabs>
@@ -66,7 +103,7 @@ function App() {
           </Grid>
         </Grid>
       </Container>
-    </React.Fragment>
+    </ThemeProvider>
   );
 }
 

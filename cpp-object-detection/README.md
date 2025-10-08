@@ -2,7 +2,7 @@
 
 A standalone C++ executable for real-time object detection from webcam data at 720p resolution. This application features a pluggable model architecture that allows engineers to select different detection models based on their speed/accuracy requirements.
 
-**⚡ Optimized for Long-Term Operation**: This application is designed to run continuously for days, weeks, or months without manual intervention. See [LONG_TERM_OPERATION.md](LONG_TERM_OPERATION.md) for details on memory management, camera resilience, and resource monitoring.
+**⚡ Optimized for Long-Term Operation**: This application is designed to run continuously for days, weeks, or months without manual intervention. See [LONG_TERM_OPERATION.md](docs/LONG_TERM_OPERATION.md) for details on memory management, camera resilience, and resource monitoring.
 
 ## Features
 
@@ -17,6 +17,11 @@ A standalone C++ executable for real-time object detection from webcam data at 7
   - **Toggle overlay** with SPACE key for minimal screen coverage
 - **Network streaming** - MJPEG HTTP streaming to view feed on any device on local network (--enable-streaming)
 - **🆕 Google Sheets Integration** - Optional cloud logging of detection events to Google Sheets (--enable-google-sheets)
+- **🆕 Real-time Notifications** - Get instant alerts when new objects are detected via:
+  - **Webhook/Callback URL** - HTTP POST to custom endpoints
+  - **Server-Sent Events (SSE)** - Browser-compatible push notifications
+  - **File-based** - JSON append to file for simple integrations
+  - **Stdio** - Output to stdout for pipeline workflows
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
 - **Structured logging** with timestamps and detailed position tracking
@@ -84,7 +89,7 @@ Frame 3: Detect "cat" at (300, 100) → Log: "new cat entered frame at (300, 100
 [DEBUG] Logging movement: cat moved 5.4 pixels [avg step: 5.4 px, overall path: 5.4 px]
 ```
 
-For complete details on movement detection improvements, see [MOVEMENT_DETECTION_IMPROVEMENTS.md](MOVEMENT_DETECTION_IMPROVEMENTS.md).
+For complete details on movement detection improvements, see [MOVEMENT_DETECTION_IMPROVEMENTS.md](docs/MOVEMENT_DETECTION_IMPROVEMENTS.md).
 
 ## Stationary Object Detection
 
@@ -159,7 +164,7 @@ The application supports multiple detection models with different speed/accuracy
 | YOLOv8n  | Fastest (~35ms) | 70% | 6MB  | Embedded systems |
 | YOLOv8m  | Slowest (~150ms) | 88% | 52MB | Maximum accuracy |
 
-> **📊 Exploring Alternative Models?** See [ALTERNATIVE_MODELS_ANALYSIS.md](ALTERNATIVE_MODELS_ANALYSIS.md) for an in-depth analysis of 3 additional model architectures (EfficientDet, Faster R-CNN, DETR) optimized for outdoor scenes, fine-grained classification, and handling occlusions.
+> **📊 Exploring Alternative Models?** See [ALTERNATIVE_MODELS_ANALYSIS.md](docs/ALTERNATIVE_MODELS_ANALYSIS.md) for an in-depth analysis of 3 additional model architectures (EfficientDet, Faster R-CNN, DETR) optimized for outdoor scenes, fine-grained classification, and handling occlusions.
 
 ### Model Selection Examples
 
@@ -179,7 +184,7 @@ The application supports multiple detection models with different speed/accuracy
 
 ## Architecture
 
-> **📖 For comprehensive architecture documentation including sequence diagrams, state machines, and detailed component interactions, see [ARCHITECTURE.md](ARCHITECTURE.md)**
+> **📖 For comprehensive architecture documentation including sequence diagrams, state machines, and detailed component interactions, see [ARCHITECTURE.md](docs/ARCHITECTURE.md)**
 
 ### System Design
 
@@ -279,7 +284,7 @@ public:
      - Comprehensive debug logging for distance calculations and movement patterns
      - Logs "new [object] entered frame at (x, y)" for new detections
      - Logs "[object] moved from (x1, y1) -> (x2, y2)" with movement statistics
-     - See [MOVEMENT_DETECTION_IMPROVEMENTS.md](MOVEMENT_DETECTION_IMPROVEMENTS.md) for details
+     - See [MOVEMENT_DETECTION_IMPROVEMENTS.md](docs/MOVEMENT_DETECTION_IMPROVEMENTS.md) for details
    - Model switching and performance monitoring
 
 5. **🆕 Detection Model Interface (`detection_model_interface.hpp`)**
@@ -487,7 +492,7 @@ Stream live video with object detection bounding boxes to any device on your loc
 - `http://192.168.1.100:8080/stream`
 - `http://10.0.0.5:9000/stream`
 
-For detailed information about network streaming, see [NETWORK_STREAMING_FEATURE.md](NETWORK_STREAMING_FEATURE.md).
+For detailed information about network streaming, see [NETWORK_STREAMING_FEATURE.md](docs/NETWORK_STREAMING_FEATURE.md).
 
 ### Google Sheets Integration
 
@@ -514,7 +519,59 @@ When enabled, detection events (object entries and movements) are automatically 
 | 2024-10-05T14:30:15.123 | person | entry | 320.5 | 240.8 | | Confidence: 87% |
 | 2024-10-05T14:30:16.456 | person | movement | 325.2 | 245.3 | 6.8 | From (320,240) to (325,245) |
 
-For detailed setup instructions, security considerations, and troubleshooting, see [GOOGLE_SHEETS_FEATURE.md](GOOGLE_SHEETS_FEATURE.md).
+For detailed setup instructions, security considerations, and troubleshooting, see [GOOGLE_SHEETS_FEATURE.md](docs/GOOGLE_SHEETS_FEATURE.md).
+
+### Real-time Notifications
+
+The application supports **real-time notifications** when new objects are detected, with multiple delivery mechanisms:
+
+```bash
+# Webhook notifications (HTTP POST to custom endpoint)
+./object_detection \
+  --enable-notifications \
+  --enable-webhook \
+  --webhook-url http://example.com/webhook
+
+# Server-Sent Events (browser-compatible push notifications)
+./object_detection \
+  --enable-notifications \
+  --enable-sse \
+  --sse-port 8081
+
+# File-based notifications (append JSON to file)
+./object_detection \
+  --enable-notifications \
+  --enable-file-notification \
+  --notification-file-path /var/log/notifications.json
+
+# Stdio notifications (output to stdout for pipelines)
+./object_detection \
+  --enable-notifications \
+  --enable-stdio-notification
+
+# Enable multiple notification channels
+./object_detection \
+  --enable-notifications \
+  --enable-webhook --webhook-url http://example.com/webhook \
+  --enable-sse --sse-port 8081 \
+  --enable-stdio-notification
+```
+
+**Notification Content:**
+Each notification includes:
+- Detected object type, position, and confidence
+- Photo with bounding boxes (base64-encoded JPEG)
+- All current detections in frame
+- System status (FPS, processing time, total objects, etc.)
+- Top detected objects and counts
+
+**Use Cases:**
+- **Webhook**: Integration with automation platforms (Zapier, IFTTT, n8n), custom servers, alerting systems
+- **SSE**: Web dashboards, real-time browser notifications, mobile apps
+- **File**: Log monitoring, file watchers, offline processing, simple integrations
+- **Stdio**: Unix pipelines, Docker logging, systemd journal integration
+
+For detailed documentation, examples, and integration guides, see [NOTIFICATION_FEATURE.md](NOTIFICATION_FEATURE.md).
 
 ### CPU Rate Limiting
 
@@ -558,7 +615,7 @@ Person enters scene         → Burst mode ON → ~5-30 FPS (capture detail)
 Person stands still         → Burst mode OFF → 1 FPS (back to baseline)
 ```
 
-See [BURST_MODE_FEATURE.md](BURST_MODE_FEATURE.md) for detailed documentation.
+See [BURST_MODE_FEATURE.md](docs/BURST_MODE_FEATURE.md) for detailed documentation.
 
 ### Examples
 
@@ -621,7 +678,7 @@ See [BURST_MODE_FEATURE.md](BURST_MODE_FEATURE.md) for detailed documentation.
 ./object_detection --enable-gpu --model-type yolov5l --detection-scale 1.0 --max-fps 15
 ```
 
-See [GPU_ACCELERATION.md](GPU_ACCELERATION.md) for detailed performance benchmarks and platform-specific information.
+See [GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md) for detailed performance benchmarks and platform-specific information.
 
 ## Webcam Setup
 
