@@ -8,6 +8,9 @@
 # testing
 /coverage
 test-output.txt
+/test-results/
+/playwright-report/
+/playwright/.cache/
 
 # production
 /build
