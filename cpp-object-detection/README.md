@@ -17,6 +17,11 @@ A standalone C++ executable for real-time object detection from webcam data at 7
   - **Toggle overlay** with SPACE key for minimal screen coverage
 - **Network streaming** - MJPEG HTTP streaming to view feed on any device on local network (--enable-streaming)
 - **🆕 Google Sheets Integration** - Optional cloud logging of detection events to Google Sheets (--enable-google-sheets)
+- **🆕 Real-time Notifications** - Get instant alerts when new objects are detected via:
+  - **Webhook/Callback URL** - HTTP POST to custom endpoints
+  - **Server-Sent Events (SSE)** - Browser-compatible push notifications
+  - **File-based** - JSON append to file for simple integrations
+  - **Stdio** - Output to stdout for pipeline workflows
 - **Confidence-based filtering** with configurable thresholds
 - **Performance monitoring** with automatic warnings for low frame rates
 - **Structured logging** with timestamps and detailed position tracking
@@ -515,6 +520,58 @@ When enabled, detection events (object entries and movements) are automatically 
 | 2024-10-05T14:30:16.456 | person | movement | 325.2 | 245.3 | 6.8 | From (320,240) to (325,245) |
 
 For detailed setup instructions, security considerations, and troubleshooting, see [GOOGLE_SHEETS_FEATURE.md](GOOGLE_SHEETS_FEATURE.md).
+
+### Real-time Notifications
+
+The application supports **real-time notifications** when new objects are detected, with multiple delivery mechanisms:
+
+```bash
+# Webhook notifications (HTTP POST to custom endpoint)
+./object_detection \
+  --enable-notifications \
+  --enable-webhook \
+  --webhook-url http://example.com/webhook
+
+# Server-Sent Events (browser-compatible push notifications)
+./object_detection \
+  --enable-notifications \
+  --enable-sse \
+  --sse-port 8081
+
+# File-based notifications (append JSON to file)
+./object_detection \
+  --enable-notifications \
+  --enable-file-notification \
+  --notification-file-path /var/log/notifications.json
+
+# Stdio notifications (output to stdout for pipelines)
+./object_detection \
+  --enable-notifications \
+  --enable-stdio-notification
+
+# Enable multiple notification channels
+./object_detection \
+  --enable-notifications \
+  --enable-webhook --webhook-url http://example.com/webhook \
+  --enable-sse --sse-port 8081 \
+  --enable-stdio-notification
+```
+
+**Notification Content:**
+Each notification includes:
+- Detected object type, position, and confidence
+- Photo with bounding boxes (base64-encoded JPEG)
+- All current detections in frame
+- System status (FPS, processing time, total objects, etc.)
+- Top detected objects and counts
+
+**Use Cases:**
+- **Webhook**: Integration with automation platforms (Zapier, IFTTT, n8n), custom servers, alerting systems
+- **SSE**: Web dashboards, real-time browser notifications, mobile apps
+- **File**: Log monitoring, file watchers, offline processing, simple integrations
+- **Stdio**: Unix pipelines, Docker logging, systemd journal integration
+
+For detailed documentation, examples, and integration guides, see [NOTIFICATION_FEATURE.md](NOTIFICATION_FEATURE.md).
 
 ### CPU Rate Limiting
 

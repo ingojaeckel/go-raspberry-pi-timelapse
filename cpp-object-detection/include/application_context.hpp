@@ -18,6 +18,7 @@
 #include "network_streamer.hpp"
 #include "system_monitor.hpp"
 #include "google_sheets_client.hpp"
+#include "notification_manager.hpp"
 
 /**
  * Context structure to hold shared application state
@@ -37,6 +38,7 @@ struct ApplicationContext {
     std::shared_ptr<NetworkStreamer> network_streamer;
     std::shared_ptr<SystemMonitor> system_monitor;
     std::shared_ptr<GoogleSheetsClient> google_sheets_client;
+    std::shared_ptr<NotificationManager> notification_manager;
     
     // Processing state
     std::queue<std::future<ParallelFrameProcessor::FrameResult>> pending_frames;
@@ -54,9 +56,24 @@ struct ApplicationContext {
     std::set<std::string> previous_object_types;  // Track object types from previous frame
 };
 
+/**
+ * Statistics structure for display and notifications
+ */
+struct SystemStats {
+    std::vector<std::pair<std::string, int>> top_objects;
+    int total_objects_detected;
+    int total_images_saved;
+    bool brightness_filter_active;
+    double current_fps;
+    double avg_processing_time_ms;
+};
+
 // Function declarations for main.cpp helper functions
 void setupSignalHandlers();
 bool parseAndValidateConfig(ApplicationContext& ctx, int argc, char* argv[]);
 bool initializeComponents(ApplicationContext& ctx);
 void runMainProcessingLoop(ApplicationContext& ctx);
 void performGracefulShutdown(ApplicationContext& ctx);
+
+// Helper function to gather system statistics
+SystemStats gatherSystemStats(ApplicationContext& ctx);
