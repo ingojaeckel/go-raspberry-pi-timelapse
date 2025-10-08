@@ -11,6 +11,9 @@ This directory contains k6 load test scripts for the Go Raspberry Pi Timelapse A
 
 2. **Build and run the Go application** with profiling enabled (see below)
 
+**Note**: The `/logs` endpoint requires a `timelapse.log` file to exist. The `run-load-test.sh` script automatically creates this file. If running manually, ensure the log file exists: `touch timelapse.log`
+
+
 ## Running Load Tests
 
 ### Quick Start
@@ -38,6 +41,9 @@ This script will:
    ```bash
    # Basic load test
    k6 run k6/load-test.js
+   
+   # Smoke test (quick validation of all endpoints)
+   k6 run k6/smoke-test.js
    
    # Test against a different URL
    K6_BASE_URL=http://192.168.50.1:8080 k6 run k6/load-test.js
@@ -111,8 +117,11 @@ Once in the interactive pprof shell:
 
 ## Load Test Configuration
 
-The `load-test.js` script tests the following read-only endpoints:
+The repository includes two k6 test scripts:
 
+### 1. `load-test.js` - Full Load Test
+
+Tests the following read-only endpoints with realistic load patterns:
 - `/version` - Version information
 - `/monitoring` - System monitoring data (CPU, GPU temp, disk space, etc.)
 - `/photos` - List of timelapse photos
@@ -121,6 +130,7 @@ The `load-test.js` script tests the following read-only endpoints:
 
 ### Test Stages
 
+**Full Load Test (`load-test.js`)**:
 1. **Ramp-up (30s)**: 0 → 10 virtual users
 2. **Steady (1m)**: 10 virtual users
 3. **Scale-up (30s)**: 10 → 50 virtual users
@@ -128,6 +138,11 @@ The `load-test.js` script tests the following read-only endpoints:
 5. **Ramp-down (30s)**: 50 → 0 virtual users
 
 **Total duration**: ~4.5 minutes
+
+**Smoke Test (`smoke-test.js`)**:
+- Single iteration test
+- Validates all endpoints return 200 status
+- Quick health check (< 1 second)
 
 ## Interpreting Results
 

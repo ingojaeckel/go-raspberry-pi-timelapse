@@ -81,6 +81,9 @@ build_app() {
 start_app() {
     print_info "Starting Go application with profiling on port ${APP_PORT}..."
     
+    # Create log file if it doesn't exist (required for /logs endpoint)
+    touch timelapse.log
+    
     ./timelapse-app -port ":${APP_PORT}" -pprof &
     APP_PID=$!
     
