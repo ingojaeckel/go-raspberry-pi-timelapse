@@ -135,3 +135,58 @@ For more information about the C++ object detection application, see the [cpp-ob
 </details>
 
 ---
+
+## 🔬 Performance Testing & Profiling
+
+<details>
+<summary><b>Click to expand Load Testing details</b></summary>
+
+This repository includes k6 load testing infrastructure to validate API performance and robustness.
+
+### Quick Start
+
+```bash
+# Install k6 (one-time setup)
+brew install k6  # macOS
+# For Linux/Windows, see k6/README.md
+
+# Run load test with profiling
+./scripts/run-load-test.sh --collect-profiles
+```
+
+### What Gets Tested
+
+The load test validates read-only API endpoints:
+- `/version` - Version information
+- `/monitoring` - System metrics
+- `/photos` - Photo listing
+- `/configuration` - Current settings
+- `/logs` - Application logs
+
+### Success Criteria
+
+- ✅ **100% Success Rate**: All requests return 2xx status codes
+- ✅ **P95 Latency < 100ms**: 95th percentile response time under 100ms
+- 📊 **Additional Metrics**: P50 < 50ms, P99 < 200ms
+
+### Profiling Support
+
+The Go application includes built-in pprof profiling:
+
+```bash
+# Start with profiling enabled
+go run . -pprof
+
+# Collect CPU profile (30 seconds)
+curl http://localhost:8080/debug/pprof/profile?seconds=30 -o cpu.prof
+
+# Analyze with pprof
+go tool pprof -http=:8081 cpu.prof
+```
+
+For detailed documentation, see [k6/README.md](k6/README.md).
+
+</details>
+
+---
+
