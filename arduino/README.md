@@ -10,7 +10,7 @@ Each project is in its own subdirectory with the following structure:
 arduino/
 ├── hello-world/                   # Example: Hello World blink project
 │   ├── arduino-cli.yaml          # Project configuration (FQBN, libraries, etc.)
-│   ├── src/
+│   ├── hello-world/              # Sketch directory (must match sketch name)
 │   │   └── hello-world.ino       # Arduino sketch
 │   └── scripts/
 │       ├── build.sh              # Build script
@@ -36,14 +36,17 @@ See [hello-world/README.md](hello-world/README.md) for details.
 To add a new project:
 
 1. Create a new directory: `arduino/my-project/`
-2. Create a `src/` directory with your `.ino` sketch
-3. Create an `arduino-cli.yaml` configuration file:
+2. Create a sketch directory matching your sketch name: `arduino/my-project/my-sketch/`
+3. Create your `.ino` file: `arduino/my-project/my-sketch/my-sketch.ino`
+4. Create an `arduino-cli.yaml` configuration file:
    ```yaml
    # Arduino CLI Project Configuration
    fqbn: arduino:mbed_giga:giga  # Your target board FQBN
    ```
-4. Copy and adapt the build scripts from an existing project
-5. Add your project to the GitHub Actions workflow matrix in `.github/workflows/arduino.yml`
+5. Copy and adapt the build scripts from an existing project
+6. Add your project to the GitHub Actions workflow matrix in `.github/workflows/arduino.yml`
+
+**Note:** Arduino CLI requires the sketch directory name to match the .ino filename (e.g., `my-sketch/my-sketch.ino`).
 
 The configuration file supports:
 - **fqbn**: Fully Qualified Board Name (required)

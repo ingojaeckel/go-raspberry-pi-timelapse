@@ -85,7 +85,7 @@ This specifies the target board as Arduino Giga R1 WiFi.
 
 3. **Open the sketch:**
    - File → Open
-   - Navigate to `arduino/hello-world/src/hello-world.ino`
+   - Navigate to `arduino/hello-world/hello-world/hello-world.ino`
 
 4. **Select board:**
    - Tools → Board → Arduino Mbed OS Giga Boards → Arduino Giga R1 WiFi

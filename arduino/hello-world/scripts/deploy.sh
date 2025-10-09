@@ -45,7 +45,7 @@ UPLOAD_PORT="${1:-}"
 
 if [ -n "$UPLOAD_PORT" ]; then
     echo -e "${YELLOW}Using specified upload port: ${UPLOAD_PORT}${NC}"
-    arduino-cli upload -p "$UPLOAD_PORT" --fqbn "$FQBN" src/hello-world.ino
+    arduino-cli upload -p "$UPLOAD_PORT" --fqbn "$FQBN" hello-world
 else
     echo -e "${YELLOW}Auto-detecting upload port...${NC}"
     # List available boards
@@ -53,7 +53,7 @@ else
     arduino-cli board list
     
     # Upload with auto-detection
-    arduino-cli upload --fqbn "$FQBN" src/hello-world.ino
+    arduino-cli upload --fqbn "$FQBN" hello-world
 fi
 
 # Check upload status

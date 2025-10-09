@@ -94,7 +94,7 @@ arduino-cli core install "$PLATFORM" || echo -e "${YELLOW}Platform may already b
 
 # Compile the sketch
 echo -e "${YELLOW}Compiling sketch...${NC}"
-arduino-cli compile --fqbn "$FQBN" src/hello-world.ino
+arduino-cli compile --fqbn "$FQBN" hello-world
 
 # Check build status
 if [ $? -eq 0 ]; then
@@ -104,7 +104,7 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}===============================================${NC}"
     echo -e ""
     echo -e "${YELLOW}Binary location:${NC}"
-    find src/build -name "*.bin" -o -name "*.elf" 2>/dev/null | head -5
+    find hello-world/build -name "*.bin" -o -name "*.elf" 2>/dev/null | head -5
     echo -e ""
     echo -e "${YELLOW}To upload to board: ./scripts/deploy.sh${NC}"
 else
