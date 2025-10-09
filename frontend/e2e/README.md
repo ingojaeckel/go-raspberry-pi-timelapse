@@ -20,8 +20,11 @@ Tests are configured with the following timeouts to prevent hanging:
 - **Action timeout**: 10 seconds (maximum time for page actions like click, fill)
 - **Navigation timeout**: 10 seconds (maximum time for page navigation)
 - **API wait timeout**: 10 seconds (explicit timeout on waitForRequest/waitForResponse)
+- **Web server startup**: 60 seconds (time to start Vite dev server)
 
 These timeouts ensure tests fail quickly if something goes wrong, rather than relying on external CI timeout.
+
+The dev server starts automatically when running tests and uses the root path (`/`) for easier testing, while production builds use `/static/frontend/build/`.
 
 ## Running Tests
 

@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
-    base: '/static/frontend/build/',
+    base: mode === 'production' ? '/static/frontend/build/' : '/',
     build: {
       outDir: 'build',
       sourcemap: true,
