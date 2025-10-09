@@ -83,6 +83,146 @@
                 "kind": "build",
                 "isDefault": false
             }
+        },
+        {
+            "label": "build-profile",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "..",
+                "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+                "-DCMAKE_CXX_FLAGS=-fno-omit-frame-pointer -g",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build-profile"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "dependsOn": ["create-profile-build-dir", "build-profile-make"]
+        },
+        {
+            "label": "create-profile-build-dir",
+            "type": "shell",
+            "command": "mkdir",
+            "args": ["-p", "build-profile"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": false,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "build-profile-make",
+            "type": "shell",
+            "command": "make",
+            "args": ["-j$(sysctl -n hw.ncpu 2>/dev/null || nproc)"],
+            "options": {
+                "cwd": "${workspaceFolder}/build-profile"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "profile-cpu-mac",
+            "type": "shell",
+            "command": "./scripts/profile_cpu_mac.sh",
+            "args": ["--duration", "60"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "profile-cpu-linux",
+            "type": "shell",
+            "command": "./scripts/profile_cpu_linux.sh",
+            "args": ["--duration", "60"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "profile-memory-mac",
+            "type": "shell",
+            "command": "./scripts/profile_memory_mac.sh",
+            "args": ["--duration", "60"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "profile-memory-linux",
+            "type": "shell",
+            "command": "./scripts/profile_memory_linux.sh",
+            "args": ["--duration", "60"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "clean-profiling-results",
+            "type": "shell",
+            "command": "rm",
+            "args": ["-rf", "profiling_results"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
         }
     ]
 }
