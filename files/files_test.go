@@ -5,6 +5,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -86,11 +88,11 @@ func BenchmarkListFiles(b *testing.B) {
 }
 
 func BenchmarkByAgeSort(b *testing.B) {
-	// Create sample file list
+	// Create sample file list with 100 files
 	files := make([]File, 100)
 	for i := 0; i < 100; i++ {
 		files[i] = File{
-			Name:         "file" + string(rune(i)) + ".jpg",
+			Name:         "file" + strconv.Itoa(i) + ".jpg",
 			ModTimeEpoch: int64(100 - i), // Reverse order
 			Bytes:        1024 * int64(i),
 		}
@@ -101,19 +103,17 @@ func BenchmarkByAgeSort(b *testing.B) {
 		// Copy to avoid sorting already sorted data
 		testFiles := make([]File, len(files))
 		copy(testFiles, files)
-		ByAge(testFiles).Swap(0, 1) // Force use of ByAge methods
-		_ = ByAge(testFiles).Less(0, 1)
-		_ = ByAge(testFiles).Len()
+		sort.Sort(ByAge(testFiles))
 	}
 }
 
 func BenchmarkByAgeSortFull(b *testing.B) {
-	// Create sample file list
-	files := make([]File, 100)
-	for i := 0; i < 100; i++ {
+	// Create sample file list with 1000 files to test scalability
+	files := make([]File, 1000)
+	for i := 0; i < 1000; i++ {
 		files[i] = File{
-			Name:         "file" + string(rune(i)) + ".jpg",
-			ModTimeEpoch: int64(100 - i), // Reverse order
+			Name:         "file" + strconv.Itoa(i) + ".jpg",
+			ModTimeEpoch: int64(1000 - i), // Reverse order
 			Bytes:        1024 * int64(i),
 		}
 	}
@@ -123,8 +123,6 @@ func BenchmarkByAgeSortFull(b *testing.B) {
 		// Copy to avoid sorting already sorted data
 		testFiles := make([]File, len(files))
 		copy(testFiles, files)
-		ByAge(testFiles).Swap(0, 1)
-		ByAge(testFiles).Less(0, 1)
-		ByAge(testFiles).Len()
+		sort.Sort(ByAge(testFiles))
 	}
 }

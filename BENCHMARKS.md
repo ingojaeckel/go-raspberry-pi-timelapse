@@ -63,14 +63,14 @@ go test -bench=BenchmarkGetSecondsToFirstCapture -benchmem ./timelapse/...
    - **Typical Result:** ~15 μs/op, 1297 B/op, 16 allocs/op
 
 2. **BenchmarkByAgeSort**
-   - Tests the performance of ByAge sort operations
-   - Measures individual sort interface methods
-   - **Typical Result:** ~763 ns/op, 6144 B/op, 1 allocs/op
+   - Tests the performance of sorting 100 files by age
+   - Measures actual sorting performance using sort.Sort()
+   - **Typical Result:** ~1.4 μs/op, 6168 B/op, 2 allocs/op
 
 3. **BenchmarkByAgeSortFull**
-   - Tests complete file sorting by age
-   - Simulates sorting 100 files by modification time
-   - **Typical Result:** ~798 ns/op, 6144 B/op, 1 allocs/op
+   - Tests sorting performance with 1000 files to verify scalability
+   - Simulates large timelapse photo collections
+   - **Typical Result:** ~13 μs/op, 57368 B/op, 2 allocs/op
 
 ### Rest Package (`rest/template_test.go`)
 
@@ -133,7 +133,7 @@ These benchmarks help ensure that:
 
 1. **Time Calculations** remain fast (< 100 ns/op) for timelapse scheduling
 2. **File Operations** are efficient even with many photos (< 20 μs for listing)
-3. **Sorting Operations** scale well (< 1 μs for 100 items)
+3. **Sorting Operations** scale well (< 2 μs for 100 items, < 15 μs for 1000 items)
 4. **Size Formatting** is efficient for UI rendering (< 1 μs/op)
 
 ## Continuous Performance Monitoring
