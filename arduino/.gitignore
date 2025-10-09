@@ -1,0 +1,19 @@
+# Arduino CLI build artifacts
+build/
+.vscode/
+
+# Build artifacts
+*.bin
+*.elf
+*.hex
+
+# Arduino IDE
+*.ino.cpp
+
+# Python (for Arduino CLI installation)
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,65 @@
+name: Arduino Build
+
+on:
+  push:
+    paths:
+      - 'arduino/**'
+      - '.github/workflows/arduino.yml'
+
+jobs:
+  build-arduino-projects:
+    name: Build Arduino Projects
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        project:
+          - hello-world
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Arduino CLI
+      uses: arduino/setup-arduino-cli@v2
+    
+    - name: Read project configuration
+      id: config
+      run: |
+        cd arduino/${{ matrix.project }}
+        if [ ! -f arduino-cli.yaml ]; then
+          echo "Error: arduino-cli.yaml not found"
+          exit 1
+        fi
+        FQBN=$(grep "^fqbn:" arduino-cli.yaml | cut -d':' -f2- | xargs)
+        PLATFORM=$(echo "$FQBN" | cut -d':' -f1-2)
+        echo "fqbn=$FQBN" >> $GITHUB_OUTPUT
+        echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+        echo "Board FQBN: $FQBN"
+        echo "Platform: $PLATFORM"
+    
+    - name: Install board platform
+      run: |
+        arduino-cli core update-index
+        arduino-cli core install ${{ steps.config.outputs.platform }}
+    
+    - name: Compile Arduino sketch
+      run: |
+        cd arduino/${{ matrix.project }}
+        arduino-cli compile --fqbn ${{ steps.config.outputs.fqbn }} ${{ matrix.project }}
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.project }}-firmware
+        path: |
+          arduino/${{ matrix.project }}/${{ matrix.project }}/build/**/*.bin
+          arduino/${{ matrix.project }}/${{ matrix.project }}/build/**/*.elf
+          arduino/${{ matrix.project }}/${{ matrix.project }}/build/**/*.hex
+        retention-days: 30
+    
+    - name: Display build info
+      run: |
+        echo "Build completed successfully for ${{ matrix.project }}!"
+        echo "Artifacts:"
+        find arduino/${{ matrix.project }}/${{ matrix.project }}/build -type f -name "*.bin" -o -name "*.elf" -o -name "*.hex" 2>/dev/null || echo "Build artifacts generated"
