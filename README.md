@@ -1,4 +1,5 @@
 [![Go Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/Build/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions?query=workflow%3ABuild)
+[![Arduino Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions/workflows/arduino.yml/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions/workflows/arduino.yml)
 [![C++ Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/C%2B%2B%20Object%20Detection%20Build/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions?query=workflow%3A%22C%2B%2B+Object+Detection+Build%22)
 [![Latest Release](https://img.shields.io/github/v/release/ingojaeckel/go-raspberry-pi-timelapse?include_prereleases)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/releases/latest)
 
