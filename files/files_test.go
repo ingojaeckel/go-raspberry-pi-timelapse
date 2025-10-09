@@ -5,6 +5,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -73,4 +75,54 @@ func TestTarTwoFilesWithPipe(t *testing.T) {
 		count++
 	}
 	ensure.DeepEqual(t, count, 2)
+}
+
+// Benchmarks for performance-sensitive operations
+
+func BenchmarkListFiles(b *testing.B) {
+	w, _ := os.Getwd()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ListFiles(w, true)
+	}
+}
+
+func BenchmarkByAgeSort(b *testing.B) {
+	// Create sample file list with 100 files
+	files := make([]File, 100)
+	for i := 0; i < 100; i++ {
+		files[i] = File{
+			Name:         "file" + strconv.Itoa(i) + ".jpg",
+			ModTimeEpoch: int64(100 - i), // Reverse order
+			Bytes:        1024 * int64(i),
+		}
+	}
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Copy to avoid sorting already sorted data
+		testFiles := make([]File, len(files))
+		copy(testFiles, files)
+		sort.Sort(ByAge(testFiles))
+	}
+}
+
+func BenchmarkByAgeSortFull(b *testing.B) {
+	// Create sample file list with 1000 files to test scalability
+	files := make([]File, 1000)
+	for i := 0; i < 1000; i++ {
+		files[i] = File{
+			Name:         "file" + strconv.Itoa(i) + ".jpg",
+			ModTimeEpoch: int64(1000 - i), // Reverse order
+			Bytes:        1024 * int64(i),
+		}
+	}
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Copy to avoid sorting already sorted data
+		testFiles := make([]File, len(files))
+		copy(testFiles, files)
+		sort.Sort(ByAge(testFiles))
+	}
 }

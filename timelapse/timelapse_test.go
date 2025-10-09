@@ -79,3 +79,58 @@ func createTimelapseForTesting(offsetWithinHourSeconds int) Timelapse {
 		},
 	}
 }
+
+// Benchmarks for performance-sensitive operations
+
+func BenchmarkGetSecondsToFirstCapture(b *testing.B) {
+	tl := Timelapse{
+		Settings: conf.Settings{
+			SecondsBetweenCaptures: 60 * 30,
+			OffsetWithinHour:       15 * 60,
+		},
+	}
+	testTime := time.Date(2017, time.December, 1, 8, 46, 1, 0, time.UTC)
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = tl.getSecondsToFirstCapture(testTime)
+	}
+}
+
+func BenchmarkGetSecondsToFirstCaptureVariousTimes(b *testing.B) {
+	tl := Timelapse{
+		Settings: conf.Settings{
+			SecondsBetweenCaptures: 60 * 30,
+			OffsetWithinHour:       15 * 60,
+		},
+	}
+	
+	testTimes := []time.Time{
+		time.Date(2017, time.December, 1, 8, 46, 1, 0, time.UTC),
+		time.Date(2017, time.December, 1, 8, 32, 1, 0, time.UTC),
+		time.Date(2017, time.December, 1, 8, 16, 1, 0, time.UTC),
+		time.Date(2017, time.December, 1, 8, 8, 1, 0, time.UTC),
+	}
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, t := range testTimes {
+			_ = tl.getSecondsToFirstCapture(t)
+		}
+	}
+}
+
+func BenchmarkGetSecondsToFirstCaptureShortInterval(b *testing.B) {
+	tl := Timelapse{
+		Settings: conf.Settings{
+			SecondsBetweenCaptures: 60, // 1 minute interval
+			OffsetWithinHour:       30,
+		},
+	}
+	testTime := time.Date(2017, time.December, 1, 8, 46, 1, 0, time.UTC)
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = tl.getSecondsToFirstCapture(testTime)
+	}
+}
