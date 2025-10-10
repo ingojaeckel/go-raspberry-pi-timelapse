@@ -26,6 +26,8 @@ jobs:
       run: cd frontend && npx playwright install --with-deps chromium
     - name: Frontend - tests
       run: cd frontend && npm run test && cd ../
+    - name: Frontend - build for E2E (dev mode)
+      run: cd frontend && npm run build -- --mode development && cd ../
     - name: Frontend - tests - playwright
       timeout-minutes: 3
       run: cd frontend && npm run test:e2e
@@ -36,9 +38,7 @@ jobs:
         name: playwright-report
         path: frontend/playwright-report/
         retention-days: 7
-    - name: Frontend - build
-      run: cd frontend && npm run build && cd ../
-    - name: Frontend - build
+    - name: Frontend - build for production
       run: cd frontend && npm run build && cd ../
     - uses: actions/setup-go@v5
       with:

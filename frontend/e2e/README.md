@@ -20,11 +20,15 @@ Tests are configured with the following timeouts to prevent hanging:
 - **Action timeout**: 10 seconds (maximum time for page actions like click, fill)
 - **Navigation timeout**: 10 seconds (maximum time for page navigation)
 - **API wait timeout**: 10 seconds (explicit timeout on waitForRequest/waitForResponse)
-- **Web server startup**: 60 seconds (time to start Vite dev server)
+- **Web server startup**: 60 seconds (Vite dev/preview server)
 
 These timeouts ensure tests fail quickly if something goes wrong, rather than relying on external CI timeout.
 
-The dev server starts automatically when running tests and uses the root path (`/`) for easier testing, while production builds use `/static/frontend/build/`.
+**CI Optimization**: In CI environments, tests use `vite preview` to serve pre-built files instead of the dev server. This is much faster and more reliable:
+- Local development: Uses `npm start` (Vite dev server on port 5173)
+- CI environment: Uses `npm run preview` (Vite preview server on port 4173 serving pre-built files)
+
+The frontend is built in development mode before running E2E tests in CI, ensuring the base path is `/` for testing.
 
 ## Running Tests
 

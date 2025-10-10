@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
       outDir: 'build',
       sourcemap: true,
     },
+    preview: {
+      port: 4173,
+    },
     define: {
       // Make environment variables available at build time
       'process.env.REACT_APP_GIT_SHA': JSON.stringify(env.REACT_APP_GIT_SHA || ''),
