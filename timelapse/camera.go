@@ -93,34 +93,37 @@ func (c *Camera) getRaspistillArgs(fullPath string) []string {
 	return append(args, "--output", fullPath)
 }
 
-// captureWithWebcam captures an image from the first available webcam using ffmpeg.
-// This is used on development systems where raspistill is not available.
-// Supports both Linux (v4l2) and macOS (avfoundation).
-func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
-	var args []string
-	
-	// Platform-specific ffmpeg arguments
+// getWebcamFfmpegArgs returns platform-specific ffmpeg arguments for webcam capture.
+// macOS uses avfoundation with device "0", Linux uses v4l2 with /dev/video0.
+func (c *Camera) getWebcamFfmpegArgs() []string {
 	if runtime.GOOS == "darwin" {
 		// macOS: use avfoundation
 		// ffmpeg -f avfoundation -framerate 30 -i "0" -frames:v 1 -q:v QUALITY output.jpg
-		args = []string{
+		return []string{
 			"-f", "avfoundation",
 			"-framerate", "30",
 			"-i", "0", // Default camera (device index 0)
 			"-frames:v", "1",
 			"-q:v", strconv.Itoa(c.quality),
 		}
-	} else {
-		// Linux: use v4l2
-		// ffmpeg -f v4l2 -video_size WIDTHxHEIGHT -i /dev/video0 -frames:v 1 -q:v QUALITY output.jpg
-		args = []string{
-			"-f", "v4l2",
-			"-video_size", fmt.Sprintf("%dx%d", c.width, c.height),
-			"-i", "/dev/video0",
-			"-frames:v", "1",
-			"-q:v", strconv.Itoa(c.quality),
-		}
 	}
+	
+	// Linux: use v4l2
+	// ffmpeg -f v4l2 -video_size WIDTHxHEIGHT -i /dev/video0 -frames:v 1 -q:v QUALITY output.jpg
+	return []string{
+		"-f", "v4l2",
+		"-video_size", fmt.Sprintf("%dx%d", c.width, c.height),
+		"-i", "/dev/video0",
+		"-frames:v", "1",
+		"-q:v", strconv.Itoa(c.quality),
+	}
+}
+
+// captureWithWebcam captures an image from the first available webcam using ffmpeg.
+// This is used on development systems where raspistill is not available.
+// Supports both Linux (v4l2) and macOS (avfoundation).
+func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
+	args := c.getWebcamFfmpegArgs()
 	
 	// Add flip filters if needed (works on both platforms)
 	var filters []string
