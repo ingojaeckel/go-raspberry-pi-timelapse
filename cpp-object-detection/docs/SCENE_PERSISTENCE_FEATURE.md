@@ -145,17 +145,15 @@ The scene persistence feature works with any YOLO model, but different models of
 - **Best for**: Precise object identification and positioning
 - **Command**: `--model-type yolov5l`
 
-#### Embedded Systems: YOLOv8n
-- **Speed**: ~35ms per frame
-- **Accuracy**: 70%
-- **Best for**: Resource-constrained devices (Raspberry Pi)
-- **Command**: `--model-type yolov8n`
+**Note**: YOLOv8 models are listed in the help but not yet fully implemented. They currently fall back to YOLOv5 models.
 
 ### Model Selection Guidelines
 
-1. **For Color and Orientation Analysis**: Use YOLOv5l or YOLOv8m for better feature extraction
-2. **For Speed**: Use YOLOv5s or YOLOv8n with `--detection-scale 0.5` for faster processing
-3. **For Embedded Devices**: YOLOv8n with reduced frame size (640x480)
+1. **For Color and Orientation Analysis**: Use YOLOv5l for better feature extraction
+2. **For Speed**: Use YOLOv5s with `--detection-scale 0.5` for faster processing
+3. **For Embedded Devices**: YOLOv5s with reduced frame size (640x480) and `--detection-scale 0.5`
+
+**Note**: YOLOv8 models mentioned in the help are placeholders for future implementation and currently fall back to YOLOv5 models.
 
 ## Database Schema
 

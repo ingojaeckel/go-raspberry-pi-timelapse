@@ -290,11 +290,7 @@ The scene persistence feature integrates cleanly with:
    - ~65ms per frame
    - Command: `--model-type yolov5s`
 
-3. **YOLOv8n** (Fast Mode)
-   - Best for resource-constrained devices
-   - Still provides good scene recognition
-   - ~35ms per frame
-   - Command: `--model-type yolov8n`
+**Note**: YOLOv8 models (yolov8n, yolov8m) are listed in the help but are not yet implemented. They currently fall back to YOLOv5 models with a warning message. For now, use YOLOv5s or YOLOv5l for production deployments.
 
 ## Future Enhancements
 
