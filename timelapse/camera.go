@@ -56,6 +56,7 @@ func (c *Camera) Capture() (string, error) {
 	
 	if isDevelopment() {
 		// On development systems, use ffmpeg to capture from webcam
+		log.Printf("Development mode: capturing from webcam to %s", fullPath)
 		return c.captureWithWebcam(fullPath)
 	}
 	
@@ -98,12 +99,12 @@ func (c *Camera) getRaspistillArgs(fullPath string) []string {
 func (c *Camera) getWebcamFfmpegArgs() []string {
 	if runtime.GOOS == "darwin" {
 		// macOS: use avfoundation
-		// ffmpeg -f avfoundation -framerate 30 -i "0" -frames:v 1 -q:v QUALITY output.jpg
+		// ffmpeg -f avfoundation -i "0" -frames:v 1 -s WIDTHxHEIGHT -q:v QUALITY output.jpg
 		return []string{
 			"-f", "avfoundation",
-			"-framerate", "30",
 			"-i", "0", // Default camera (device index 0)
 			"-frames:v", "1",
+			"-s", fmt.Sprintf("%dx%d", c.width, c.height),
 			"-q:v", strconv.Itoa(c.quality),
 		}
 	}
