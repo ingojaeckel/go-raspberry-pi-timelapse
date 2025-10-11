@@ -19,6 +19,7 @@
 #include "system_monitor.hpp"
 #include "google_sheets_client.hpp"
 #include "notification_manager.hpp"
+#include "scene_manager.hpp"
 
 /**
  * Context structure to hold shared application state
@@ -39,6 +40,7 @@ struct ApplicationContext {
     std::shared_ptr<SystemMonitor> system_monitor;
     std::shared_ptr<GoogleSheetsClient> google_sheets_client;
     std::shared_ptr<NotificationManager> notification_manager;
+    std::shared_ptr<SceneManager> scene_manager;
     
     // Processing state
     std::queue<std::future<ParallelFrameProcessor::FrameResult>> pending_frames;
@@ -54,6 +56,10 @@ struct ApplicationContext {
     // Burst mode state
     bool burst_mode_active = false;
     std::set<std::string> previous_object_types;  // Track object types from previous frame
+    
+    // Scene persistence state
+    std::chrono::steady_clock::time_point scene_analysis_start;
+    bool scene_observation_started = false;
 };
 
 /**

@@ -12,9 +12,18 @@ if(PKG_CONFIG_FOUND)
         include_directories(${CURL_INCLUDE_DIRS})
         link_directories(${CURL_LIBRARY_DIRS})
     endif()
+    pkg_check_modules(SQLITE3 REQUIRED sqlite3)
+    if(SQLITE3_FOUND)
+        include_directories(${SQLITE3_INCLUDE_DIRS})
+        link_directories(${SQLITE3_LIBRARY_DIRS})
+    endif()
 else()
     # Fall back to find_package
     find_package(CURL REQUIRED)
+    find_library(SQLITE3_LIBRARIES NAMES sqlite3)
+    if(NOT SQLITE3_LIBRARIES)
+        message(FATAL_ERROR "SQLite3 not found")
+    endif()
 endif()
 
 # Test sources
@@ -33,6 +42,7 @@ set(TEST_SOURCES
     test_long_term_operation.cpp
     test_stationary_detection.cpp
     test_google_sheets_client.cpp
+    test_scene_manager.cpp
 )
 
 # Create test executable
@@ -58,6 +68,7 @@ if(PKG_CONFIG_FOUND AND CURL_FOUND)
         ${OpenCV_LIBS}
         pthread
         ${CURL_LIBRARIES}
+        ${SQLITE3_LIBRARIES}
     )
 else()
     # Link using find_package results
@@ -67,6 +78,7 @@ else()
         ${OpenCV_LIBS}
         pthread
         CURL::libcurl
+        ${SQLITE3_LIBRARIES}
     )
 endif()
 
@@ -84,6 +96,7 @@ target_sources(object_detection_tests PRIVATE
     ../src/network_streamer.cpp
     ../src/system_monitor.cpp
     ../src/google_sheets_client.cpp
+    ../src/scene_manager.cpp
 )
 
 # Code coverage support for tests

@@ -62,6 +62,8 @@ ConfigManager::ParseResult ConfigManager::parseArgs(int argc, char* argv[]) {
             config_->enable_file_notification = true;
         } else if (arg == "--enable-stdio-notification") {
             config_->enable_stdio_notification = true;
+        } else if (arg == "--enable-scene-persistence") {
+            config_->enable_scene_persistence = true;
         } else if (arg == "--list-cameras" || arg == "--list") {
             // List cameras and exit
             listCameras();
@@ -130,6 +132,14 @@ bool ConfigManager::parseArgument(const std::string& arg, const std::string& val
             config_->sse_port = std::stoi(value);
         } else if (arg == "--notification-file-path") {
             config_->notification_file_path = value;
+        } else if (arg == "--scene-db-path") {
+            config_->scene_db_path = value;
+        } else if (arg == "--scene-observation-seconds") {
+            config_->scene_observation_seconds = std::stoi(value);
+        } else if (arg == "--scene-match-threshold") {
+            config_->scene_match_threshold = std::stod(value);
+        } else if (arg == "--scene-position-tolerance") {
+            config_->scene_position_tolerance = std::stod(value);
         } else {
             return false;
         }
@@ -198,7 +208,12 @@ void ConfigManager::printUsage(const std::string& program_name) const {
               << "  --sse-port N                   Port for SSE server (default: 8081)\n"
               << "  --enable-file-notification     Enable file-based notifications (default: disabled)\n"
               << "  --notification-file-path PATH  Path for notification file (default: /tmp/object_notifications.json)\n"
-              << "  --enable-stdio-notification    Enable stdio notifications to stdout (default: disabled)\n\n"
+              << "  --enable-stdio-notification    Enable stdio notifications to stdout (default: disabled)\n"
+              << "  --enable-scene-persistence     Enable scene persistence to SQLite database (default: disabled)\n"
+              << "  --scene-db-path PATH           Path to SQLite database for scenes (default: scenes.db)\n"
+              << "  --scene-observation-seconds N  Observation time before analyzing scene (default: 60)\n"
+              << "  --scene-match-threshold N      Minimum score to match scenes, 0-1 (default: 0.7)\n"
+              << "  --scene-position-tolerance N   Position tolerance for matching, fraction of frame (default: 0.15)\n\n"
               << "MODEL TYPES:\n"
               << "  yolov5s    Fast model optimized for real-time detection (~65ms, 75% accuracy)\n"
               << "  yolov5l    High-accuracy model for better precision (~120ms, 85% accuracy)\n"

@@ -192,6 +192,25 @@ bool initializeComponents(ApplicationContext& ctx) {
         ctx.logger->info("Notification system initialized");
     }
 
+    // Initialize scene manager if enabled
+    if (ctx.config.enable_scene_persistence) {
+        SceneMatchConfig scene_config;
+        scene_config.min_observation_seconds = ctx.config.scene_observation_seconds;
+        scene_config.min_match_score = ctx.config.scene_match_threshold;
+        scene_config.position_tolerance = ctx.config.scene_position_tolerance;
+        
+        ctx.scene_manager = std::make_shared<SceneManager>(
+            ctx.config.scene_db_path, ctx.logger, scene_config);
+        
+        if (!ctx.scene_manager->initialize()) {
+            ctx.logger->error("Failed to initialize scene manager");
+            return false;
+        }
+        ctx.logger->info("Scene persistence enabled - database: " + ctx.config.scene_db_path);
+        ctx.logger->info("Scene observation time: " + std::to_string(ctx.config.scene_observation_seconds) + "s");
+        ctx.logger->info("Scene match threshold: " + std::to_string(ctx.config.scene_match_threshold));
+    }
+
     // Initialize timing variables
     ctx.last_heartbeat = std::chrono::steady_clock::now();
     ctx.start_time = std::chrono::steady_clock::now();
@@ -504,6 +523,23 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
             
             // Update previous object types for next iteration
             ctx.previous_object_types = current_object_types;
+        }
+
+        // Scene persistence logic: update observation and analyze scene when ready
+        if (ctx.config.enable_scene_persistence && ctx.scene_manager) {
+            const auto& tracked = ctx.detector->getTrackedObjects();
+            
+            // Update scene observation with current stationary objects
+            ctx.scene_manager->updateObservation(tracked, ctx.frame);
+            
+            // Check if scene is ready to be analyzed and persisted
+            if (ctx.scene_manager->isReadyToAnalyzeScene()) {
+                ctx.scene_manager->analyzeAndPersistScene();
+                // Scene manager already logs whether this is a new or recognized scene
+                
+                // Reset observation to start fresh for next scene
+                ctx.scene_manager->resetObservation();
+            }
         }
 
         // Apply rate limiting with evenly distributed sleep time
