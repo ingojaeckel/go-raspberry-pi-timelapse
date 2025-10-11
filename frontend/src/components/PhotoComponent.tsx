@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { DataGrid, GridColDef, GridRowId, GridRenderCellParams, GridRowSelectionModel } from '@mui/x-data-grid';
-import { Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText } from '@mui/material';
+import { Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, Alert, Box } from '@mui/material';
+import { Download } from '@mui/icons-material';
 import { BaseUrl } from '../conf/config'
 import { PhotosResponse } from '../models/response';
 
@@ -10,6 +11,7 @@ export interface PhotosRowData {
   Photos: any[],
   Selected: GridRowSelectionModel,
   SelectedFilesParameter: string,
+  Error: string,
 }
 
 const columns: GridColDef[] = [
@@ -24,6 +26,7 @@ export default function PhotosComponent() {
     Photos: [],
     Selected: { type: 'include', ids: new Set<GridRowId>() },
     SelectedFilesParameter: "",
+    Error: "",
   });
 
 const getPhotos = () => {
@@ -50,6 +53,20 @@ const getPhotos = () => {
           Photos: rows,
           Selected: { type: 'include', ids: new Set<GridRowId>() },
           SelectedFilesParameter: "",
+          Error: "",
+        });
+      }
+    })
+    .catch(err => {
+      if (err.code === 'ERR_NETWORK' || err.message.includes('Network Error')) {
+        setState({
+          ...state,
+          Error: "Unable to connect to server. Please ensure the server is running.",
+        });
+      } else {
+        setState({
+          ...state,
+          Error: "Failed to fetch photos: " + (err.message || "Unknown error"),
         });
       }
     });
@@ -76,6 +93,7 @@ const getPhotos = () => {
       Photos: state.Photos,
       Selected: selectionModel,
       SelectedFilesParameter: link,
+      Error: state.Error,
     });
   };
 
@@ -87,6 +105,7 @@ const getPhotos = () => {
         Photos: state.Photos,
         Selected: state.Selected,
         SelectedFilesParameter: state.SelectedFilesParameter,
+        Error: state.Error,
       })
     }
   };
@@ -96,6 +115,7 @@ const getPhotos = () => {
       Photos: state.Photos,
       Selected: state.Selected,
       SelectedFilesParameter: state.SelectedFilesParameter,
+      Error: state.Error,
     })
   };
   const handleDeletionConfirmed = () => {
@@ -107,22 +127,60 @@ const getPhotos = () => {
         Photos: state.Photos,
         Selected: state.Selected,
         SelectedFilesParameter: state.SelectedFilesParameter,
+        Error: state.Error,
       });
       getPhotos();
+    })
+    .catch(err => {
+      setState({
+        ...state,
+        ShowDeletionDialog: false,
+        Error: "Failed to delete photos: " + (err.message || "Unknown error"),
+      });
     });
+  };
+
+  const handleDownload = (url: string) => {
+    window.location.href = url;
   };
 
   return (
     <React.Fragment>
-      <ButtonGroup color="primary" aria-label="outlined primary button group">
-        <Button onClick={handleRefreshClicked}>Refresh</Button>
-        <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.ids.size})</Button>
-      </ButtonGroup>
-      <ul>
-        <li><a href={BaseUrl + "/archive/zip"}>Download all (zip)</a></li>
-        <li><a href={BaseUrl + "/archive/tar"}>Download all (tar)</a></li>
-        <li><a href={BaseUrl + "/archive/zip?" + state.SelectedFilesParameter}>Download selected ({state.Selected.ids.size})</a></li>
-      </ul>
+      {state.Error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setState({ ...state, Error: "" })}>
+          {state.Error}
+        </Alert>
+      )}
+      <Box sx={{ mb: 2 }}>
+        <ButtonGroup color="primary" aria-label="outlined primary button group" sx={{ mb: 2 }}>
+          <Button onClick={handleRefreshClicked}>Refresh</Button>
+          <Button onClick={deletePhotosClicked}>Delete selected ({state.Selected.ids.size})</Button>
+        </ButtonGroup>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button 
+            variant="outlined" 
+            startIcon={<Download />}
+            onClick={() => handleDownload(BaseUrl + "/archive/zip")}
+          >
+            Download all (zip)
+          </Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<Download />}
+            onClick={() => handleDownload(BaseUrl + "/archive/tar")}
+          >
+            Download all (tar)
+          </Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<Download />}
+            onClick={() => handleDownload(BaseUrl + "/archive/zip?" + state.SelectedFilesParameter)}
+            disabled={state.Selected.ids.size === 0}
+          >
+            Download selected ({state.Selected.ids.size})
+          </Button>
+        </Box>
+      </Box>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid
           rows={state.Photos}
