@@ -8,20 +8,17 @@ const errorRate = new Rate('errors');
 // Test configuration
 export const options = {
   stages: [
-    { duration: '30s', target: 10 },  // Ramp up to 10 users over 30s
-    { duration: '1m', target: 10 },   // Stay at 10 users for 1 minute
-    { duration: '30s', target: 50 },  // Ramp up to 50 users over 30s
-    { duration: '2m', target: 50 },   // Stay at 50 users for 2 minutes
-    { duration: '30s', target: 0 },   // Ramp down to 0 users
+    { duration: '5s', target: 10 },  // Ramp up to 10 users over 5s
+    { duration: '30s', target: 10 },   // Stay at 10 users for 30s
+    { duration: '5s', target: 50 },  // Ramp up to 50 users over 5s
+    { duration: '30s', target: 50 },   // Stay at 50 users for 30s
+    { duration: '5s', target: 0 },   // Ramp down to 0 users
   ],
   thresholds: {
     // Success criteria: 100% success rate (2xx responses)
-    'http_req_failed': ['rate<0.01'], // Less than 1% failed requests
-    // Success criteria: p95 < 100ms
-    'http_req_duration': ['p(95)<100'],
-    // Additional thresholds for monitoring
-    'http_req_duration': ['p(50)<50', 'p(99)<200'],
-    'errors': ['rate<0.01'],
+    'http_req_failed': ['rate==0'], // Zero failed requests
+    'http_req_duration': ['p(99)<100'],
+    'errors': ['rate==0'],
   },
 };
 
