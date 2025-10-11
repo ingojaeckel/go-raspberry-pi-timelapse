@@ -8,12 +8,15 @@ import (
 	"log"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
 const (
 	commandRaspistill = "rpicam-still"
+	commandFfmpeg     = "ffmpeg"
 )
 
 type Camera struct {
@@ -38,8 +41,25 @@ func NewCamera(path string, width, height int, rotate bool, quality int) (Camera
 	}, nil
 }
 
+// isDevelopment detects whether the code is running on a development system (non-ARM)
+// or a deployment system (ARM/Raspberry Pi).
+// Development typically happens on x86_64/AMD64 Linux/macOS, while deployment is on ARM.
+func isDevelopment() bool {
+	arch := runtime.GOARCH
+	// ARM-based systems (arm, arm64) are considered deployment/production
+	// x86_64, amd64, 386, etc. are considered development
+	return arch != "arm" && arch != "arm64"
+}
+
 func (c *Camera) Capture() (string, error) {
 	fullPath := c.getAbsoluteFilepath()
+	
+	if isDevelopment() {
+		// On development systems, use ffmpeg to capture from webcam
+		return c.captureWithWebcam(fullPath)
+	}
+	
+	// On Raspberry Pi, use rpicam-still
 	args := c.getRaspistillArgs(fullPath)
 	log.Printf("Running command: %s %v", commandRaspistill, args)
 	cmd := exec.Command(commandRaspistill, args...)
@@ -71,6 +91,62 @@ func (c *Camera) getRaspistillArgs(fullPath string) []string {
 		args = append(args, "--hflip")
 	}
 	return append(args, "--output", fullPath)
+}
+
+// captureWithWebcam captures an image from the first available webcam using ffmpeg.
+// This is used on development systems where raspistill is not available.
+// Supports both Linux (v4l2) and macOS (avfoundation).
+func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
+	var args []string
+	
+	// Platform-specific ffmpeg arguments
+	if runtime.GOOS == "darwin" {
+		// macOS: use avfoundation
+		// ffmpeg -f avfoundation -framerate 30 -i "0" -frames:v 1 -q:v QUALITY output.jpg
+		args = []string{
+			"-f", "avfoundation",
+			"-framerate", "30",
+			"-i", "0", // Default camera (device index 0)
+			"-frames:v", "1",
+			"-q:v", strconv.Itoa(c.quality),
+		}
+	} else {
+		// Linux: use v4l2
+		// ffmpeg -f v4l2 -video_size WIDTHxHEIGHT -i /dev/video0 -frames:v 1 -q:v QUALITY output.jpg
+		args = []string{
+			"-f", "v4l2",
+			"-video_size", fmt.Sprintf("%dx%d", c.width, c.height),
+			"-i", "/dev/video0",
+			"-frames:v", "1",
+			"-q:v", strconv.Itoa(c.quality),
+		}
+	}
+	
+	// Add flip filters if needed (works on both platforms)
+	var filters []string
+	if c.flipHorizontally {
+		filters = append(filters, "hflip")
+	}
+	if c.flipVertically {
+		filters = append(filters, "vflip")
+	}
+	if len(filters) > 0 {
+		args = append(args, "-vf", strings.Join(filters, ","))
+	}
+	
+	args = append(args, "-y", fullPath)
+	
+	log.Printf("Running command: %s %v", commandFfmpeg, args)
+	cmd := exec.Command(commandFfmpeg, args...)
+	
+	// Capture stderr since ffmpeg outputs to stderr
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("ffmpeg error: %s", string(output))
+		return "", fmt.Errorf("failed to capture from webcam: %w", err)
+	}
+	
+	return fullPath, nil
 }
 
 func getFileName(t time.Time) string {
