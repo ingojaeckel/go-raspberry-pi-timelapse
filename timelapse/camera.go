@@ -95,18 +95,34 @@ func (c *Camera) getRaspistillArgs(fullPath string) []string {
 
 // captureWithWebcam captures an image from the first available webcam using ffmpeg.
 // This is used on development systems where raspistill is not available.
+// Supports both Linux (v4l2) and macOS (avfoundation).
 func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
-	// Try to capture from /dev/video0 (first webcam)
-	// ffmpeg -f v4l2 -video_size WIDTHxHEIGHT -i /dev/video0 -frames:v 1 -q:v QUALITY output.jpg
-	args := []string{
-		"-f", "v4l2",
-		"-video_size", fmt.Sprintf("%dx%d", c.width, c.height),
-		"-i", "/dev/video0",
-		"-frames:v", "1",
-		"-q:v", strconv.Itoa(c.quality),
+	var args []string
+	
+	// Platform-specific ffmpeg arguments
+	if runtime.GOOS == "darwin" {
+		// macOS: use avfoundation
+		// ffmpeg -f avfoundation -framerate 30 -i "0" -frames:v 1 -q:v QUALITY output.jpg
+		args = []string{
+			"-f", "avfoundation",
+			"-framerate", "30",
+			"-i", "0", // Default camera (device index 0)
+			"-frames:v", "1",
+			"-q:v", strconv.Itoa(c.quality),
+		}
+	} else {
+		// Linux: use v4l2
+		// ffmpeg -f v4l2 -video_size WIDTHxHEIGHT -i /dev/video0 -frames:v 1 -q:v QUALITY output.jpg
+		args = []string{
+			"-f", "v4l2",
+			"-video_size", fmt.Sprintf("%dx%d", c.width, c.height),
+			"-i", "/dev/video0",
+			"-frames:v", "1",
+			"-q:v", strconv.Itoa(c.quality),
+		}
 	}
 	
-	// Add flip filters if needed
+	// Add flip filters if needed (works on both platforms)
 	var filters []string
 	if c.flipHorizontally {
 		filters = append(filters, "hflip")
