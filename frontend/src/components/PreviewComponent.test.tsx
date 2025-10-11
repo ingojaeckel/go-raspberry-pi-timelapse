@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PreviewComponent from './PreviewComponent';
 
@@ -79,5 +79,21 @@ describe('PreviewComponent', () => {
     const listItems = container.querySelectorAll('ul > li');
     
     expect(listItems.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('displays error message when image fails to load', () => {
+    const { container } = render(<PreviewComponent />);
+    const img = container.querySelector('img') as HTMLImageElement;
+    
+    // Trigger error event
+    fireEvent.error(img);
+    
+    expect(screen.getByText(/Failed to load camera preview/)).toBeInTheDocument();
+  });
+
+  it('displays tips header', () => {
+    render(<PreviewComponent />);
+    
+    expect(screen.getByText(/Tips for fine-tuning the camera position/)).toBeInTheDocument();
   });
 });

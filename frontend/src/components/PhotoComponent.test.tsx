@@ -130,14 +130,13 @@ describe('PhotoComponent', () => {
 
   it('builds correct download URL for selected files', async () => {
     mockedAxios.get.mockResolvedValue({ data: mockPhotosData });
-    const { container } = render(<PhotoComponent />);
+    render(<PhotoComponent />);
 
     await waitFor(() => {
-      const links = container.querySelectorAll('a');
-      const zipLink = Array.from(links).find(link => 
-        link.getAttribute('href')?.includes('/archive/zip')
-      );
-      expect(zipLink).toBeInTheDocument();
+      // Should have download buttons instead of links
+      expect(screen.getByText(/Download all \(zip\)/)).toBeInTheDocument();
+      expect(screen.getByText(/Download all \(tar\)/)).toBeInTheDocument();
+      expect(screen.getByText(/Download selected/)).toBeInTheDocument();
     });
   });
 

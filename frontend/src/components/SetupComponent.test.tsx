@@ -40,11 +40,21 @@ describe('SetupComponent', () => {
     });
   });
 
-  it('renders Save button', () => {
+  it('renders Save button in edit mode', async () => {
     mockedAxios.get.mockResolvedValue({ data: mockSettings });
     render(<SetupComponent />);
     
-    expect(screen.getByText('Save')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Camera Settings/)).toBeInTheDocument();
+    });
+
+    // Click edit button to enter edit mode
+    const editButton = screen.getByRole('button', { name: '' });
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Save')).toBeInTheDocument();
+    });
   });
 
   it('renders Restart button', () => {
@@ -104,6 +114,14 @@ describe('SetupComponent', () => {
 
     await waitFor(() => {
       expect(mockedAxios.get).toHaveBeenCalled();
+    });
+
+    // Click edit button to enter edit mode
+    const editButton = screen.getByRole('button', { name: '' });
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Save')).toBeInTheDocument();
     });
 
     const saveButton = screen.getByText('Save');
@@ -169,11 +187,19 @@ describe('SetupComponent', () => {
     const { container } = render(<SetupComponent />);
 
     await waitFor(() => {
-      const input = container.querySelector('#tfSecondsBetweenCaptures') as HTMLInputElement;
+      expect(screen.getByText(/Time between captures/)).toBeInTheDocument();
+    });
+
+    // Click edit button to enter edit mode
+    const editButton = screen.getByRole('button', { name: '' });
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      const input = container.querySelector('input[type="number"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
     });
 
-    const input = container.querySelector('#tfSecondsBetweenCaptures') as HTMLInputElement;
+    const input = container.querySelector('input[type="number"]') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '10' } });
     
     expect(input.value).toBe('10');
@@ -184,14 +210,23 @@ describe('SetupComponent', () => {
     const { container } = render(<SetupComponent />);
 
     await waitFor(() => {
-      const input = container.querySelector('#tfOffset') as HTMLInputElement;
-      expect(input).toBeInTheDocument();
+      expect(screen.getByText(/Time between captures/)).toBeInTheDocument();
     });
 
-    const input = container.querySelector('#tfOffset') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '5' } });
+    // Click edit button to enter edit mode
+    const editButton = screen.getByRole('button', { name: '' });
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      const inputs = container.querySelectorAll('input[type="number"]');
+      expect(inputs.length).toBeGreaterThan(1);
+    });
+
+    const inputs = container.querySelectorAll('input[type="number"]');
+    const offsetInput = inputs[1] as HTMLInputElement; // Second input is offset
+    fireEvent.change(offsetInput, { target: { value: '5' } });
     
-    expect(input.value).toBe('5');
+    expect(offsetInput.value).toBe('5');
   });
 
   it('handles rotation input change', async () => {
@@ -199,14 +234,23 @@ describe('SetupComponent', () => {
     const { container } = render(<SetupComponent />);
 
     await waitFor(() => {
-      const input = container.querySelector('#tfRotation') as HTMLInputElement;
-      expect(input).toBeInTheDocument();
+      expect(screen.getByText(/Time between captures/)).toBeInTheDocument();
     });
 
-    const input = container.querySelector('#tfRotation') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '90' } });
+    // Click edit button to enter edit mode
+    const editButton = screen.getByRole('button', { name: '' });
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      const inputs = container.querySelectorAll('input[type="number"]');
+      expect(inputs.length).toBeGreaterThan(2);
+    });
+
+    const inputs = container.querySelectorAll('input[type="number"]');
+    const rotationInput = inputs[2] as HTMLInputElement; // Third input is rotation
+    fireEvent.change(rotationInput, { target: { value: '90' } });
     
-    expect(input.value).toBe('90');
+    expect(rotationInput.value).toBe('90');
   });
 
   it('handles quality input change', async () => {
@@ -214,14 +258,23 @@ describe('SetupComponent', () => {
     const { container } = render(<SetupComponent />);
 
     await waitFor(() => {
-      const input = container.querySelector('#tfQuality') as HTMLInputElement;
-      expect(input).toBeInTheDocument();
+      expect(screen.getByText(/Time between captures/)).toBeInTheDocument();
     });
 
-    const input = container.querySelector('#tfQuality') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '85' } });
+    // Click edit button to enter edit mode
+    const editButton = screen.getByRole('button', { name: '' });
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      const inputs = container.querySelectorAll('input[type="number"]');
+      expect(inputs.length).toBeGreaterThan(3);
+    });
+
+    const inputs = container.querySelectorAll('input[type="number"]');
+    const qualityInput = inputs[3] as HTMLInputElement; // Fourth input is quality
+    fireEvent.change(qualityInput, { target: { value: '85' } });
     
-    expect(input.value).toBe('85');
+    expect(qualityInput.value).toBe('85');
   });
 
   it('updates form with received configuration data', async () => {
@@ -237,17 +290,42 @@ describe('SetupComponent', () => {
     const { container } = render(<SetupComponent />);
 
     await waitFor(() => {
-      const timeInput = container.querySelector('#tfSecondsBetweenCaptures') as HTMLInputElement;
-      expect(timeInput.value).toBe('10'); // 600 seconds / 60 = 10 minutes
-      
-      const offsetInput = container.querySelector('#tfOffset') as HTMLInputElement;
-      expect(offsetInput.value).toBe('10');
-      
-      const rotationInput = container.querySelector('#tfRotation') as HTMLInputElement;
-      expect(rotationInput.value).toBe('180');
-      
-      const qualityInput = container.querySelector('#tfQuality') as HTMLInputElement;
-      expect(qualityInput.value).toBe('85');
+      // In read-only mode, values are displayed as text
+      const textElements = container.querySelectorAll('span.MuiTypography-root');
+      const values = Array.from(textElements).map(el => el.textContent);
+      expect(values).toContain('10'); // 600 seconds / 60 = 10 minutes
+      expect(values).toContain('180');
+      expect(values).toContain('85');
+    });
+  });
+
+  it('toggles edit mode when edit button is clicked', async () => {
+    mockedAxios.get.mockResolvedValue({ data: mockSettings });
+    const { container } = render(<SetupComponent />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Camera Settings/)).toBeInTheDocument();
+    });
+
+    // Initially in read-only mode
+    expect(container.querySelector('input[type="number"]')).not.toBeInTheDocument();
+
+    // Click edit button
+    const editButton = screen.getByRole('button', { name: '' });
+    fireEvent.click(editButton);
+
+    // Now in edit mode with inputs
+    await waitFor(() => {
+      expect(container.querySelector('input[type="number"]')).toBeInTheDocument();
+    });
+  });
+
+  it('handles network error gracefully', async () => {
+    mockedAxios.get.mockRejectedValue({ code: 'ERR_NETWORK', message: 'Network Error' });
+    render(<SetupComponent />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Unable to connect to server/)).toBeInTheDocument();
     });
   });
 });
