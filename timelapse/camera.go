@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -114,11 +115,7 @@ func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
 		filters = append(filters, "vflip")
 	}
 	if len(filters) > 0 {
-		filterStr := filters[0]
-		for i := 1; i < len(filters); i++ {
-			filterStr += "," + filters[i]
-		}
-		args = append(args, "-vf", filterStr)
+		args = append(args, "-vf", strings.Join(filters, ","))
 	}
 	
 	args = append(args, "-y", fullPath)
