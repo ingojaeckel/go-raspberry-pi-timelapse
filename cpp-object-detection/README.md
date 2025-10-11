@@ -12,6 +12,10 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Object tracking and permanence** - Distinguishes new objects from moving objects
 - **Position-based tracking** for people, vehicles, and small animals (cat/dog/fox)
 - **🆕 Stationary object detection** - Automatically stops taking photos of stationary objects after configurable timeout
+- **🆕 Scene Persistence** - Identifies and tracks stationary object configurations (scenes), stores them in SQLite for later recognition
+  - Fuzzy matching to recognize returning to previously seen scenes
+  - Analyzes object properties (color, orientation) and spatial relationships
+  - Configurable matching thresholds for accuracy
 - **Real-time viewfinder** - optional on-screen preview with detection bounding boxes and performance statistics (--show-preview)
   - **Debug overlay** with performance metrics, detection counts, uptime, and top detected objects
   - **Toggle overlay** with SPACE key for minimal screen coverage
@@ -520,6 +524,37 @@ When enabled, detection events (object entries and movements) are automatically 
 | 2024-10-05T14:30:16.456 | person | movement | 325.2 | 245.3 | 6.8 | From (320,240) to (325,245) |
 
 For detailed setup instructions, security considerations, and troubleshooting, see [GOOGLE_SHEETS_FEATURE.md](docs/GOOGLE_SHEETS_FEATURE.md).
+
+### Scene Persistence
+
+The application can **identify and track stationary object configurations** (scenes), storing them in a SQLite database for later recognition:
+
+```bash
+# Enable scene persistence with defaults
+./object_detection --enable-scene-persistence
+
+# Custom configuration
+./object_detection \
+  --enable-scene-persistence \
+  --scene-db-path /path/to/scenes.db \
+  --scene-observation-seconds 30 \
+  --scene-match-threshold 0.8
+```
+
+When enabled, the system:
+- Observes stationary objects for a configurable period (default: 60 seconds)
+- Analyzes object properties (type, position, color, orientation)
+- Calculates spatial relationships (distances and angles between objects)
+- Stores scenes in SQLite database with unique IDs
+- Recognizes when camera returns to a previously seen scene using fuzzy matching
+
+**Example Output:**
+```
+[INFO] New scene was identified: id=1 - 2x person, 1x car arranged in frame
+[INFO] Recognised return to earlier scene: id=1 (match score: 0.85)
+```
+
+For detailed information on scene matching algorithms, configuration tuning, and model recommendations, see [SCENE_PERSISTENCE_FEATURE.md](docs/SCENE_PERSISTENCE_FEATURE.md).
 
 ### Real-time Notifications
 

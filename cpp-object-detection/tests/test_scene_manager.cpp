@@ -2,6 +2,8 @@
 #include "scene_manager.hpp"
 #include "logger.hpp"
 #include <filesystem>
+#include <thread>
+#include <chrono>
 
 class SceneManagerTest : public ::testing::Test {
 protected:
