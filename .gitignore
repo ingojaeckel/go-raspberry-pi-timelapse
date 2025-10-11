@@ -19,3 +19,8 @@ cpp-object-detection/models/*.weights
 cpp-object-detection/models/*.yaml
 cpp-object-detection/detections/
 _codeql_detected_source_root
+
+# Load testing artifacts
+profiles/
+*.prof
+timelapse-app

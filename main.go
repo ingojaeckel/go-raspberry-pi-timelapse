@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 
@@ -31,6 +32,7 @@ func main() {
 	logToFile := flag.Bool("logToFile", conf.DefaultLogToFile, "Toggle to enable logging to a file on disk instead of stdout. Logging to a file is recommended for long term operation.")
 	storageAddress := flag.String("storageFolder", conf.DefaultStorageFolder, "Folder for storage of timelapse pictures.")
 	secondsBetweenCaptures := flag.Int("secondsBetweenCaptures", conf.DefaultSecondsBetweenCaptures, "Number of seconds between captures")
+	enablePprof := flag.Bool("pprof", false, "Enable pprof profiling endpoints at /debug/pprof/")
 	flag.Parse()
 
 	if *versionFlag {
@@ -87,6 +89,12 @@ func main() {
 	mux.HandleFunc(pat.Options("/configuration"), rest.GetConfiguration)
 	mux.HandleFunc(pat.Post("/configuration"), rest.MakeUpdateConfigurationFn(configUpdatedChan))
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
+
+	// Enable pprof profiling endpoints if requested
+	if *enablePprof {
+		log.Println("Profiling enabled at /debug/pprof/")
+		mux.HandleFunc(pat.Get("/debug/pprof/*"), http.DefaultServeMux.ServeHTTP)
+	}
 
 	t, err := timelapse.New(conf.StorageFolder, *initialSettings, configUpdatedChan)
 	if err != nil {
