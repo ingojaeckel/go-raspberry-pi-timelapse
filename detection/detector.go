@@ -43,8 +43,9 @@ type YOLODetector struct {
 func NewYOLODetector(enabled bool) *YOLODetector {
 	// Try to find yolo_detect script in multiple locations
 	possiblePaths := []string{
-		"/usr/local/bin/yolo_detect",
 		"./scripts/yolo_detect.py",
+		"/usr/local/bin/yolo_detect.py",
+		"/usr/local/bin/yolo_detect",
 		"/opt/timelapse/yolo_detect.py",
 	}
 	

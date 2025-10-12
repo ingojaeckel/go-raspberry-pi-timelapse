@@ -61,10 +61,27 @@ For actual YOLO detection (not mock mode), you need:
 3. **Detection Script**:
    The `yolo_detect.py` script should be placed in one of these locations:
    - `./scripts/yolo_detect.py` (relative to executable)
-   - `/usr/local/bin/yolo_detect`
+   - `/usr/local/bin/yolo_detect.py`
+   - `/usr/local/bin/yolo_detect` (symlink)
    - `/opt/timelapse/yolo_detect.py`
 
 ### Installation on Raspberry Pi
+
+**Automated Installation (Recommended):**
+
+```bash
+# Run the installation script
+cd /path/to/go-raspberry-pi-timelapse
+sudo bash scripts/install_object_detection.sh
+```
+
+The script will:
+- Install Python dependencies (OpenCV, NumPy)
+- Download the appropriate YOLO model for your system
+- Install the detection script
+- Run a test to verify everything works
+
+**Manual Installation:**
 
 ```bash
 # Install Python dependencies
