@@ -164,6 +164,8 @@ The application supports multiple detection models with different speed/accuracy
 | YOLOv8n  | Fastest (~35ms) | 70% | 6MB  | Embedded systems |
 | YOLOv8m  | Slowest (~150ms) | 88% | 52MB | Maximum accuracy |
 
+> **🔄 Need newer YOLO models?** See [YOLO Model Conversion Guide](docs/YOLO_MODEL_CONVERSION.md) to convert YOLOv9, YOLOv10, or YOLOv11 models from PyTorch to ONNX format.
+
 > **📊 Exploring Alternative Models?** See [ALTERNATIVE_MODELS_ANALYSIS.md](docs/ALTERNATIVE_MODELS_ANALYSIS.md) for an in-depth analysis of 3 additional model architectures (EfficientDet, Faster R-CNN, DETR) optimized for outdoor scenes, fine-grained classification, and handling occlusions.
 
 ### Model Selection Examples
@@ -380,6 +382,8 @@ curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/do
 # OR
 wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 ```
+
+**For newer YOLO models (v9, v10, v11)**, see [YOLO Model Conversion Guide](docs/YOLO_MODEL_CONVERSION.md) to convert PyTorch models to ONNX format.
 
 ### Cross-Platform Builds
 
