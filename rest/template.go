@@ -3,8 +3,8 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
@@ -30,7 +30,7 @@ func GetLogs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
 
-	logFileContent, err := ioutil.ReadFile(conf.LogFile)
+	logFileContent, err := os.ReadFile(conf.LogFile)
 	if err == nil {
 		json.NewEncoder(w).Encode(LogResponse{Logs: string(logFileContent)})
 	} else {

@@ -5,7 +5,6 @@ import (
 	"archive/zip"
 	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -33,7 +32,7 @@ func RemoveFile(path string) error {
 }
 
 func ListFiles(dirname string, skipDirectories bool) ([]File, error) {
-	fileInfo, e := ioutil.ReadDir(dirname)
+	fileInfo, e := os.ReadDir(dirname)
 	if e != nil {
 		return []File{}, e
 	}
@@ -43,12 +42,17 @@ func ListFiles(dirname string, skipDirectories bool) ([]File, error) {
 		if skipDirectories && f.IsDir() {
 			continue
 		}
+		fileInfo, e := f.Info()
+		if e != nil {
+			log.Printf("Error reading file info for %s: %s\n", f.Name(), e.Error())
+			return nil, e
+		}
 		files[numberOfFiles] = File{
 			Name:         f.Name(),
-			ModTime:      f.ModTime().String(),
-			ModTimeEpoch: f.ModTime().Unix(),
+			ModTime:      fileInfo.ModTime().String(),
+			ModTimeEpoch: fileInfo.ModTime().Unix(),
 			IsDir:        f.IsDir(),
-			Bytes:        f.Size(),
+			Bytes:        fileInfo.Size(),
 		}
 		numberOfFiles = numberOfFiles + 1
 	}
@@ -61,7 +65,7 @@ func ListFiles(dirname string, skipDirectories bool) ([]File, error) {
 
 func GetFile(path string) ([]byte, error) {
 	// TODO add prefix to path if necessary
-	return ioutil.ReadFile(path)
+	return os.ReadFile(path)
 }
 
 // CanServeFile True if the given file can be served via HTTP. False otherwise because it does not exist, is a directory, or because it is too large.
@@ -126,7 +130,7 @@ func ZipWithPipes(filePaths []string, pw *io.PipeWriter) error {
 		if err != nil {
 			return err
 		}
-		content, err := ioutil.ReadFile(f)
+		content, err := os.ReadFile(f)
 		if err != nil {
 			return err
 		}

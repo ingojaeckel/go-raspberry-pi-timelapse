@@ -3,7 +3,6 @@ package files
 import (
 	"archive/tar"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strconv"
@@ -69,7 +68,7 @@ func TestTarTwoFilesWithPipe(t *testing.T) {
 		ensure.Nil(t, err)
 		ensure.DeepEqual(t, f[count], hdr.Name)
 
-		fileContent, _ := ioutil.ReadFile(f[count])
+		fileContent, _ := os.ReadFile(f[count])
 		ensure.DeepEqual(t, int64(len(fileContent)), hdr.Size)
 
 		count++
@@ -97,7 +96,7 @@ func BenchmarkByAgeSort(b *testing.B) {
 			Bytes:        1024 * int64(i),
 		}
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Copy to avoid sorting already sorted data
@@ -117,7 +116,7 @@ func BenchmarkByAgeSortFull(b *testing.B) {
 			Bytes:        1024 * int64(i),
 		}
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Copy to avoid sorting already sorted data

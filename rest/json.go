@@ -3,7 +3,6 @@ package rest
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -16,7 +15,7 @@ func toJSON(r interface{}) ([]byte, error) {
 }
 
 func parseJSON(reader io.Reader, val interface{}) error {
-	body, err := ioutil.ReadAll(reader)
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		return err
 	}
