@@ -27,10 +27,6 @@ jobs:
       run: cd frontend && npm run test && cd ../
     - name: Build frontend
       run: cd frontend && npm run build && cd ../
-    - name: Install OpenCV dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libopencv-dev libopencv-contrib-dev pkg-config
     - uses: actions/setup-go@v5
       with:
         go-version: 1.25.2

@@ -18,7 +18,7 @@ import json
 import sys
 import os
 
-def detect_objects(image_path, model_path, confidence_threshold=0.5):
+def detect_objects(image_path, model_path, confidence_threshold=0.5, draw_boxes=True):
     """
     Perform object detection on an image using YOLO.
     
@@ -26,6 +26,7 @@ def detect_objects(image_path, model_path, confidence_threshold=0.5):
         image_path: Path to input image
         model_path: Path to YOLO model file (.onnx)
         confidence_threshold: Minimum confidence for detections
+        draw_boxes: Whether to draw bounding boxes and save annotated image
         
     Returns:
         Dictionary with detections and summary
@@ -148,11 +149,64 @@ def detect_objects(image_path, model_path, confidence_threshold=0.5):
             if has_person_or_animal:
                 summary = "It's day time. " + summary
         
-        return {
+        # Draw bounding boxes and save annotated image if requested
+        annotated_image_path = None
+        if draw_boxes and detections:
+            try:
+                # Create a copy of the image for annotation
+                annotated = image.copy()
+                
+                # Colors for different object classes (BGR format)
+                colors = [
+                    (255, 0, 0),     # Blue
+                    (0, 255, 0),     # Green
+                    (0, 0, 255),     # Red
+                    (255, 255, 0),   # Cyan
+                    (255, 0, 255),   # Magenta
+                    (0, 255, 255),   # Yellow
+                ]
+                
+                # Draw each detection
+                for i, det in enumerate(detections):
+                    # Choose color based on detection index
+                    color = colors[i % len(colors)]
+                    
+                    # Draw rectangle
+                    x, y, w, h = int(det["x"]), int(det["y"]), int(det["width"]), int(det["height"])
+                    cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+                    
+                    # Draw label with class name and confidence
+                    label = f"{det['class_name']}: {det['confidence']:.2f}"
+                    (label_width, label_height), baseline = cv2.getTextSize(
+                        label, cv2.FONT_HERSHEY_PLAIN, 1.2, 2
+                    )
+                    cv2.rectangle(annotated, (x, y - label_height - baseline), 
+                                  (x + label_width, y), color, -1)
+                    cv2.putText(annotated, label, (x, y - baseline),
+                               cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 2)
+                
+                # Generate annotated image path (insert "_annotated" before extension)
+                base, ext = os.path.splitext(image_path)
+                annotated_image_path = f"{base}_annotated{ext}"
+                
+                # Save the annotated image
+                cv2.imwrite(annotated_image_path, annotated)
+                
+            except Exception as e:
+                # Don't fail the whole detection if annotation fails
+                import sys
+                print(f"Warning: Failed to create annotated image: {e}", file=sys.stderr)
+        
+        result = {
             "detections": detections,
             "image_path": image_path,
             "summary": summary
         }
+        
+        if annotated_image_path:
+            result["annotated_image_path"] = annotated_image_path
+        
+        return result
         
     except Exception as e:
         return {
@@ -168,10 +222,11 @@ def main():
     parser.add_argument("--model", required=True, help="Path to YOLO model (.onnx)")
     parser.add_argument("--confidence", type=float, default=0.5, help="Confidence threshold (default: 0.5)")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
+    parser.add_argument("--no-boxes", action="store_true", help="Don't draw bounding boxes")
     
     args = parser.parse_args()
     
-    result = detect_objects(args.image, args.model, args.confidence)
+    result = detect_objects(args.image, args.model, args.confidence, draw_boxes=not args.no_boxes)
     
     if args.json:
         print(json.dumps(result, indent=2))
@@ -179,6 +234,8 @@ def main():
         print(f"Image: {result['image_path']}")
         print(f"Summary: {result['summary']}")
         print(f"Detections: {len(result['detections'])}")
+        if result.get('annotated_image_path'):
+            print(f"Annotated image saved to: {result['annotated_image_path']}")
         for i, det in enumerate(result['detections'], 1):
             print(f"  {i}. {det['class_name']}: {det['confidence']:.2f} at ({det['x']:.0f}, {det['y']:.0f})")
     
