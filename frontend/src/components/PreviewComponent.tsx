@@ -1,13 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { BaseUrl } from '../conf/config';
 import { Alert, Box, Typography } from '@mui/material';
+import { DetectionResult } from '../models/response';
 
 export default function PhotosComponent() {
   const [imageError, setImageError] = useState<boolean>(false);
+  const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
+  const [detectionError, setDetectionError] = useState<boolean>(false);
   
   const handleImageError = () => {
     setImageError(true);
   };
+
+  // Fetch detection results when component mounts and periodically
+  useEffect(() => {
+    const fetchDetectionResult = () => {
+      axios
+        .get<DetectionResult>(BaseUrl + "/detection/latest")
+        .then(resp => {
+          if (resp.data) {
+            setDetectionResult(resp.data);
+            setDetectionError(false);
+          }
+        })
+        .catch(() => {
+          setDetectionError(true);
+        });
+    };
+
+    fetchDetectionResult();
+    // Refresh detection results every 30 seconds
+    const interval = setInterval(fetchDetectionResult, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <React.Fragment>
@@ -24,6 +51,13 @@ export default function PhotosComponent() {
           onError={handleImageError}
           style={{ maxWidth: '100%', height: 'auto' }}
         />
+        {detectionResult && detectionResult.summary && (
+          <Box sx={{ mt: 1, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>Object Detection:</strong> {detectionResult.summary}
+            </Typography>
+          </Box>
+        )}
       </Box>
       <div>
           <Typography variant="h6" gutterBottom>

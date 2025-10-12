@@ -18,6 +18,7 @@ export interface SettingsResponse {
 	ResolutionSetting:       number
 	Quality:                 number
 	DebugEnabled:            boolean
+	ObjectDetectionEnabled:  boolean
 }
 
 export interface LogResponse {
@@ -32,4 +33,19 @@ export interface Photo {
     Name: string
     ModTime: string
     Size: string
+}
+
+export interface DetectionResult {
+	detections: DetectionInfo[]
+	image_path: string
+	summary: string
+}
+
+export interface DetectionInfo {
+	class_name: string
+	confidence: number
+	x: number
+	y: number
+	width: number
+	height: number
 }

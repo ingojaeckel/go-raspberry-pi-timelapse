@@ -13,6 +13,7 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf/valid"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/detection"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io/pat"
@@ -207,6 +208,7 @@ func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 	s.OffsetWithinHour = updateRequest.OffsetWithinHour
 	s.ResolutionSetting = updateRequest.ResolutionSetting
 	s.SecondsBetweenCaptures = updateRequest.SecondsBetweenCaptures
+	s.ObjectDetectionEnabled = updateRequest.ObjectDetectionEnabled
 	switch s.ResolutionSetting {
 	case 2:
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232
@@ -281,4 +283,35 @@ func requestedFilesToRelativePaths(filteredFiles []string) ([]string, error) {
 	}
 
 	return strFiles, nil
+}
+
+// MakeGetLatestDetectionFn creates a handler to get the latest detection result
+func MakeGetLatestDetectionFn(store *detection.ResultStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		latest := store.GetLatest()
+		if latest == nil {
+			writeJSON(w, http.StatusNotFound, "No detection results available")
+			return
+		}
+		
+		// Convert to response format
+		response := DetectionResultResponse{
+			ImagePath:  latest.ImagePath,
+			Summary:    latest.Summary,
+			Detections: make([]DetectionInfo, len(latest.Detections)),
+		}
+		
+		for i, det := range latest.Detections {
+			response.Detections[i] = DetectionInfo{
+				ClassName:  det.ClassName,
+				Confidence: det.Confidence,
+				X:          det.X,
+				Y:          det.Y,
+				Width:      det.Width,
+				Height:     det.Height,
+			}
+		}
+		
+		writeJSON(w, http.StatusOK, response)
+	}
 }
