@@ -31,6 +31,7 @@ describe('App', () => {
         ResolutionSetting: 0,
         Quality: 100,
         DebugEnabled: false,
+        ObjectDetectionEnabled: false,
       } 
     });
   });
