@@ -29,3 +29,4 @@ _codeql_detected_source_root
 profiles/
 *.prof
 timelapse-app
+timelapse-test
