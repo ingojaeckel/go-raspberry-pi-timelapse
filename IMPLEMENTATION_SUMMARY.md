@@ -373,7 +373,12 @@ Potential improvements (not in this PR):
 - [x] Code builds successfully
 - [x] Documentation complete
 - [x] Code review addressed
-- [ ] Manual testing with actual YOLO model (requires setup)
+- [ ] Manual testing with actual YOLO model (requires Pi with model installed)
+
+**Note:** Manual testing with actual YOLO requires:
+- Raspberry Pi with camera
+- YOLO model installation (see install script)
+- This can be verified post-merge by repository owner
 
 **Post-Merge:**
 
