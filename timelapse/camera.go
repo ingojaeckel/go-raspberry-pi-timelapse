@@ -53,13 +53,13 @@ func isDevelopment() bool {
 
 func (c *Camera) Capture() (string, error) {
 	fullPath := c.getAbsoluteFilepath()
-	
+
 	if isDevelopment() {
 		// On development systems, use ffmpeg to capture from webcam
 		log.Printf("Development mode: capturing from webcam to %s", fullPath)
 		return c.captureWithWebcam(fullPath)
 	}
-	
+
 	// On Raspberry Pi, use rpicam-still
 	args := c.getRaspistillArgs(fullPath)
 	log.Printf("Running command: %s %v", commandRaspistill, args)
@@ -102,13 +102,13 @@ func (c *Camera) getWebcamFfmpegArgs() []string {
 		// ffmpeg -f avfoundation -i "0" -frames:v 1 -s WIDTHxHEIGHT -q:v QUALITY output.jpg
 		return []string{
 			"-f", "avfoundation",
+			"-framerate", "30", // Explicitly set framerate
 			"-i", "0", // Default camera (device index 0)
 			"-frames:v", "1",
-			"-s", fmt.Sprintf("%dx%d", c.width, c.height),
-			"-q:v", strconv.Itoa(c.quality),
+			"-s", fmt.Sprintf("%dx%d", 1280, 720),
 		}
 	}
-	
+
 	// Linux: use v4l2
 	// ffmpeg -f v4l2 -video_size WIDTHxHEIGHT -i /dev/video0 -frames:v 1 -q:v QUALITY output.jpg
 	return []string{
@@ -125,7 +125,7 @@ func (c *Camera) getWebcamFfmpegArgs() []string {
 // Supports both Linux (v4l2) and macOS (avfoundation).
 func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
 	args := c.getWebcamFfmpegArgs()
-	
+
 	// Add flip filters if needed (works on both platforms)
 	var filters []string
 	if c.flipHorizontally {
@@ -137,19 +137,19 @@ func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
 	if len(filters) > 0 {
 		args = append(args, "-vf", strings.Join(filters, ","))
 	}
-	
+
 	args = append(args, "-y", fullPath)
-	
+
 	log.Printf("Running command: %s %v", commandFfmpeg, args)
 	cmd := exec.Command(commandFfmpeg, args...)
-	
+
 	// Capture stderr since ffmpeg outputs to stderr
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("ffmpeg error: %s", string(output))
 		return "", fmt.Errorf("failed to capture from webcam: %w", err)
 	}
-	
+
 	return fullPath, nil
 }
 
