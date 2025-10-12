@@ -45,9 +45,10 @@ type Photo struct {
 }
 
 type DetectionResultResponse struct {
-	Detections []DetectionInfo `json:"detections"`
-	ImagePath  string          `json:"image_path"`
-	Summary    string          `json:"summary"`
+	Detections         []DetectionInfo `json:"detections"`
+	ImagePath          string          `json:"image_path"`
+	AnnotatedImagePath string          `json:"annotated_image_path,omitempty"`
+	Summary            string          `json:"summary"`
 }
 
 type DetectionInfo struct {

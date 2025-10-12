@@ -11,6 +11,7 @@ The timelapse application now supports optional object detection on captured pho
 - **Toggle on/off**: Enable or disable object detection via the web interface
 - **Automatic detection**: Runs automatically after each photo capture
 - **Summary logging**: Logs a human-readable summary of detected objects
+- **Bounding boxes**: Automatically saves annotated images with bounding boxes drawn on detected objects
 - **Frontend display**: Shows detection results in the camera preview interface
 - **Model flexibility**: Supports different YOLO models (YOLOv5s by default)
 - **Graceful fallback**: Works without YOLO if not installed (mock mode)
@@ -170,6 +171,23 @@ For Raspberry Pi 5 (4GB RAM):
    - "The photo includes: one person"
    - "It's day time. The photo includes: two birds"
 
+### Annotated Images with Bounding Boxes
+
+When objects are detected, the system automatically creates an annotated version of each image with bounding boxes drawn around detected objects. These annotated images are saved with the suffix `_annotated` before the file extension.
+
+For example:
+- Original image: `/storage/photos/2025-10-12_15-45-23.jpg`
+- Annotated image: `/storage/photos/2025-10-12_15-45-23_annotated.jpg`
+
+The annotated images include:
+- **Bounding boxes** around each detected object (different colors for different objects)
+- **Labels** showing the object class and confidence score
+
+You can access annotated images:
+- Through the file listing API
+- By downloading photos from the web interface
+- Directly from the storage folder on the filesystem
+
 ### Checking Logs
 
 Detection results are also logged to the application log:
@@ -181,6 +199,7 @@ tail -f /var/log/timelapse.log
 # Example log entries:
 2025-10-12 15:45:23 Photo stored in '/storage/photos/2025-10-12_15-45-23.jpg'
 2025-10-12 15:45:24 Object detection result: It's day time. The photo includes: one bird
+2025-10-12 15:45:24 Saved annotated image to '/storage/photos/2025-10-12_15-45-23_annotated.jpg'
 ```
 
 ## API Reference
@@ -203,9 +222,12 @@ Returns the most recent detection result.
     }
   ],
   "image_path": "/storage/photos/2025-10-12_15-45-23.jpg",
+  "annotated_image_path": "/storage/photos/2025-10-12_15-45-23_annotated.jpg",
   "summary": "It's day time. The photo includes: one bird"
 }
 ```
+
+Note: The `annotated_image_path` field contains the path to a version of the image with bounding boxes drawn around detected objects. This field is only present when objects are detected.
 
 **Response (404 Not Found):**
 ```json

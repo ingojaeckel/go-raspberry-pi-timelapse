@@ -21,9 +21,10 @@ type Detection struct {
 
 // DetectionResult contains the full detection result
 type DetectionResult struct {
-	Detections []Detection `json:"detections"`
-	ImagePath  string      `json:"image_path"`
-	Summary    string      `json:"summary"`
+	Detections         []Detection `json:"detections"`
+	ImagePath          string      `json:"image_path"`
+	AnnotatedImagePath string      `json:"annotated_image_path,omitempty"`
+	Summary            string      `json:"summary"`
 }
 
 // Detector interface for object detection
@@ -163,7 +164,71 @@ func (d *YOLODetector) Detect(imagePath string) (*DetectionResult, error) {
 		Summary:    generateSummary(detections),
 	}
 
+	// Draw bounding boxes on the image if there are detections
+	if len(detections) > 0 {
+		annotatedPath, err := d.drawBoundingBoxes(imagePath, img, detections)
+		if err != nil {
+			log.Printf("Warning: Failed to draw bounding boxes: %v", err)
+		} else {
+			result.AnnotatedImagePath = annotatedPath
+		}
+	}
+
 	return result, nil
+}
+
+// drawBoundingBoxes draws bounding boxes on the image and saves it
+func (d *YOLODetector) drawBoundingBoxes(originalPath string, img gocv.Mat, detections []Detection) (string, error) {
+	// Create a copy of the image to draw on
+	annotated := img.Clone()
+	defer annotated.Close()
+
+	// Colors for different object classes
+	colors := []gocv.Scalar{
+		gocv.NewScalar(255, 0, 0, 0),     // Blue
+		gocv.NewScalar(0, 255, 0, 0),     // Green
+		gocv.NewScalar(0, 0, 255, 0),     // Red
+		gocv.NewScalar(255, 255, 0, 0),   // Cyan
+		gocv.NewScalar(255, 0, 255, 0),   // Magenta
+		gocv.NewScalar(0, 255, 255, 0),   // Yellow
+	}
+
+	// Draw each detection
+	for i, det := range detections {
+		// Choose color based on detection index
+		color := colors[i%len(colors)]
+
+		// Draw rectangle
+		rect := gocv.NewRect(
+			int(det.X),
+			int(det.Y),
+			int(det.Width),
+			int(det.Height),
+		)
+		gocv.Rectangle(&annotated, rect, color, 2)
+
+		// Draw label with class name and confidence
+		label := fmt.Sprintf("%s: %.2f", det.ClassName, det.Confidence)
+		gocv.PutText(&annotated, label,
+			gocv.NewPoint(int(det.X), int(det.Y)-10),
+			gocv.FontHersheyPlain, 1.2, color, 2)
+	}
+
+	// Generate annotated image path (insert "_annotated" before extension)
+	annotatedPath := originalPath
+	if idx := len(originalPath) - 4; idx > 0 && originalPath[idx] == '.' {
+		annotatedPath = originalPath[:idx] + "_annotated" + originalPath[idx:]
+	} else {
+		annotatedPath = originalPath + "_annotated"
+	}
+
+	// Save the annotated image
+	if ok := gocv.IMWrite(annotatedPath, annotated); !ok {
+		return "", fmt.Errorf("failed to write annotated image to %s", annotatedPath)
+	}
+
+	log.Printf("Saved annotated image to '%s'", annotatedPath)
+	return annotatedPath, nil
 }
 
 // postProcess processes the network output and returns detections

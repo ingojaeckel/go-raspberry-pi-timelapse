@@ -296,9 +296,10 @@ func MakeGetLatestDetectionFn(store *detection.ResultStore) func(w http.Response
 		
 		// Convert to response format
 		response := DetectionResultResponse{
-			ImagePath:  latest.ImagePath,
-			Summary:    latest.Summary,
-			Detections: make([]DetectionInfo, len(latest.Detections)),
+			ImagePath:          latest.ImagePath,
+			AnnotatedImagePath: latest.AnnotatedImagePath,
+			Summary:            latest.Summary,
+			Detections:         make([]DetectionInfo, len(latest.Detections)),
 		}
 		
 		for i, det := range latest.Detections {
