@@ -29,6 +29,7 @@ graph TD
 3. 📡 Pi creates a WiFi hotspot for wireless access
 4. 🌐 Built-in web interface for camera control, preview, and image downloads
 5. ⏰ Automated scheduling for hands-free operation
+6. 🔍 Optional YOLO-based object detection (see [Object Detection docs](docs/OBJECT_DETECTION.md))
 
 ## Parts List
 

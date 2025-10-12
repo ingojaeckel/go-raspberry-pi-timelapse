@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -40,8 +41,23 @@ type YOLODetector struct {
 
 // NewYOLODetector creates a new YOLO detector
 func NewYOLODetector(enabled bool) *YOLODetector {
+	// Try to find yolo_detect script in multiple locations
+	possiblePaths := []string{
+		"/usr/local/bin/yolo_detect",
+		"./scripts/yolo_detect.py",
+		"/opt/timelapse/yolo_detect.py",
+	}
+	
+	commandPath := possiblePaths[0]
+	for _, path := range possiblePaths {
+		if _, err := os.Stat(path); err == nil {
+			commandPath = path
+			break
+		}
+	}
+	
 	return &YOLODetector{
-		commandPath: "/usr/local/bin/yolo_detect", // Path to YOLO detection binary
+		commandPath: commandPath,
 		modelPath:   "/usr/local/share/yolo/yolov5s.onnx",
 		enabled:     enabled,
 	}
@@ -53,6 +69,10 @@ func (d *YOLODetector) IsAvailable() bool {
 		return false
 	}
 	// Check if the command exists
+	if _, err := os.Stat(d.commandPath); err == nil {
+		return true
+	}
+	// Also check if it's in PATH
 	_, err := exec.LookPath(d.commandPath)
 	return err == nil
 }
