@@ -78,6 +78,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/logs"), rest.GetLogs)
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
 	mux.HandleFunc(pat.Get("/monitoring"), rest.GetMonitoring)
+	mux.HandleFunc(pat.Get("/detection"), rest.GetDetection)
 	mux.HandleFunc(pat.Get("/file"), rest.GetFiles)
 	mux.HandleFunc(pat.Get("/file/delete"), rest.DeleteFiles)
 	mux.HandleFunc(pat.Get("/file/last"), rest.GetMostRecentFile)

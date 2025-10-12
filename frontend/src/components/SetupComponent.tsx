@@ -2,7 +2,7 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import axios from 'axios';
 import { BaseUrl } from '../conf/config'
 import { SettingsResponse } from '../models/response'
-import { Button, ButtonGroup, Grid, MenuItem, Select, TextField, Typography, Card, CardContent, Box, Alert, IconButton } from '@mui/material';
+import { Button, ButtonGroup, Grid, MenuItem, Select, TextField, Typography, Card, CardContent, Box, Alert, IconButton, Switch, FormControlLabel } from '@mui/material';
 import { Edit, Save, Cancel } from '@mui/icons-material';
 
 export default function SetupComponent() {
@@ -18,6 +18,7 @@ export default function SetupComponent() {
     ResolutionSetting:       0,
     Quality:                 100,
     DebugEnabled:            false,
+    ObjectDetectionEnabled:  false,
   });
   const [editMode, setEditMode] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -143,6 +144,10 @@ export default function SetupComponent() {
     setState({...state, SecondsBetweenCaptures: value });
   };
 
+  const handleObjectDetectionChanged = (e: ChangeEvent<HTMLInputElement>) => {
+    setState({...state, ObjectDetectionEnabled: e.target.checked });
+  };
+
   return (
     <React.Fragment>
       {error && (
@@ -262,6 +267,27 @@ export default function SetupComponent() {
               ) : (
                 <Typography component={'span'} color="text.secondary">
                   {state.Quality}
+                </Typography>
+              )}
+            </Grid>
+            
+            <Grid size={6}>
+              <Typography component={'span'} gutterBottom>Object Detection:</Typography>
+            </Grid>
+            <Grid size={6}>
+              {editMode ? (
+                <FormControlLabel
+                  control={
+                    <Switch 
+                      checked={state.ObjectDetectionEnabled}
+                      onChange={handleObjectDetectionChanged}
+                    />
+                  }
+                  label={state.ObjectDetectionEnabled ? "Enabled" : "Disabled"}
+                />
+              ) : (
+                <Typography component={'span'} color="text.secondary">
+                  {state.ObjectDetectionEnabled ? "Enabled" : "Disabled"}
                 </Typography>
               )}
             </Grid>

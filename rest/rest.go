@@ -13,6 +13,7 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf/valid"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/detection"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"goji.io/pat"
@@ -170,6 +171,30 @@ func Admin(_ http.ResponseWriter, r *http.Request) {
 	admin.HandleCommand(command)
 }
 
+func GetDetection(w http.ResponseWriter, _ *http.Request) {
+	f, _ := files.ListFiles(conf.StorageFolder, true)
+	if len(f) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	mostRecentFile := f[len(f)-1]
+	photoPath := fmt.Sprintf("%s/%s", conf.StorageFolder, mostRecentFile.Name)
+	
+	result, err := detection.AnalyzePhoto(photoPath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Failed to analyze photo: %s", err.Error())
+		return
+	}
+	
+	writeJSON(w, 200, DetectionResult{
+		IsDay:     result.IsDay,
+		Objects:   result.Objects,
+		Summary:   result.Summary,
+		PhotoPath: mostRecentFile.Name,
+	})
+}
+
 func serveFileContent(w http.ResponseWriter, path string) {
 	content, err := files.GetFile(path)
 	if err != nil {
@@ -207,6 +232,7 @@ func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 	s.OffsetWithinHour = updateRequest.OffsetWithinHour
 	s.ResolutionSetting = updateRequest.ResolutionSetting
 	s.SecondsBetweenCaptures = updateRequest.SecondsBetweenCaptures
+	s.ObjectDetectionEnabled = updateRequest.ObjectDetectionEnabled
 	switch s.ResolutionSetting {
 	case 2:
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232

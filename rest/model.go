@@ -21,6 +21,13 @@ func (u UpdateConfigurationRequest) String() string {
 	return string(jsonStr)
 }
 
+type DetectionResult struct {
+	IsDay     bool     `json:"isDay"`
+	Objects   []string `json:"objects"`
+	Summary   string   `json:"summary"`
+	PhotoPath string   `json:"photoPath"`
+}
+
 type MonitoringResponse struct {
 	Time           string
 	Uptime         string

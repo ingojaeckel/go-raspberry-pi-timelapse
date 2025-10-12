@@ -1,13 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { BaseUrl } from '../conf/config';
-import { Alert, Box, Typography } from '@mui/material';
+import { Alert, Box, Typography, Card, CardContent } from '@mui/material';
+import { DetectionResult, SettingsResponse } from '../models/response';
 
 export default function PhotosComponent() {
   const [imageError, setImageError] = useState<boolean>(false);
+  const [detection, setDetection] = useState<DetectionResult | null>(null);
+  const [detectionEnabled, setDetectionEnabled] = useState<boolean>(false);
   
   const handleImageError = () => {
     setImageError(true);
   };
+
+  useEffect(() => {
+    // Check if object detection is enabled
+    axios
+      .get<SettingsResponse>(BaseUrl + "/configuration")
+      .then(resp => {
+        if (resp.data && resp.data.ObjectDetectionEnabled) {
+          setDetectionEnabled(true);
+          // Fetch detection results for the latest photo
+          axios
+            .get<DetectionResult>(BaseUrl + "/detection")
+            .then(detectionResp => {
+              if (detectionResp.data) {
+                setDetection(detectionResp.data);
+              }
+            })
+            .catch(err => {
+              console.log("Failed to fetch detection results:", err);
+            });
+        }
+      })
+      .catch(err => {
+        console.log("Failed to fetch configuration:", err);
+      });
+  }, []);
 
   return (
     <React.Fragment>
@@ -25,6 +54,23 @@ export default function PhotosComponent() {
           style={{ maxWidth: '100%', height: 'auto' }}
         />
       </Box>
+      {detectionEnabled && detection && (
+        <Card sx={{ mb: 2, backgroundColor: '#f5f5f5' }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Object Detection Results
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              {detection.summary}
+            </Typography>
+            {detection.objects && detection.objects.length > 0 && (
+              <Typography variant="body2" color="text.secondary">
+                Detected objects: {detection.objects.join(', ')}
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      )}
       <div>
           <Typography variant="h6" gutterBottom>
             Tips for fine-tuning the camera position, focus, etc:

@@ -18,6 +18,14 @@ export interface SettingsResponse {
 	ResolutionSetting:       number
 	Quality:                 number
 	DebugEnabled:            boolean
+	ObjectDetectionEnabled:  boolean
+}
+
+export interface DetectionResult {
+	isDay: boolean
+	objects: string[]
+	summary: string
+	photoPath: string
 }
 
 export interface LogResponse {
