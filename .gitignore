@@ -15,6 +15,7 @@ cpp-object-detection/build/
 cpp-object-detection/build-*/
 cpp-object-detection/_codeql_build_dir/
 cpp-object-detection/models/*.onnx
+cpp-object-detection/models/*.pt
 cpp-object-detection/models/*.weights
 cpp-object-detection/models/*.yaml
 cpp-object-detection/detections/
