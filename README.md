@@ -30,6 +30,54 @@ graph TD
 4. 🌐 Built-in web interface for camera control, preview, and image downloads
 5. ⏰ Automated scheduling for hands-free operation
 
+## 🔍 Object Detection
+
+<details>
+<summary><b>Click to expand Object Detection details</b></summary>
+
+The timelapse application includes basic object detection that analyzes each captured photo to identify:
+
+- **Time of day**: Automatically detects whether the photo was taken during day or night based on image brightness
+- **Scene content**: Identifies basic objects like vegetation, sky, structures, etc. based on color analysis
+- **Summary logging**: Generates human-readable summaries like "It's day time. The photo includes: vegetation, sky"
+
+### How to Enable
+
+Object detection is **disabled by default** to conserve resources. To enable it:
+
+1. Open the web interface at `http://192.168.50.1:8080/`
+2. Navigate to the **Setup** page
+3. Click the **Edit** button
+4. Toggle **Object Detection** to **Enabled**
+5. Click **Save**
+
+### Viewing Detection Results
+
+When object detection is enabled:
+
+- **In logs**: Each photo capture will log a detection summary (e.g., "It's day time. The photo includes: vegetation")
+- **In web preview**: The Preview page will display detection results below the camera preview image
+
+### Technical Details
+
+The detection system uses lightweight image analysis suitable for Raspberry Pi Zero:
+
+- **Day/Night Detection**: Analyzes average image brightness using a standard luminance formula
+- **Object Detection**: Samples pixel colors to identify vegetation (greens), sky (blues), structures (grays), etc.
+- **Performance**: Minimal overhead (~100ms per image) with no external dependencies
+- **Storage**: No additional storage required - analysis happens on-the-fly
+
+### Limitations
+
+The basic detection is designed for low-power operation on Raspberry Pi Zero:
+
+- Simple color-based analysis (not AI/ML-based)
+- Best suited for outdoor scenes with distinct colors
+- May not detect specific animals or complex objects
+- For advanced object detection, see the [C++ Object Detection](#-experimental-c-object-detection) experimental feature
+
+</details>
+
 ## Parts List
 
 <details>

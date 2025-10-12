@@ -10,6 +10,11 @@ timelapse-settings.db
 benchmark_results.txt
 *.prof
 
+# Detection test artifacts
+detection/models/
+detection/*.onnx
+detection/*.weights
+
 # C++ build artifacts
 cpp-object-detection/build/
 cpp-object-detection/build-*/
