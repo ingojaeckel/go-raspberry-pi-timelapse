@@ -107,73 +107,75 @@ jobs:
       - name: Validate ONNX model with Python
         working-directory: cpp-object-detection
         run: |
-          python - << 'EOF'
-import onnx
-import sys
-
-model_path = "models/${{ steps.model.outputs.name }}.onnx"
-print(f"Loading ONNX model: {model_path}")
-
-try:
-    model = onnx.load(model_path)
-    onnx.checker.check_model(model)
-    print("✓ ONNX model validation passed")
-    
-    # Print model info
-    print(f"\nModel Information:")
-    print(f"  Producer: {model.producer_name}")
-    print(f"  ONNX version: {model.opset_import[0].version}")
-    
-    # Print input/output info
-    print(f"\n  Inputs:")
-    for inp in model.graph.input:
-        shape = [dim.dim_value for dim in inp.type.tensor_type.shape.dim]
-        print(f"    {inp.name}: {shape}")
-    
-    print(f"\n  Outputs:")
-    for out in model.graph.output:
-        shape = [dim.dim_value for dim in out.type.tensor_type.shape.dim]
-        print(f"    {out.name}: {shape}")
-    
-except Exception as e:
-    print(f"Error validating ONNX model: {e}", file=sys.stderr)
-    sys.exit(1)
-EOF
+          cat > /tmp/validate_model.py << 'PYTHON_SCRIPT'
+          import onnx
+          import sys
+          
+          model_path = "models/${{ steps.model.outputs.name }}.onnx"
+          print(f"Loading ONNX model: {model_path}")
+          
+          try:
+              model = onnx.load(model_path)
+              onnx.checker.check_model(model)
+              print("✓ ONNX model validation passed")
+              
+              # Print model info
+              print(f"\nModel Information:")
+              print(f"  Producer: {model.producer_name}")
+              print(f"  ONNX version: {model.opset_import[0].version}")
+              
+              # Print input/output info
+              print(f"\n  Inputs:")
+              for inp in model.graph.input:
+                  shape = [dim.dim_value for dim in inp.type.tensor_type.shape.dim]
+                  print(f"    {inp.name}: {shape}")
+              
+              print(f"\n  Outputs:")
+              for out in model.graph.output:
+                  shape = [dim.dim_value for dim in out.type.tensor_type.shape.dim]
+                  print(f"    {out.name}: {shape}")
+              
+          except Exception as e:
+              print(f"Error validating ONNX model: {e}", file=sys.stderr)
+              sys.exit(1)
+          PYTHON_SCRIPT
+          python /tmp/validate_model.py
 
       - name: Test ONNX inference with ONNXRuntime
         working-directory: cpp-object-detection
         run: |
-          python - << 'EOF'
-import onnxruntime as ort
-import numpy as np
-import sys
-
-model_path = "models/${{ steps.model.outputs.name }}.onnx"
-print(f"Testing inference with ONNX Runtime: {model_path}")
-
-try:
-    # Create inference session
-    session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
-    
-    # Get input details
-    input_name = session.get_inputs()[0].name
-    input_shape = session.get_inputs()[0].shape
-    print(f"✓ Loaded model successfully")
-    print(f"  Input: {input_name} {input_shape}")
-    
-    # Create dummy input
-    # YOLO models typically expect [batch, channels, height, width]
-    dummy_input = np.random.randn(*input_shape).astype(np.float32)
-    
-    # Run inference
-    outputs = session.run(None, {input_name: dummy_input})
-    print(f"✓ Inference test passed")
-    print(f"  Output shapes: {[out.shape for out in outputs]}")
-    
-except Exception as e:
-    print(f"Error during inference test: {e}", file=sys.stderr)
-    sys.exit(1)
-EOF
+          cat > /tmp/test_inference.py << 'PYTHON_SCRIPT'
+          import onnxruntime as ort
+          import numpy as np
+          import sys
+          
+          model_path = "models/${{ steps.model.outputs.name }}.onnx"
+          print(f"Testing inference with ONNX Runtime: {model_path}")
+          
+          try:
+              # Create inference session
+              session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
+              
+              # Get input details
+              input_name = session.get_inputs()[0].name
+              input_shape = session.get_inputs()[0].shape
+              print(f"✓ Loaded model successfully")
+              print(f"  Input: {input_name} {input_shape}")
+              
+              # Create dummy input
+              # YOLO models typically expect [batch, channels, height, width]
+              dummy_input = np.random.randn(*input_shape).astype(np.float32)
+              
+              # Run inference
+              outputs = session.run(None, {input_name: dummy_input})
+              print(f"✓ Inference test passed")
+              print(f"  Output shapes: {[out.shape for out in outputs]}")
+              
+          except Exception as e:
+              print(f"Error during inference test: {e}", file=sys.stderr)
+              sys.exit(1)
+          PYTHON_SCRIPT
+          python /tmp/test_inference.py
 
       - name: Upload converted model as artifact
         uses: actions/upload-artifact@v4
