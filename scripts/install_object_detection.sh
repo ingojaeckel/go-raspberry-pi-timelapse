@@ -1,6 +1,6 @@
 #!/bin/bash
 # Object Detection Installation Script for Raspberry Pi
-# This script installs the dependencies needed for YOLO object detection
+# This script installs the dependencies needed for YOLO object detection using GoCV
 
 set -e
 
@@ -22,25 +22,28 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo "Step 1: Installing Python dependencies..."
+echo "Step 1: Installing OpenCV dependencies..."
 echo "----------------------------------------"
 
 # Update package list
 apt-get update
 
-# Install Python 3 and pip if not already installed
-apt-get install -y python3 python3-pip
+# Install OpenCV development libraries
+echo "Installing OpenCV (this may take a few minutes)..."
+apt-get install -y libopencv-dev pkg-config
 
-# Install OpenCV and NumPy
-echo "Installing OpenCV and NumPy (this may take a few minutes)..."
-apt-get install -y python3-opencv python3-numpy
-
-# Verify installation
-python3 -c "import cv2; import numpy as np; print('OpenCV and NumPy installed successfully')" || {
-    echo "Error: Failed to install Python dependencies"
-    exit 1
+# Verify OpenCV installation
+pkg-config --modversion opencv4 &>/dev/null || {
+    echo "Error: Failed to install OpenCV"
+    echo "Trying to install opencv (version 3)..."
+    apt-get install -y libopencv-dev
+    pkg-config --modversion opencv &>/dev/null || {
+        echo "Error: Failed to install OpenCV"
+        exit 1
+    }
 }
 
+echo "OpenCV installed successfully"
 echo ""
 echo "Step 2: Setting up YOLO model directory..."
 echo "----------------------------------------"
@@ -106,75 +109,8 @@ fi
 echo "Model downloaded successfully"
 
 echo ""
-echo "Step 4: Installing detection script..."
+echo "Step 4: Installation complete!"
 echo "----------------------------------------"
-
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-YOLO_SCRIPT="${SCRIPT_DIR}/yolo_detect.py"
-
-if [ ! -f "$YOLO_SCRIPT" ]; then
-    echo "Error: yolo_detect.py not found in $SCRIPT_DIR"
-    echo "Please ensure this script is run from the scripts/ directory"
-    exit 1
-fi
-
-# Install the detection script
-cp "$YOLO_SCRIPT" /usr/local/bin/yolo_detect.py
-chmod +x /usr/local/bin/yolo_detect.py
-# Create symlink without extension for convenience
-ln -sf /usr/local/bin/yolo_detect.py /usr/local/bin/yolo_detect
-
-echo "Detection script installed to /usr/local/bin/yolo_detect.py"
-
-echo ""
-echo "Step 5: Testing installation..."
-echo "----------------------------------------"
-
-# Create a test image
-TEST_IMAGE="/tmp/test_detection.jpg"
-convert -size 640x480 xc:blue "$TEST_IMAGE" 2>/dev/null || {
-    echo "ImageMagick not available, creating test image with Python..."
-    # Create test image using Python
-    cat > /tmp/create_test_image.py << 'EOF'
-import cv2
-import numpy as np
-import sys
-
-try:
-    img = np.zeros((480, 640, 3), dtype=np.uint8)
-    cv2.imwrite(sys.argv[1], img)
-    print(f"Created test image: {sys.argv[1]}")
-except Exception as e:
-    print(f"Error creating test image: {e}", file=sys.stderr)
-    sys.exit(1)
-EOF
-    python3 /tmp/create_test_image.py "$TEST_IMAGE" || {
-        echo "Warning: Could not create test image, skipping test"
-        TEST_IMAGE=""
-    }
-    rm -f /tmp/create_test_image.py
-}
-
-if [ -n "$TEST_IMAGE" ] && [ -f "$TEST_IMAGE" ]; then
-    echo "Running test detection..."
-    if /usr/local/bin/yolo_detect.py --image "$TEST_IMAGE" --model "$MODEL_PATH" --json > /tmp/detection_test.json 2>&1; then
-        echo "✓ Test detection successful"
-        echo "Sample output:"
-        head -n 5 /tmp/detection_test.json
-        rm -f /tmp/detection_test.json
-    else
-        echo "✗ Test detection failed"
-        echo "Error output:"
-        cat /tmp/detection_test.json
-        rm -f /tmp/detection_test.json
-        echo ""
-        echo "This may be normal if the test image has no objects."
-        echo "Try running detection on a real photo to verify:"
-        echo "  /usr/local/bin/yolo_detect.py --image your_photo.jpg --model $MODEL_PATH --json"
-    fi
-    rm -f "$TEST_IMAGE"
-fi
 
 echo ""
 echo "=================================================="
@@ -182,17 +118,14 @@ echo "Installation Complete!"
 echo "=================================================="
 echo ""
 echo "Summary:"
-echo "  - Python dependencies: Installed"
+echo "  - OpenCV: Installed"
 echo "  - YOLO model: $MODEL_PATH"
-echo "  - Detection script: /usr/local/bin/yolo_detect.py"
 echo ""
 echo "Next steps:"
-echo "  1. Enable object detection in the web interface"
-echo "  2. Restart the timelapse application"
-echo "  3. Check logs for detection results"
-echo ""
-echo "To manually test detection on an image:"
-echo "  /usr/local/bin/yolo_detect.py --image /path/to/image.jpg --model $MODEL_PATH --json"
+echo "  1. Rebuild the timelapse application (it will now include GoCV support)"
+echo "  2. Enable object detection in the web interface"
+echo "  3. Restart the timelapse application"
+echo "  4. Check logs for detection results"
 echo ""
 echo "For more information, see docs/OBJECT_DETECTION.md"
 echo "=================================================="

@@ -20,15 +20,16 @@ The timelapse application now supports optional object detection on captured pho
 The object detection integration consists of:
 
 1. **Go Detection Package** (`detection/`):
-   - `detector.go`: Core detection logic and interfaces
+   - `detector.go`: Core detection logic using GoCV
    - `store.go`: In-memory storage for detection results
-   - YOLO detector implementation
+   - YOLO detector implementation with native OpenCV integration
    - Mock detector for testing
 
-2. **YOLO Wrapper Script** (`scripts/yolo_detect.py`):
-   - Python script that interfaces with OpenCV and YOLO models
-   - Returns JSON-formatted detection results
-   - Supports ONNX model format
+2. **GoCV Integration**:
+   - Uses `gocv.io/x/gocv` for native Go bindings to OpenCV
+   - Loads YOLO models in ONNX format
+   - Performs inference directly without IPC overhead
+   - Efficient memory management
 
 3. **Integration Points**:
    - Configuration: `ObjectDetectionEnabled` flag in Settings
@@ -40,11 +41,12 @@ The object detection integration consists of:
 
 ### Prerequisites
 
-For actual YOLO detection (not mock mode), you need:
+For object detection with YOLO, you need:
 
-1. **Python 3** with required packages:
+1. **OpenCV Development Libraries**:
    ```bash
-   pip3 install opencv-python numpy
+   sudo apt-get update
+   sudo apt-get install -y libopencv-dev pkg-config
    ```
 
 2. **YOLO Model File**:
@@ -58,12 +60,12 @@ For actual YOLO detection (not mock mode), you need:
         -O /usr/local/share/yolo/yolov5s.onnx
    ```
 
-3. **Detection Script**:
-   The `yolo_detect.py` script should be placed in one of these locations:
-   - `./scripts/yolo_detect.py` (relative to executable)
-   - `/usr/local/bin/yolo_detect.py`
-   - `/usr/local/bin/yolo_detect` (symlink)
-   - `/opt/timelapse/yolo_detect.py`
+3. **Rebuild the Application**:
+   After installing OpenCV, rebuild the timelapse application to include GoCV support:
+   ```bash
+   cd /path/to/go-raspberry-pi-timelapse
+   go build
+   ```
 
 ### Installation on Raspberry Pi
 
@@ -76,17 +78,21 @@ sudo bash scripts/install_object_detection.sh
 ```
 
 The script will:
-- Install Python dependencies (OpenCV, NumPy)
+- Install OpenCV development libraries
 - Download the appropriate YOLO model for your system
-- Install the detection script
-- Run a test to verify everything works
+- Verify the installation
+
+After installation, rebuild the application:
+```bash
+go build
+```
 
 **Manual Installation:**
 
 ```bash
-# Install Python dependencies
+# Install OpenCV dependencies
 sudo apt-get update
-sudo apt-get install -y python3-opencv python3-numpy
+sudo apt-get install -y libopencv-dev pkg-config
 
 # Create model directory
 sudo mkdir -p /usr/local/share/yolo
@@ -95,9 +101,9 @@ sudo mkdir -p /usr/local/share/yolo
 cd /usr/local/share/yolo
 sudo wget https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 
-# Copy detection script
-sudo cp scripts/yolo_detect.py /usr/local/bin/yolo_detect
-sudo chmod +x /usr/local/bin/yolo_detect
+# Rebuild the application with GoCV support
+cd /path/to/go-raspberry-pi-timelapse
+go build
 ```
 
 ## Model Selection
@@ -234,9 +240,10 @@ The YOLO model can detect 80 different object classes from the COCO dataset:
 **Symptom**: Logs show "YOLO detector not available, using mock detector"
 
 **Solution**:
-1. Verify Python script is installed: `ls -l /usr/local/bin/yolo_detect`
-2. Check Python dependencies: `python3 -c "import cv2, numpy"`
-3. Verify model file exists: `ls -l /usr/local/share/yolo/yolov5s.onnx`
+1. Verify OpenCV is installed: `pkg-config --modversion opencv4`
+2. Check model file exists: `ls -l /usr/local/share/yolo/yolov5s.onnx`
+3. Rebuild the application: `go build`
+4. Check for GoCV build errors in the build output
 
 ### "No objects detected" on every photo
 

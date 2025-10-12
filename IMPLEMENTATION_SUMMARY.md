@@ -353,7 +353,7 @@ Potential improvements (not in this PR):
    - Backend and frontend core features
    
 2. Tests and documentation (fc0d970)
-   - Unit tests, Python wrapper, docs
+   - Unit tests, GoCV integration, docs
    
 3. Frontend test updates (dc518e3)
    - All frontend tests updated
@@ -404,7 +404,7 @@ From original issue:
 ✅ Persisted via `conf.WriteConfiguration()` - Integrated
 ✅ Default disabled - Set to false in initial config
 ✅ Reapply PR #67 concepts - Not needed (fresh implementation)
-✅ Integrate YOLO model - Python wrapper + Go integration
+✅ Integrate YOLO model - GoCV native integration
 
 ---
 
