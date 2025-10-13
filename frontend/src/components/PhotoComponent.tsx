@@ -206,7 +206,12 @@ const getPhotos = () => {
           }}
         >
           <Button onClick={handleRefreshClicked}>Refresh</Button>
-          <Button onClick={deletePhotosClicked}>Delete ({state.Selected.ids.size})</Button>
+          <Button 
+            onClick={deletePhotosClicked}
+            aria-label={`Delete selected ${state.Selected.ids.size} photos`}
+          >
+            Delete ({state.Selected.ids.size})
+          </Button>
         </ButtonGroup>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button 
@@ -214,6 +219,7 @@ const getPhotos = () => {
             startIcon={!isMobile && <Download />}
             onClick={() => handleDownload(BaseUrl + "/archive/zip")}
             size={isMobile ? "small" : "medium"}
+            aria-label="Download all photos as zip file"
             sx={{ 
               fontSize: { xs: '0.7rem', sm: '0.875rem' },
               padding: { xs: '4px 8px', sm: '6px 16px' },
@@ -226,6 +232,7 @@ const getPhotos = () => {
             startIcon={!isMobile && <Download />}
             onClick={() => handleDownload(BaseUrl + "/archive/tar")}
             size={isMobile ? "small" : "medium"}
+            aria-label="Download all photos as tar file"
             sx={{ 
               fontSize: { xs: '0.7rem', sm: '0.875rem' },
               padding: { xs: '4px 8px', sm: '6px 16px' },
@@ -239,6 +246,7 @@ const getPhotos = () => {
             onClick={() => handleDownload(BaseUrl + "/archive/zip?" + state.SelectedFilesParameter)}
             disabled={state.Selected.ids.size === 0}
             size={isMobile ? "small" : "medium"}
+            aria-label={`Download selected ${state.Selected.ids.size} photos as zip file`}
             sx={{ 
               fontSize: { xs: '0.7rem', sm: '0.875rem' },
               padding: { xs: '4px 8px', sm: '6px 16px' },
