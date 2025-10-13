@@ -15,17 +15,21 @@ export default function PhotosComponent() {
 
   // Fetch detection results when component mounts and periodically
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchDetectionResult = () => {
       axios
         .get<DetectionResult>(BaseUrl + "/detection/latest")
         .then(resp => {
-          if (resp.data) {
+          if (isMounted && resp.data) {
             setDetectionResult(resp.data);
             setDetectionError(false);
           }
         })
         .catch(() => {
-          setDetectionError(true);
+          if (isMounted) {
+            setDetectionError(true);
+          }
         });
     };
 
@@ -33,7 +37,10 @@ export default function PhotosComponent() {
     // Refresh detection results every 30 seconds
     const interval = setInterval(fetchDetectionResult, 30000);
     
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
