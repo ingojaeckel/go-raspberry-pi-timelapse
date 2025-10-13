@@ -101,6 +101,9 @@ func main() {
 		log.Printf("Error creating new timelapse instance: %s\n", err.Error())
 		// Continue starting app regardless
 	} else {
+		// Add detection result endpoint
+		mux.HandleFunc(pat.Get("/detection/latest"), rest.MakeGetLatestDetectionFn(t.DetectionStore))
+		
 		// Start capturing since there were no issues
 		t.CapturePeriodically()
 	}

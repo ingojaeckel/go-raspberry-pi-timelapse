@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/detection"
 )
 
 func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan conf.Settings) (*Timelapse, error) {
@@ -19,10 +20,23 @@ func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan 
 	}
 	// Assume folder exists
 
+	// Initialize detector - try YOLO first, fall back to mock if not available
+	var detector detection.Detector
+	yoloDetector := detection.NewYOLODetector(initialSettings.ObjectDetectionEnabled)
+	if yoloDetector.IsAvailable() {
+		detector = yoloDetector
+		log.Println("YOLO detector initialized")
+	} else {
+		detector = detection.NewMockDetector(initialSettings.ObjectDetectionEnabled)
+		log.Println("YOLO detector not available, using mock detector")
+	}
+
 	return &Timelapse{
 		Folder:              folder,
 		Settings:            initialSettings,
 		ConfigUpdateChannel: configUpdatedChan,
+		Detector:            detector,
+		DetectionStore:      detection.NewResultStore(),
 	}, nil
 }
 
@@ -43,6 +57,17 @@ func (t Timelapse) CapturePeriodically() {
 						log.Printf("Error during capture: %s\n", err.Error())
 					} else {
 						log.Printf("Photo stored in '%s'\n", s)
+						
+						// Run object detection if enabled
+						if t.Settings.ObjectDetectionEnabled && t.Detector != nil {
+							result, err := t.Detector.Detect(s)
+							if err != nil {
+								log.Printf("Error during object detection: %s\n", err.Error())
+							} else if result != nil {
+								log.Printf("Object detection result: %s\n", result.Summary)
+								t.DetectionStore.Store(s, result)
+							}
+						}
 					}
 					log.Printf("Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
 				}
@@ -71,6 +96,17 @@ func (t Timelapse) CapturePeriodically() {
 						continue
 					}
 					log.Printf("Photo stored in '%s'\n", photoPath)
+					
+					// Run object detection if enabled
+					if t.Settings.ObjectDetectionEnabled && t.Detector != nil {
+						result, err := t.Detector.Detect(photoPath)
+						if err != nil {
+							log.Printf("Error during object detection: %s\n", err.Error())
+						} else if result != nil {
+							log.Printf("Object detection result: %s\n", result.Summary)
+							t.DetectionStore.Store(photoPath, result)
+						}
+					}
 				}
 				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
 				log.Printf("Capture took %d seconds\n", timeToCaptureSeconds)

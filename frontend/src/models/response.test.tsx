@@ -31,6 +31,7 @@ describe('response types', () => {
       ResolutionSetting: 0,
       Quality: 100,
       DebugEnabled: false,
+      ObjectDetectionEnabled: false,
     };
     expect(settings).toBeDefined();
     expect(settings.SecondsBetweenCaptures).toBe(300);

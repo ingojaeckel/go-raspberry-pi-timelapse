@@ -43,3 +43,19 @@ type Photo struct {
 	ModTime string
 	Size    string
 }
+
+type DetectionResultResponse struct {
+	Detections         []DetectionInfo `json:"detections"`
+	ImagePath          string          `json:"image_path"`
+	AnnotatedImagePath string          `json:"annotated_image_path,omitempty"`
+	Summary            string          `json:"summary"`
+}
+
+type DetectionInfo struct {
+	ClassName  string  `json:"class_name"`
+	Confidence float64 `json:"confidence"`
+	X          float64 `json:"x"`
+	Y          float64 `json:"y"`
+	Width      float64 `json:"width"`
+	Height     float64 `json:"height"`
+}

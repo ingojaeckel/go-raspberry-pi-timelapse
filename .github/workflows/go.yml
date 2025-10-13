@@ -4,6 +4,7 @@ on:
     paths:
       - 'admin/**'
       - 'conf/**'
+      - 'detection/**'
       - 'files/**'
       - 'frontend/**'
       - 'rest/**'
