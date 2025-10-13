@@ -208,7 +208,7 @@ const getPhotos = () => {
           <Button onClick={handleRefreshClicked}>Refresh</Button>
           <Button 
             onClick={deletePhotosClicked}
-            aria-label={`Delete selected ${state.Selected.ids.size} photos`}
+            aria-label={`Delete selected ${state.Selected.ids.size} ${state.Selected.ids.size === 1 ? 'photo' : 'photos'}`}
           >
             Delete ({state.Selected.ids.size})
           </Button>
@@ -246,7 +246,7 @@ const getPhotos = () => {
             onClick={() => handleDownload(BaseUrl + "/archive/zip?" + state.SelectedFilesParameter)}
             disabled={state.Selected.ids.size === 0}
             size={isMobile ? "small" : "medium"}
-            aria-label={`Download selected ${state.Selected.ids.size} photos as zip file`}
+            aria-label={`Download selected ${state.Selected.ids.size} ${state.Selected.ids.size === 1 ? 'photo' : 'photos'} as zip file`}
             sx={{ 
               fontSize: { xs: '0.7rem', sm: '0.875rem' },
               padding: { xs: '4px 8px', sm: '6px 16px' },
