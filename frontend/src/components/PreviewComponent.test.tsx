@@ -20,7 +20,7 @@ describe('PreviewComponent', () => {
   it('displays tips section', () => {
     render(<PreviewComponent />);
     
-    expect(screen.getByText(/Tips for fine-tuning the camera position/)).toBeInTheDocument();
+    expect(screen.getByText(/Tips for fine-tuning camera/)).toBeInTheDocument();
   });
 
   it('contains TFT tutorial link', () => {
@@ -94,6 +94,6 @@ describe('PreviewComponent', () => {
   it('displays tips header', () => {
     render(<PreviewComponent />);
     
-    expect(screen.getByText(/Tips for fine-tuning the camera position/)).toBeInTheDocument();
+    expect(screen.getByText(/Tips for fine-tuning camera/)).toBeInTheDocument();
   });
 });
