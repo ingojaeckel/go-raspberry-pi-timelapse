@@ -49,12 +49,32 @@ function App() {
   // Detect user's preferred color scheme
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
   
-  // Create theme based on user preference
+  // Create theme based on user preference with improved colors for legibility
   const theme = React.useMemo(
     () =>
       createTheme({
         palette: {
           mode: prefersDarkMode ? 'dark' : 'light',
+          primary: {
+            main: prefersDarkMode ? '#90caf9' : '#1976d2',
+          },
+          // Ensure links have good contrast
+          text: {
+            primary: prefersDarkMode ? '#fff' : 'rgba(0, 0, 0, 0.87)',
+            secondary: prefersDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+          },
+        },
+        components: {
+          MuiLink: {
+            styleOverrides: {
+              root: {
+                color: prefersDarkMode ? '#90caf9' : '#1976d2',
+                '&:visited': {
+                  color: prefersDarkMode ? '#ce93d8' : '#7b1fa2',
+                },
+              },
+            },
+          },
         },
       }),
     [prefersDarkMode],

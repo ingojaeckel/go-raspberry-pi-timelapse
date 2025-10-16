@@ -57,7 +57,7 @@ describe('PhotoComponent', () => {
   it('renders delete button with count', () => {
     render(<PhotoComponent />);
     
-    const deleteButton = screen.getByText(/Delete selected/);
+    const deleteButton = screen.getByText(/Delete \(/);
     expect(deleteButton).toBeInTheDocument();
   });
 
@@ -144,8 +144,8 @@ describe('PhotoComponent', () => {
     mockedAxios.get.mockResolvedValue({ data: { Photos: [] } });
     render(<PhotoComponent />);
     
-    // Initially no selection
-    expect(screen.getByText('Delete selected (0)')).toBeInTheDocument();
+    // Initially no selection - text changed to shorter version for mobile
+    expect(screen.getByText('Delete (0)')).toBeInTheDocument();
   });
 
   it('renders download selected link with count', () => {
