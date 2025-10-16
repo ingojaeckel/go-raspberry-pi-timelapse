@@ -197,9 +197,9 @@ const getPhotos = () => {
           aria-label="outlined primary button group" 
           sx={{ 
             mb: 2,
+            gap: 1,
             flexWrap: { xs: 'wrap', sm: 'nowrap' },
             '& .MuiButtonGroup-grouped': {
-              minWidth: { xs: '48%', sm: 'auto' },
               fontSize: { xs: '0.75rem', sm: '0.875rem' },
               padding: { xs: '6px 12px', sm: '6px 16px' },
             }
