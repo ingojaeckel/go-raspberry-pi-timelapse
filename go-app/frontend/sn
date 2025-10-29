@@ -1,0 +1,86 @@
+# Nmap 7.98 scan initiated Fri Oct 17 23:24:54 2025 as: nmap -osn 192.168.0.1/24
+Nmap scan report for f3896lg (192.168.0.1)
+Host is up (0.0029s latency).
+Not shown: 977 filtered tcp ports (no-response)
+PORT     STATE  SERVICE
+21/tcp   closed ftp
+25/tcp   closed smtp
+80/tcp   open   http
+110/tcp  closed pop3
+111/tcp  closed rpcbind
+113/tcp  closed ident
+135/tcp  closed msrpc
+139/tcp  closed netbios-ssn
+143/tcp  closed imap
+199/tcp  closed smux
+256/tcp  closed fw1-secureremote
+443/tcp  closed https
+445/tcp  closed microsoft-ds
+554/tcp  closed rtsp
+587/tcp  closed submission
+993/tcp  closed imaps
+995/tcp  closed pop3s
+1025/tcp closed NFS-or-IIS
+1720/tcp closed h323q931
+3306/tcp closed mysql
+3389/tcp closed ms-wbt-server
+5900/tcp closed vnc
+8888/tcp closed sun-answerbook
+
+Nmap scan report for 192.168.0.23
+Host is up (0.036s latency).
+Not shown: 999 closed tcp ports (conn-refused)
+PORT   STATE SERVICE
+80/tcp open  http
+
+Nmap scan report for 192.168.0.115
+Host is up (0.017s latency).
+Not shown: 998 closed tcp ports (conn-refused)
+PORT      STATE SERVICE
+49152/tcp open  unknown
+62078/tcp open  iphone-sync
+
+Nmap scan report for SUN2000-HV2280322438 (192.168.0.134)
+Host is up (0.018s latency).
+All 1000 scanned ports on SUN2000-HV2280322438 (192.168.0.134) are in ignored states.
+Not shown: 1000 closed tcp ports (conn-refused)
+
+Nmap scan report for 192.168.0.220
+Host is up (0.0054s latency).
+Not shown: 974 closed tcp ports (conn-refused)
+PORT      STATE    SERVICE
+81/tcp    filtered hosts2-ns
+800/tcp   filtered mdbs_daemon
+1010/tcp  filtered surf
+1046/tcp  filtered wfremotertm
+1060/tcp  filtered polestar
+1112/tcp  filtered msql
+1998/tcp  filtered x25-svc-port
+2161/tcp  filtered apc-agent
+2191/tcp  filtered tvbus
+3011/tcp  filtered trusted-web
+3052/tcp  filtered powerchute
+3211/tcp  filtered avsecuremgmt
+3690/tcp  filtered svn
+4125/tcp  filtered rww
+5405/tcp  filtered pcduo
+5718/tcp  filtered dpm
+5902/tcp  filtered vnc-2
+5963/tcp  filtered indy
+6667/tcp  filtered irc
+7201/tcp  filtered dlip
+7402/tcp  filtered rtps-dd-mt
+7741/tcp  filtered scriptview
+9944/tcp  filtered unknown
+32775/tcp filtered sometimes-rpc13
+49152/tcp open     unknown
+62078/tcp open     iphone-sync
+
+Nmap scan report for 192.168.0.225
+Host is up (0.00010s latency).
+Not shown: 998 closed tcp ports (conn-refused)
+PORT     STATE SERVICE
+5000/tcp open  upnp
+7000/tcp open  afs3-fileserver
+
+# Nmap done at Fri Oct 17 23:26:11 2025 -- 256 IP addresses (6 hosts up) scanned in 77.30 seconds
