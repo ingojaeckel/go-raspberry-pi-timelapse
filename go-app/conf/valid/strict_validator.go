@@ -1,10 +1,10 @@
 package valid
 
-import "github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+import "github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 
 type strictValidator struct{}
 
-func (s strictValidator) Validate(settings conf.Settings) error {
+func (s strictValidator) Validate(settings settings.Settings) error {
 	if settings.Quality < 1 || settings.Quality > 100 {
 		return errQualityOutOfBounds
 	}

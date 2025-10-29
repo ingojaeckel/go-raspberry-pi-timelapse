@@ -12,6 +12,7 @@ import (
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/valid"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/timelapse"
@@ -25,11 +26,11 @@ func MakeGetVersionFn(version string) func(w http.ResponseWriter, _ *http.Reques
 }
 
 func GetConfiguration(w http.ResponseWriter, _ *http.Request) {
-	c, _ := conf.LoadConfiguration()
+	c, _ := settings.LoadConfiguration()
 	writeJSON(w, 200, c)
 }
 
-func MakeUpdateConfigurationFn(configUpdatedChan chan<- conf.Settings) func(w http.ResponseWriter, r *http.Request) {
+func MakeUpdateConfigurationFn(configUpdatedChan chan<- settings.Settings) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request UpdateConfigurationRequest
 		if err := parseJSON(r.Body, &request); err != nil {
@@ -86,7 +87,7 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 	w.Write(b)
 }
 
-func Capture(w http.ResponseWriter, s *conf.Settings) {
+func Capture(w http.ResponseWriter, s *settings.Settings) {
 	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight)
 	c, err := timelapse.NewCamera(conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight, s.RotateBy == 180, s.Quality)
 	if err != nil {
@@ -191,11 +192,11 @@ func getBasename(path string) string {
 	return path[i+1:]
 }
 
-func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
+func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*settings.Settings, error) {
 	// TODO validate new config coming in via updateRequest
 	log.Printf("Received new configuration: %v\n", updateRequest)
 
-	s, err := conf.LoadConfiguration()
+	s, err := settings.LoadConfiguration()
 	log.Printf("Updating old configuration (%v)\nwith new configuration (%v)\n", s, updateRequest)
 
 	if err != nil {
@@ -218,7 +219,7 @@ func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 	}
 
 	log.Printf("New configuration: %v\n", s)
-	return conf.WriteConfiguration(*s)
+	return settings.WriteConfiguration(*s)
 }
 
 func writePipeContent(w http.ResponseWriter, pr *io.PipeReader) {

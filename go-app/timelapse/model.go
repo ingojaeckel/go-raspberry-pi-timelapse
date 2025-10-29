@@ -1,11 +1,11 @@
 package timelapse
 
 import (
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 )
 
 type Timelapse struct {
 	Folder              string
-	Settings            conf.Settings
-	ConfigUpdateChannel <-chan conf.Settings
+	Settings            settings.Settings
+	ConfigUpdateChannel <-chan settings.Settings
 }

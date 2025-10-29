@@ -3,7 +3,7 @@ package valid
 import (
 	"errors"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 )
 
 var (
@@ -13,7 +13,7 @@ var (
 )
 
 type Validator interface {
-	Validate(conf.Settings) error
+	Validate(settings.Settings) error
 }
 
 func New() Validator {

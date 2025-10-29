@@ -3,7 +3,7 @@ package rest
 import (
 	"encoding/json"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/files"
 )
 
@@ -13,7 +13,7 @@ type ListFilesResponse struct {
 
 type UpdateConfigurationRequest struct {
 	// For now match the settings type exactly. All settings can be updated. Consider changing this in the future.
-	conf.Settings
+	settings.Settings
 }
 
 func (u UpdateConfigurationRequest) String() string {

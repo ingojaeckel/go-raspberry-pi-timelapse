@@ -5,10 +5,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 )
 
-func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan conf.Settings) (*Timelapse, error) {
+func New(folder string, initialSettings settings.Settings, configUpdatedChan <-chan settings.Settings) (*Timelapse, error) {
 	_, err := os.Stat(folder)
 	createFolder := err != nil && os.IsNotExist(err)
 

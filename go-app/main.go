@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/rest"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/timelapse"
 	"goji.io"
@@ -45,7 +46,7 @@ func main() {
 		return
 	}
 
-	initialSettings, err := conf.LoadConfiguration()
+	initialSettings, err := settings.LoadConfiguration()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
@@ -73,7 +74,7 @@ func main() {
 		rest.Capture(w, initialSettings)
 	})
 
-	configUpdatedChan := make(chan conf.Settings)
+	configUpdatedChan := make(chan settings.Settings)
 
 	mux.HandleFunc(pat.Get("/logs"), rest.GetLogs)
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)
