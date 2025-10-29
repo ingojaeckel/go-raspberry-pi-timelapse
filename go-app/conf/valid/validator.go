@@ -3,7 +3,7 @@ package valid
 import (
 	"errors"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
 )
 
 var (

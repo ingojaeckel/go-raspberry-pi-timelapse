@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/facebookgo/ensure"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
 )
 
 type abbrevTime struct {
@@ -90,7 +90,7 @@ func BenchmarkGetSecondsToFirstCapture(b *testing.B) {
 		},
 	}
 	testTime := time.Date(2017, time.December, 1, 8, 46, 1, 0, time.UTC)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = tl.getSecondsToFirstCapture(testTime)
@@ -104,14 +104,14 @@ func BenchmarkGetSecondsToFirstCaptureVariousTimes(b *testing.B) {
 			OffsetWithinHour:       15 * 60,
 		},
 	}
-	
+
 	testTimes := []time.Time{
 		time.Date(2017, time.December, 1, 8, 46, 1, 0, time.UTC),
 		time.Date(2017, time.December, 1, 8, 32, 1, 0, time.UTC),
 		time.Date(2017, time.December, 1, 8, 16, 1, 0, time.UTC),
 		time.Date(2017, time.December, 1, 8, 8, 1, 0, time.UTC),
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, t := range testTimes {
@@ -128,7 +128,7 @@ func BenchmarkGetSecondsToFirstCaptureShortInterval(b *testing.B) {
 		},
 	}
 	testTime := time.Date(2017, time.December, 1, 8, 46, 1, 0, time.UTC)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = tl.getSecondsToFirstCapture(testTime)

@@ -10,11 +10,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf/valid"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/admin"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/valid"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/timelapse"
 	"goji.io/pat"
 )
 

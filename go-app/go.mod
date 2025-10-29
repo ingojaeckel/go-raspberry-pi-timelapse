@@ -1,4 +1,4 @@
-module github.com/ingojaeckel/go-raspberry-pi-timelapse
+module github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app
 
 go 1.25.2
 

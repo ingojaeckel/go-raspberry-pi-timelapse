@@ -1,6 +1,6 @@
 package valid
 
-import "github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+import "github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
 
 type strictValidator struct{}
 

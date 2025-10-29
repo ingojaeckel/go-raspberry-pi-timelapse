@@ -1,7 +1,7 @@
 package timelapse
 
 import (
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
 )
 
 type Timelapse struct {

@@ -10,9 +10,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/rest"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/timelapse"
 	"goji.io"
 	"goji.io/pat"
 )

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/facebookgo/ensure"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
 )
 
 func TestNew(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/files"
 )
 
 func HandleCommand(command string) error {

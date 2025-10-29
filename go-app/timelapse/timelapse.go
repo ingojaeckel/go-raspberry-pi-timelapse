@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
 )
 
 func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan conf.Settings) (*Timelapse, error) {
