@@ -35,6 +35,9 @@ type Settings struct {
 	ResolutionSetting       int
 	Quality                 int
 	DebugEnabled            bool
+	LogToFile               bool
+	ListenAddress           string
+	StorageFolder           string
 }
 
 func (s Settings) String() string {
@@ -149,4 +152,7 @@ var initialConfiguration = Settings{
 	RotateBy:                0,
 	ResolutionSetting:       0,
 	Quality:                 100,
+	LogToFile:               conf.DefaultLogToFile,
+	ListenAddress:           conf.DefaultListenAddress,
+	StorageFolder:           conf.DefaultStorageFolder,
 }

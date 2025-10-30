@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/cli"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/rest"
@@ -28,31 +28,27 @@ var content embed.FS
 func main() {
 	initVersion()
 
-	versionFlag := flag.Bool("version", false, "Print version and exit.")
-	listenAddress := flag.String("port", conf.DefaultListenAddress, "HTTP port to listen on.")
-	logToFile := flag.Bool("logToFile", conf.DefaultLogToFile, "Toggle to enable logging to a file on disk instead of stdout. Logging to a file is recommended for long term operation.")
-	storageAddress := flag.String("storageFolder", conf.DefaultStorageFolder, "Folder for storage of timelapse pictures.")
-	secondsBetweenCaptures := flag.Int("secondsBetweenCaptures", conf.DefaultSecondsBetweenCaptures, "Number of seconds between captures")
-	enablePprof := flag.Bool("pprof", false, "Enable pprof profiling endpoints at /debug/pprof/")
-	flag.Parse()
+	f := cli.ParseFlags()
 
-	if *versionFlag {
+	if f.Version != nil {
 		fmt.Println(version)
 		return
 	}
-	conf.OverrideDefaultConfig(listenAddress, storageAddress, logToFile, secondsBetweenCaptures)
-	if err := initLogging(); err != nil {
-		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
-		return
-	}
 
-	initialSettings, err := settings.LoadConfiguration()
+	s, err := settings.LoadConfiguration()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %s", err.Error())
 		return
 	}
-	log.Printf("Settings:       %s\n", *initialSettings)
-	log.Printf("Listen address: %s\n", conf.ListenAddress)
+	updatedSettings := cli.OverrideDefaultConfig(*s, f)
+
+	log.Printf("Settings:       %s\n", updatedSettings)
+	log.Printf("Listen address: %s\n", updatedSettings.ListenAddress)
+
+	if err := initLogging(updatedSettings); err != nil {
+		log.Fatalf("Failed to initialize logging. Unable to start. Cause: %s", err.Error())
+		return
+	}
 
 	mux := goji.NewMux()
 	mux.Use(func(inner http.Handler) http.Handler {
@@ -71,7 +67,7 @@ func main() {
 
 	// Backend APIs (should only be called by frontend code)
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
-		rest.Capture(w, initialSettings)
+		rest.Capture(w, &updatedSettings)
 	})
 
 	configUpdatedChan := make(chan settings.Settings)
@@ -92,7 +88,7 @@ func main() {
 	mux.HandleFunc(pat.Get("/version"), rest.MakeGetVersionFn(version))
 
 	// Enable pprof profiling endpoints if requested
-	if *enablePprof {
+	if *f.EnablePprof {
 		log.Println("Profiling enabled at /debug/pprof/")
 		mux.HandleFunc(pat.Get("/debug/pprof/*"), http.DefaultServeMux.ServeHTTP)
 	}
@@ -112,8 +108,8 @@ func main() {
 	}
 }
 
-func initLogging() error {
-	if conf.LogToFile {
+func initLogging(s settings.Settings) error {
+	if s.LogToFile {
 		f, err := os.OpenFile(conf.LogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
 			return err

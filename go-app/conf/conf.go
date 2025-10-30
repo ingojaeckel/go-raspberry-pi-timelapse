@@ -22,19 +22,3 @@ var (
 )
 
 // TODO merge values coming from different sources: config, settings, CLI
-
-// OverrideDefaultConfig Override default config values which were provided.
-func OverrideDefaultConfig(listenAddressOverride *string, storageAddressOverride *string, logToFileOverride *bool, secondsBetweenCapturesOverride *int) {
-	if logToFileOverride != nil {
-		LogToFile = *logToFileOverride
-	}
-	if listenAddressOverride != nil {
-		ListenAddress = *listenAddressOverride
-	}
-	if storageAddressOverride != nil {
-		StorageFolder = *storageAddressOverride
-	}
-	if secondsBetweenCapturesOverride != nil {
-		SecondsBetweenCaptures = *secondsBetweenCapturesOverride
-	}
-}

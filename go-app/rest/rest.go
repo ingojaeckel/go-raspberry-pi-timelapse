@@ -87,7 +87,8 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 	w.Write(b)
 }
 
-func Capture(w http.ResponseWriter, s *settings.Settings) {
+func Capture(w http.ResponseWriter, s settings.Settings) {
+	// TODO use s everywhere instead of mixing s and conf
 	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight)
 	c, err := timelapse.NewCamera(conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight, s.RotateBy == 180, s.Quality)
 	if err != nil {
