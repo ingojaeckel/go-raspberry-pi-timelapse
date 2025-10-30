@@ -6,6 +6,7 @@ import (
 
 	"github.com/facebookgo/ensure"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 )
 
 type abbrevTime struct {
@@ -20,7 +21,7 @@ func (t abbrevTime) toDate() time.Time {
 
 func TestSecondsToSleepUntilOffset(t *testing.T) {
 	tl := Timelapse{
-		Settings: conf.Settings{
+		Settings: settings.Settings{
 			SecondsBetweenCaptures: 60 * 30,
 			OffsetWithinHour:       15 * 60,
 		},
@@ -32,7 +33,7 @@ func TestSecondsToSleepUntilOffset(t *testing.T) {
 
 func TestSecondsToSleepUntilOffset2(t *testing.T) {
 	tl := Timelapse{
-		Settings: conf.Settings{
+		Settings: settings.Settings{
 			SecondsBetweenCaptures: 60 * 30,
 			OffsetWithinHour:       15 * 60,
 		},
@@ -70,7 +71,7 @@ func testInitialSleepTime(t *testing.T, minute int, second int, expectedSleepTim
 func createTimelapseForTesting(offsetWithinHourSeconds int) Timelapse {
 	return Timelapse{
 		Folder: conf.StorageFolder,
-		Settings: conf.Settings{
+		Settings: settings.Settings{
 			SecondsBetweenCaptures: 1800,
 			OffsetWithinHour:       offsetWithinHourSeconds,
 			DebugEnabled:           true,
@@ -84,7 +85,7 @@ func createTimelapseForTesting(offsetWithinHourSeconds int) Timelapse {
 
 func BenchmarkGetSecondsToFirstCapture(b *testing.B) {
 	tl := Timelapse{
-		Settings: conf.Settings{
+		Settings: settings.Settings{
 			SecondsBetweenCaptures: 60 * 30,
 			OffsetWithinHour:       15 * 60,
 		},
@@ -99,7 +100,7 @@ func BenchmarkGetSecondsToFirstCapture(b *testing.B) {
 
 func BenchmarkGetSecondsToFirstCaptureVariousTimes(b *testing.B) {
 	tl := Timelapse{
-		Settings: conf.Settings{
+		Settings: settings.Settings{
 			SecondsBetweenCaptures: 60 * 30,
 			OffsetWithinHour:       15 * 60,
 		},
@@ -122,7 +123,7 @@ func BenchmarkGetSecondsToFirstCaptureVariousTimes(b *testing.B) {
 
 func BenchmarkGetSecondsToFirstCaptureShortInterval(b *testing.B) {
 	tl := Timelapse{
-		Settings: conf.Settings{
+		Settings: settings.Settings{
 			SecondsBetweenCaptures: 60, // 1 minute interval
 			OffsetWithinHour:       30,
 		},

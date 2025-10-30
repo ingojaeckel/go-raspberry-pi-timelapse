@@ -4,16 +4,16 @@ import (
 	"testing"
 
 	"github.com/facebookgo/ensure"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/go-app/conf/settings"
 )
 
 func TestNew(t *testing.T) {
-	ensure.Nil(t, New().Validate(conf.Settings{Quality: 100, SecondsBetweenCaptures: 60, OffsetWithinHour: 900}))
-	ensure.Nil(t, New().Validate(conf.Settings{Quality: 100, SecondsBetweenCaptures: 60, OffsetWithinHour: -1}))
+	ensure.Nil(t, New().Validate(settings.Settings{Quality: 100, SecondsBetweenCaptures: 60, OffsetWithinHour: 900}))
+	ensure.Nil(t, New().Validate(settings.Settings{Quality: 100, SecondsBetweenCaptures: 60, OffsetWithinHour: -1}))
 }
 
 func TestOutOfBounds(t *testing.T) {
-	ensure.NotNil(t, New().Validate(conf.Settings{Quality: 0}))
-	ensure.NotNil(t, New().Validate(conf.Settings{Quality: 100, SecondsBetweenCaptures: 0}))
-	ensure.NotNil(t, New().Validate(conf.Settings{Quality: 100, SecondsBetweenCaptures: 60, OffsetWithinHour: -2}))
+	ensure.NotNil(t, New().Validate(settings.Settings{Quality: 0}))
+	ensure.NotNil(t, New().Validate(settings.Settings{Quality: 100, SecondsBetweenCaptures: 0}))
+	ensure.NotNil(t, New().Validate(settings.Settings{Quality: 100, SecondsBetweenCaptures: 60, OffsetWithinHour: -2}))
 }
