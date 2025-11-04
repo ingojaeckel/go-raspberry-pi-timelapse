@@ -8,6 +8,7 @@
 #include <sstream>
 #include <ctime>
 #include <set>
+#include <limits>
 
 // Maximum distance (in pixels) an object can move between frames to be considered the same object
 // This assumes objects don't teleport across large portions of the frame
@@ -347,9 +348,18 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
     // First, remember stationary objects before removal, then log exit events
     // Track which object types we've already recorded exits for to avoid duplicates
     std::set<std::string> exit_recorded;
+    
+    // Count how many will be removed before erasing
+    auto removed_count = std::count_if(tracked_objects_.begin(), tracked_objects_.end(),
+                                       [](const ObjectTracker& tracker) {
+                                           return tracker.frames_since_detection > 30; // 30 frames threshold
+                                       });
+    
+    // Remember and log objects that will be removed (do this only once per object)
     for (const auto& tracker : tracked_objects_) {
         if (tracker.frames_since_detection > 30) {
             // Remember stationary objects so we can restore their status if re-detected
+            // This is only called once when the object is about to be removed
             if (tracker.is_stationary) {
                 rememberStationaryObject(tracker);
             }
@@ -364,12 +374,6 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             }
         }
     }
-    
-    // Count how many will be removed before erasing
-    auto removed_count = std::count_if(tracked_objects_.begin(), tracked_objects_.end(),
-                                       [](const ObjectTracker& tracker) {
-                                           return tracker.frames_since_detection > 30; // 30 frames threshold
-                                       });
     
     // Now remove them
     tracked_objects_.erase(
@@ -768,7 +772,7 @@ ObjectDetector::RememberedStationaryObject* ObjectDetector::findRememberedStatio
     const std::string& object_type, const cv::Point2f& position) {
     
     // Find the closest matching remembered object of the same type
-    float min_distance = RememberedStationaryObject::MATCH_DISTANCE_THRESHOLD;
+    float min_distance = std::numeric_limits<float>::max();
     RememberedStationaryObject* best_match = nullptr;
     
     for (auto& remembered : remembered_stationary_objects_) {
@@ -781,7 +785,12 @@ ObjectDetector::RememberedStationaryObject* ObjectDetector::findRememberedStatio
         }
     }
     
-    return best_match;
+    // Only return match if within threshold
+    if (best_match != nullptr && min_distance <= RememberedStationaryObject::MATCH_DISTANCE_THRESHOLD) {
+        return best_match;
+    }
+    
+    return nullptr;
 }
 
 void ObjectDetector::setGoogleSheetsClient(std::shared_ptr<GoogleSheetsClient> client) {
