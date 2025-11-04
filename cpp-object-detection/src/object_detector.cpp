@@ -285,9 +285,8 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
                 cleanupOldTrackedObjects();
             }
 
-            logger_->debug("  Creating new tracker for " + detection.class_name + 
-                          " (no existing object within " + std::to_string(MAX_MOVEMENT_DISTANCE) + 
-                          " pixel threshold)");
+            // Check if this matches a previously stationary object
+            auto* remembered = findRememberedStationaryObject(detection.class_name, detection_center);
             
             ObjectTracker new_tracker;
             new_tracker.object_type = detection.class_name;
@@ -296,9 +295,39 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
             new_tracker.position_history.push_back(detection_center);  // Initialize history
             new_tracker.was_present_last_frame = true;
             new_tracker.frames_since_detection = 0;
-            new_tracker.is_new = true;  // Mark as newly entered
-            new_tracker.is_stationary = false;  // New objects are not yet stationary
-            new_tracker.stationary_since = std::chrono::steady_clock::now();
+            
+            if (remembered != nullptr) {
+                // Restore stationary status from remembered object
+                new_tracker.is_new = false;  // Not new - we remember this object
+                new_tracker.is_stationary = true;  // Was stationary before
+                new_tracker.stationary_since = remembered->first_stationary_time;  // Use original time
+                
+                logger_->info("Re-detected previously stationary " + detection.class_name + 
+                             " at (" + std::to_string(detection_center.x) + ", " + 
+                             std::to_string(detection_center.y) + ") - restoring stationary status. " +
+                             "Was stationary for " + std::to_string(remembered->accumulated_stationary_seconds) + 
+                             "s before losing tracking. Distance from last known position: " + 
+                             std::to_string(cv::norm(remembered->last_known_position - detection_center)) + " pixels");
+                
+                // Remove from remembered list as it's now actively tracked again
+                remembered_stationary_objects_.erase(
+                    std::remove_if(remembered_stationary_objects_.begin(), 
+                                  remembered_stationary_objects_.end(),
+                                  [remembered](const RememberedStationaryObject& obj) {
+                                      return &obj == remembered;
+                                  }),
+                    remembered_stationary_objects_.end());
+            } else {
+                // Truly new object
+                new_tracker.is_new = true;  // Mark as newly entered
+                new_tracker.is_stationary = false;  // New objects are not yet stationary
+                new_tracker.stationary_since = std::chrono::steady_clock::now();
+                
+                logger_->debug("  Creating new tracker for " + detection.class_name + 
+                              " (no existing object within " + std::to_string(MAX_MOVEMENT_DISTANCE) + 
+                              " pixel threshold)");
+            }
+            
             tracked_objects_.push_back(new_tracker);
             
             // Update statistics with bounded growth protection
@@ -313,11 +342,16 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
     }
     
     // Remove objects that haven't been seen for too long
-    // First, log the objects that will be removed and record exit events
+    // First, remember stationary objects before removal, then log exit events
     // Track which object types we've already recorded exits for to avoid duplicates
     std::set<std::string> exit_recorded;
     for (const auto& tracker : tracked_objects_) {
         if (tracker.frames_since_detection > 30) {
+            // Remember stationary objects so we can restore their status if re-detected
+            if (tracker.is_stationary) {
+                rememberStationaryObject(tracker);
+            }
+            
             logger_->debug("Removing " + tracker.object_type + 
                           " tracker (not seen for " + 
                           std::to_string(tracker.frames_since_detection) + " frames)");
@@ -659,6 +693,95 @@ void ObjectDetector::enrichDetectionsWithStationaryStatus(std::vector<Detection>
             detection.stationary_duration_seconds = 0;
         }
     }
+}
+
+void ObjectDetector::rememberStationaryObject(const ObjectTracker& tracker) {
+    // Only remember objects that are actually stationary
+    if (!tracker.is_stationary) {
+        return;
+    }
+    
+    // Calculate accumulated stationary time
+    auto now = std::chrono::steady_clock::now();
+    auto stationary_duration = std::chrono::duration_cast<std::chrono::seconds>(now - tracker.stationary_since);
+    int accumulated_seconds = static_cast<int>(stationary_duration.count());
+    
+    // Check if we already have this object remembered
+    auto* existing = findRememberedStationaryObject(tracker.object_type, tracker.center);
+    if (existing != nullptr) {
+        // Update existing entry
+        existing->last_known_position = tracker.center;
+        existing->last_seen_time = now;
+        existing->accumulated_stationary_seconds += accumulated_seconds;
+        logger_->debug("Updated remembered stationary " + tracker.object_type + 
+                      " - total stationary time: " + std::to_string(existing->accumulated_stationary_seconds) + "s");
+    } else {
+        // Add new remembered object
+        RememberedStationaryObject remembered;
+        remembered.object_type = tracker.object_type;
+        remembered.last_known_position = tracker.center;
+        remembered.first_stationary_time = tracker.stationary_since;
+        remembered.last_seen_time = now;
+        remembered.accumulated_stationary_seconds = accumulated_seconds;
+        
+        remembered_stationary_objects_.push_back(remembered);
+        logger_->debug("Remembered stationary " + tracker.object_type + 
+                      " at (" + std::to_string(tracker.center.x) + ", " + 
+                      std::to_string(tracker.center.y) + ") - stationary for " + 
+                      std::to_string(accumulated_seconds) + "s");
+        
+        // Cleanup if we exceed the limit
+        if (remembered_stationary_objects_.size() > MAX_REMEMBERED_STATIONARY_OBJECTS) {
+            cleanupOldRememberedObjects();
+        }
+    }
+}
+
+void ObjectDetector::cleanupOldRememberedObjects() {
+    auto now = std::chrono::steady_clock::now();
+    
+    // Remove objects that were last seen more than REMEMBERED_OBJECT_EXPIRY_HOURS ago
+    auto removed_count = std::count_if(remembered_stationary_objects_.begin(), 
+                                       remembered_stationary_objects_.end(),
+                                       [&now](const RememberedStationaryObject& obj) {
+                                           auto time_since_last_seen = std::chrono::duration_cast<std::chrono::hours>(
+                                               now - obj.last_seen_time);
+                                           return time_since_last_seen.count() >= REMEMBERED_OBJECT_EXPIRY_HOURS;
+                                       });
+    
+    remembered_stationary_objects_.erase(
+        std::remove_if(remembered_stationary_objects_.begin(), remembered_stationary_objects_.end(),
+                      [&now](const RememberedStationaryObject& obj) {
+                          auto time_since_last_seen = std::chrono::duration_cast<std::chrono::hours>(
+                              now - obj.last_seen_time);
+                          return time_since_last_seen.count() >= REMEMBERED_OBJECT_EXPIRY_HOURS;
+                      }),
+        remembered_stationary_objects_.end());
+    
+    if (removed_count > 0) {
+        logger_->debug("Removed " + std::to_string(removed_count) + 
+                      " expired remembered stationary object(s)");
+    }
+}
+
+ObjectDetector::RememberedStationaryObject* ObjectDetector::findRememberedStationaryObject(
+    const std::string& object_type, const cv::Point2f& position) {
+    
+    // Find the closest matching remembered object of the same type
+    float min_distance = RememberedStationaryObject::MATCH_DISTANCE_THRESHOLD;
+    RememberedStationaryObject* best_match = nullptr;
+    
+    for (auto& remembered : remembered_stationary_objects_) {
+        if (remembered.object_type == object_type) {
+            float distance = cv::norm(remembered.last_known_position - position);
+            if (distance < min_distance) {
+                min_distance = distance;
+                best_match = &remembered;
+            }
+        }
+    }
+    
+    return best_match;
 }
 
 void ObjectDetector::setGoogleSheetsClient(std::shared_ptr<GoogleSheetsClient> client) {
