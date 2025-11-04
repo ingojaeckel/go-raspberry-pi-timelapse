@@ -336,7 +336,7 @@ TEST_F(StationaryDetectionTest, RememberedStationaryObjectNearbyLocation) {
         detector->updateTracking(empty_detections);
     }
     
-    // Re-detect at a nearby position (120, 110) - within match threshold of 50 pixels
+    // Re-detect at a nearby position (120, 110) - within RememberedStationaryObject::MATCH_DISTANCE_THRESHOLD
     std::vector<Detection> detections2;
     Detection det2;
     det2.class_name = "car";

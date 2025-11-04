@@ -310,13 +310,15 @@ void ObjectDetector::updateTrackedObjects(const std::vector<Detection>& detectio
                              std::to_string(cv::norm(remembered->last_known_position - detection_center)) + " pixels");
                 
                 // Remove from remembered list as it's now actively tracked again
-                remembered_stationary_objects_.erase(
-                    std::remove_if(remembered_stationary_objects_.begin(), 
-                                  remembered_stationary_objects_.end(),
-                                  [remembered](const RememberedStationaryObject& obj) {
-                                      return &obj == remembered;
-                                  }),
-                    remembered_stationary_objects_.end());
+                // Find and remove using iterator to avoid double search
+                auto it = std::find_if(remembered_stationary_objects_.begin(), 
+                                      remembered_stationary_objects_.end(),
+                                      [remembered](const RememberedStationaryObject& obj) {
+                                          return &obj == remembered;
+                                      });
+                if (it != remembered_stationary_objects_.end()) {
+                    remembered_stationary_objects_.erase(it);
+                }
             } else {
                 // Truly new object
                 new_tracker.is_new = true;  // Mark as newly entered
@@ -741,21 +743,19 @@ void ObjectDetector::cleanupOldRememberedObjects() {
     auto now = std::chrono::steady_clock::now();
     
     // Remove objects that were last seen more than REMEMBERED_OBJECT_EXPIRY_HOURS ago
+    auto is_expired = [&now](const RememberedStationaryObject& obj) {
+        auto time_since_last_seen = std::chrono::duration_cast<std::chrono::hours>(
+            now - obj.last_seen_time);
+        return time_since_last_seen.count() >= REMEMBERED_OBJECT_EXPIRY_HOURS;
+    };
+    
     auto removed_count = std::count_if(remembered_stationary_objects_.begin(), 
                                        remembered_stationary_objects_.end(),
-                                       [&now](const RememberedStationaryObject& obj) {
-                                           auto time_since_last_seen = std::chrono::duration_cast<std::chrono::hours>(
-                                               now - obj.last_seen_time);
-                                           return time_since_last_seen.count() >= REMEMBERED_OBJECT_EXPIRY_HOURS;
-                                       });
+                                       is_expired);
     
     remembered_stationary_objects_.erase(
         std::remove_if(remembered_stationary_objects_.begin(), remembered_stationary_objects_.end(),
-                      [&now](const RememberedStationaryObject& obj) {
-                          auto time_since_last_seen = std::chrono::duration_cast<std::chrono::hours>(
-                              now - obj.last_seen_time);
-                          return time_since_last_seen.count() >= REMEMBERED_OBJECT_EXPIRY_HOURS;
-                      }),
+                      is_expired),
         remembered_stationary_objects_.end());
     
     if (removed_count > 0) {
