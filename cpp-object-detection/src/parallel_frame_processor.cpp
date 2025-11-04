@@ -6,6 +6,9 @@
 #include <set>
 #include <sys/stat.h>
 
+// Initialize the storage blocklist
+const std::set<std::string> ParallelFrameProcessor::STORAGE_BLOCKLIST = {"car"};
+
 ParallelFrameProcessor::ParallelFrameProcessor(std::shared_ptr<ObjectDetector> detector,
                                              std::shared_ptr<Logger> logger,
                                              std::shared_ptr<PerformanceMonitor> perf_monitor,
@@ -184,6 +187,21 @@ void ParallelFrameProcessor::saveDetectionPhoto(const cv::Mat& frame, const std:
     std::map<std::string, int> current_object_counts;
     for (const auto& detection : detections) {
         current_object_counts[detection.class_name]++;
+    }
+    
+    // Check if all detected objects are on the blocklist
+    bool all_blocklisted = true;
+    for (const auto& [type, count] : current_object_counts) {
+        if (STORAGE_BLOCKLIST.find(type) == STORAGE_BLOCKLIST.end()) {
+            all_blocklisted = false;
+            break;
+        }
+    }
+    
+    // Skip saving if only blocklisted objects are detected
+    if (all_blocklisted) {
+        logger_->debug("Skipping photo - only blocklisted objects detected (car)");
+        return;
     }
     
     // Check if there are new object types or new instances

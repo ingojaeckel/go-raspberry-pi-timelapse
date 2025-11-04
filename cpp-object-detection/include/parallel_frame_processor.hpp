@@ -10,6 +10,7 @@
 #include <future>
 #include <chrono>
 #include <map>
+#include <set>
 #include "object_detector.hpp"
 #include "logger.hpp"
 #include "performance_monitor.hpp"
@@ -98,6 +99,10 @@ private:
     
     // Track object state from last saved photo
     std::map<std::string, int> last_saved_object_counts_;
+    
+    // Blocklist of object types that should not trigger photo saves when detected alone
+    // Photos are still saved if non-blocklisted objects are also present
+    static const std::set<std::string> STORAGE_BLOCKLIST;
     
     // Threading infrastructure
     std::vector<std::thread> worker_threads_;
