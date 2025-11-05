@@ -69,29 +69,94 @@ The relation predictor can work in two modes:
 
 ## Models for Environmental Observation
 
-The standard COCO-trained YOLO models above include many relevant classes for residential and agricultural monitoring:
+### Pre-trained Models with Environmental Classes
+
+For residential, industrial, and agricultural monitoring, standard COCO models have significant limitations. Here are recommended alternatives:
+
+#### Option A: YOLOv8 with Expanded Classes (Recommended)
+
+**YOLOv8n-seg** - Ultralytics' latest model with instance segmentation:
+```bash
+# Download YOLOv8 nano (fast for real-time)
+curl -L -o detector.onnx https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.onnx
+
+# Or YOLOv8s (balanced)
+curl -L -o detector.onnx https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.onnx
+```
+
+**Compatible Labels File**: Use `assets/labels/coco.txt` (80 COCO classes)
+- Includes: person, bicycle, car, motorcycle, bus, train, truck, bird, cat, dog, horse, sheep, cow
+- Missing: trees, houses, sheds, construction equipment (requires custom training)
+
+#### Option B: Objects365-trained YOLOv5 (365 Classes)
+
+**Download pre-trained Objects365 model:**
+```bash
+# YOLOv5s trained on Objects365 dataset
+# Note: Requires conversion from PyTorch to ONNX
+git clone https://github.com/ultralytics/yolov5
+cd yolov5
+pip install -r requirements.txt
+
+# Download Objects365 weights
+wget https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s-obj365.pt
+
+# Export to ONNX
+python export.py --weights yolov5s-obj365.pt --include onnx --imgsz 640
+```
+
+**Objects365 Classes Include:**
+- Buildings: house, building, shed, tent
+- Vegetation: tree, potted plant, flower
+- Vehicles: car, truck, van, SUV, bus, motorcycle, bicycle
+- Construction: crane, excavator, bulldozer
+- Agricultural: tractor, combine harvester
+- Animals: various livestock and wildlife
+- Tools and equipment
+
+**Labels File**: Create `assets/labels/objects365.txt` with 365 class names
+(Full list available at: https://www.objects365.org/overview.html)
+
+#### Option C: Using Provided Environmental Labels
+
+For custom-trained models targeting environmental monitoring, use:
+```bash
+# Use the provided environmental labels file
+--labels assets/labels/environmental.txt
+```
+
+This labels file includes 28 key classes for residential/agricultural monitoring:
+- People and vehicles: person, car, truck, bus, bicycle, motorcycle, tractor
+- Buildings: house, building, shed, barn
+- Vegetation: tree, bush, potted plant
+- Animals: bird, cat, dog, horse, sheep, cow
+- Equipment: crane, excavator, bulldozer, tool, fence
+
+**Note**: Using this labels file requires a model trained on these specific classes (see custom training below).
+
+### Standard COCO Model Capabilities
+
+The standard COCO-trained YOLO models (Options 1-4 above) include some relevant classes:
 
 **Residential/Agricultural Classes in COCO:**
-- **Structures**: house (not in standard COCO, see below)
-- **Vehicles**: car, truck, bus, motorcycle, bicycle
+- **Vehicles**: car, truck, bus, motorcycle, bicycle, train, boat
 - **Animals**: bird, cat, dog, horse, sheep, cow
-- **Objects**: backpack, umbrella, handbag, suitcase, frisbee, sports ball, kite, etc.
+- **Objects**: backpack, umbrella, handbag, suitcase, sports ball, kite, etc.
 - **Plants**: potted plant
 - **People**: person
 
 **Limitations of COCO Models:**
-COCO does not include specific classes for:
+COCO does not include:
 - Trees, bushes, hedges
-- Sheds, barns, greenhouses
-- Construction equipment (cranes, bulldozers)
-- Agricultural tools
-- Specific building types
+- Houses, sheds, barns, greenhouses  
+- Construction equipment (cranes, bulldozers, excavators)
+- Agricultural equipment (tractors, combines)
+- Tools and implements
+- Fences and outdoor structures
 
-### Option 1: Custom Trained Models for Environmental Observation
+### Custom Trained Models for Environmental Observation
 
-For comprehensive environmental monitoring including trees, buildings, and equipment, you'll need to train or obtain custom models.
-
-**Recommended Approach - Fine-tune YOLOv5 on Custom Dataset:**
+For comprehensive environmental monitoring including all needed classes, custom training is recommended:
 
 1. **Collect & Label Data** (~500-1000 images minimum):
    - Capture images from your specific environment

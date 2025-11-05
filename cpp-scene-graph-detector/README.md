@@ -66,6 +66,13 @@ curl -L -o assets/models/yolov5x.onnx \
 - **YOLOv5l**: ~180ms inference, 49.0 mAP - High accuracy
 - **YOLOv5x**: ~330ms inference, 50.7 mAP - **Maximum accuracy, slower** (recommended for offline batch processing)
 
+**For Environmental Monitoring:**
+- COCO models (above) detect: person, car, truck, bicycle, animals, but **not** trees, houses, sheds
+- See [assets/models/README.md](assets/models/README.md) for:
+  - Objects365 models (365 classes including trees, buildings, construction equipment)
+  - Custom training guide for environmental-specific models
+  - Pre-configured `assets/labels/environmental.txt` for custom models
+
 ### Run
 
 ```bash
