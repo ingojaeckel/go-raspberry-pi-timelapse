@@ -73,9 +73,11 @@ To achieve 24 fps (frames per second), each frame must be processed in ≤41.7ms
 - **RTX 3090** - YOLOv5s: ~4-5ms, YOLOv5x: ~16-20ms → **200-250 fps** / **50-62 fps**
 - **RTX 3080** - YOLOv5s: ~5-6ms, YOLOv5x: ~20-25ms → **167-200 fps** / **40-50 fps**
 - **RTX 3070** - YOLOv5s: ~6-7ms, YOLOv5x: ~25-30ms → **143-167 fps** / **33-40 fps**
+- **GTX 1660 Ti** - YOLOv5s: ~10-13ms, YOLOv5x: ~45-55ms → **77-100 fps** / **18-22 fps**
 - **GTX 1080 Ti** - YOLOv5s: ~8-10ms, YOLOv5x: ~35-40ms → **100-125 fps** / **25-28 fps**
 
 *AMD GPUs (OpenCL - supported by this application):*
+- **Radeon Pro 560X** (Mobile/MacBook Pro) - YOLOv5s: ~25-35ms, YOLOv5x: ~110-140ms → **28-40 fps** / **7-9 fps**
 - **RX 7900 XTX** - YOLOv5s: ~8-12ms, YOLOv5x: ~40-50ms → **83-125 fps** / **20-25 fps**
 - **RX 6900 XT** - YOLOv5s: ~10-15ms, YOLOv5x: ~50-60ms → **67-100 fps** / **17-20 fps**
 - **RX 6800 XT** - YOLOv5s: ~12-16ms, YOLOv5x: ~55-65ms → **62-83 fps** / **15-18 fps**
@@ -345,14 +347,179 @@ pip install netron
 netron detector.onnx
 ```
 
+## Transformer-Based Architectures for Higher Accuracy
+
+Transformer-based object detectors can achieve significantly higher mAP scores than CNN-based models like YOLO, with more diverse label support and better generalization.
+
+### DETR (DEtection TRansformer) Family
+
+**DETR (Facebook/Meta AI)**
+- **mAP**: 42.0 on COCO (base), 43.5 (ResNet-101 backbone)
+- **Architecture**: Vision transformer with set prediction approach
+- **Labels**: 80 COCO classes (same as YOLO), but better at small objects
+- **Advantages**: Superior detection quality, fewer false positives, better at occlusions
+- **Disadvantages**: ~10x slower than YOLOv5 for similar hardware
+
+**Hardware for 1 fps (1000ms per frame) with DETR:**
+- **CPU**: Intel i9-12900K or AMD Ryzen 9 5950X (inference: ~800-1200ms)
+- **GPU (OpenCL)**: AMD RX 6700 XT or better (inference: ~600-900ms)
+- **GPU (CUDA)**: NVIDIA RTX 3060 or better (inference: ~80-120ms with TensorRT)
+- **Recommended**: NVIDIA RTX 3070 with TensorRT optimization (~60-90ms → **11-16 fps**)
+
+**Deformable DETR**
+- **mAP**: 46.9 on COCO (improved backbone)
+- **Architecture**: Deformable attention for faster convergence
+- **Hardware for 1 fps**: Similar to DETR but 20-30% faster
+- **NVIDIA RTX 3070**: ~40-60ms → **16-25 fps**
+
+### DINO (DETR with Improved deNoising anchOr boxes)
+
+**DINO (2022)**
+- **mAP**: 49.0 on COCO (Swin-L backbone), **63.2 mAP** (with larger backbone)
+- **Architecture**: State-of-the-art transformer detector
+- **Labels**: 80 COCO classes + easily fine-tunable for custom classes
+- **Advantages**: Best-in-class detection quality, excellent zero-shot transfer
+
+**Hardware for 1 fps with DINO:**
+- **CPU**: Not practical (>5000ms per frame)
+- **GPU (OpenCL)**: AMD RX 7900 XTX (inference: ~800-1200ms)
+- **GPU (CUDA)**: 
+  - NVIDIA RTX 3080: ~150-200ms → **5-6 fps**
+  - NVIDIA RTX 4070: ~100-130ms → **7-10 fps**
+  - NVIDIA RTX 4090: ~60-80ms → **12-16 fps**
+
+### ViTDet (Vision Transformer Detector)
+
+**ViTDet (Meta AI, 2022)**
+- **mAP**: 55.9 on COCO (ViT-H backbone)
+- **Architecture**: Plain vision transformer with simple detection head
+- **Labels**: 80 COCO classes, excellent for transfer learning
+- **Advantages**: Scales very well with larger models, excellent fine-tuning
+
+**Hardware for 1 fps:**
+- **NVIDIA RTX 3080**: ~400-600ms → **1.6-2.5 fps**
+- **NVIDIA RTX 4080**: ~200-300ms → **3-5 fps**
+- **NVIDIA RTX 4090**: ~120-180ms → **5-8 fps**
+
+### Grounding DINO (Open-Set Detection)
+
+**Grounding DINO (2023)**
+- **mAP**: 52.5 on COCO (zero-shot), 56.9 (fine-tuned)
+- **Architecture**: Combines vision-language transformers for text-prompted detection
+- **Labels**: **Open vocabulary** - can detect any object described in text!
+- **Advantages**: 
+  - Detects objects not in training set via text prompts
+  - Perfect for environmental monitoring: "tree", "shed", "construction crane"
+  - No retraining needed for new object types
+- **Disadvantages**: Computationally expensive
+
+**Hardware for 1 fps:**
+- **NVIDIA RTX 3080**: ~800-1200ms
+- **NVIDIA RTX 4070**: ~400-600ms → **1.6-2.5 fps**
+- **NVIDIA RTX 4090**: ~250-350ms → **2.8-4 fps**
+
+**Example use case for environmental monitoring:**
+```python
+# Detect with custom text prompts
+prompts = ["oak tree", "pine tree", "metal shed", "wooden barn", 
+           "excavator", "construction crane", "pickup truck"]
+# Model detects these without retraining!
+```
+
+### Florence-2 (Microsoft, 2023)
+
+**Florence-2**
+- **mAP**: Not directly comparable (unified vision model)
+- **Architecture**: Unified vision-language model (detection + captioning + segmentation)
+- **Labels**: Open vocabulary + generates natural language descriptions
+- **Advantages**: Can describe scenes in natural language, detect+caption simultaneously
+
+**Hardware for 1 fps:**
+- **NVIDIA RTX 4070**: ~600-900ms → **1-1.6 fps**
+- **NVIDIA RTX 4090**: ~300-450ms → **2-3 fps**
+
+### YOLO-World (2024) - Best Practical Option
+
+**YOLO-World**
+- **mAP**: 35.4 (zero-shot), 52.0 (fine-tuned) on COCO
+- **Architecture**: YOLO + vision-language model for open vocabulary
+- **Labels**: **Open vocabulary** - detects via text prompts
+- **Advantages**: 
+  - 10-20x faster than Grounding DINO
+  - Real-time capable with modern GPUs
+  - Easy to use with YOLO deployment pipelines
+  - Can detect: "residential house", "agricultural shed", "deciduous tree", "coniferous tree"
+
+**Hardware for 1 fps:**
+- **CPU**: Intel i9-13900K (~300-450ms → **2-3 fps**)
+- **GPU (OpenCL)**: AMD RX 6700 XT (~120-180ms → **5-8 fps**)
+- **GPU (CUDA)**:
+  - NVIDIA RTX 3070: ~40-60ms → **16-25 fps**
+  - NVIDIA RTX 4070: ~25-35ms → **28-40 fps**
+  - NVIDIA RTX 4090: ~15-20ms → **50-67 fps**
+
+### Recommendations for Environmental Monitoring
+
+**Best Overall (Accuracy + Speed + Flexibility): YOLO-World**
+- **Why**: Open vocabulary (custom text prompts), near-real-time on good GPU, good mAP
+- **Hardware**: NVIDIA RTX 3070 or better for real-time
+- **Use case**: "detect oak trees, garden sheds, construction equipment" without retraining
+
+**Maximum Accuracy: DINO**
+- **Why**: 63.2 mAP (vs. 50.7 for YOLOv5x)
+- **Hardware**: NVIDIA RTX 4080/4090 for 1+ fps
+- **Use case**: Offline analysis where accuracy is critical
+
+**Most Flexible: Grounding DINO**
+- **Why**: True open vocabulary, detects anything described in text
+- **Hardware**: NVIDIA RTX 4090 for usable speed (2-4 fps)
+- **Use case**: Rapidly changing monitoring requirements without model retraining
+
+**Practical CPU Option: Deformable DETR**
+- **Why**: Better than YOLO accuracy (46.9 mAP) with manageable CPU load
+- **Hardware**: Modern 16+ core CPU for 1 fps
+- **Use case**: No GPU available but need better accuracy than YOLO
+
+### Converting to ONNX
+
+Most transformer models require additional steps for ONNX export:
+
+```bash
+# Example: Export Grounding DINO to ONNX
+pip install transformers onnx onnxruntime
+
+python -c "
+from transformers import AutoModel
+import torch
+
+model = AutoModel.from_pretrained('IDEA-Research/grounding-dino-base')
+dummy_input = torch.randn(1, 3, 800, 800)
+torch.onnx.export(model, dummy_input, 'grounding_dino.onnx',
+                  opset_version=14, 
+                  input_names=['input'],
+                  output_names=['output'])
+"
+```
+
+**Note**: Transformer models often require custom post-processing code and may not be fully compatible with OpenCV DNN. Consider using ONNX Runtime directly for better transformer support.
+
 ## License Notes
 
 - YOLOv5 models: AGPL-3.0 license
+- DETR family: Apache 2.0 license
+- Grounding DINO: Apache 2.0 license
+- YOLO-World: GPL-3.0 license
 - Custom models: Check respective licenses
 - COCO dataset labels: CC BY 4.0
 
 ## References
 
 - YOLOv5: https://github.com/ultralytics/yolov5
+- DETR: https://github.com/facebookresearch/detr
+- DINO: https://github.com/IDEA-Research/DINO
+- Grounding DINO: https://github.com/IDEA-Research/GroundingDINO
+- YOLO-World: https://github.com/AILab-CVC/YOLO-World
+- ViTDet: https://github.com/facebookresearch/detectron2
+- Florence-2: https://huggingface.co/microsoft/Florence-2
 - ONNX: https://onnx.ai/
 - COCO dataset: https://cocodataset.org/
