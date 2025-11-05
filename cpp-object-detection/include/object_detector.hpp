@@ -149,7 +149,13 @@ private:
     std::shared_ptr<class GoogleSheetsClient> google_sheets_client_;  // Optional Google Sheets integration
     
     std::unique_ptr<IDetectionModel> detection_model_;
+    
+    // Active tracking: Objects currently being detected in recent frames (removed after 30 frames of non-detection)
     std::vector<ObjectTracker> tracked_objects_;
+    
+    // Historical memory: Previously stationary objects that lost tracking but may reappear
+    // Persists up to 24 hours to restore stationary status if object is re-detected at same location
+    // This prevents "flickering" where low-confidence detections are intermittently lost
     std::vector<RememberedStationaryObject> remembered_stationary_objects_;
     
     bool initialized_;
