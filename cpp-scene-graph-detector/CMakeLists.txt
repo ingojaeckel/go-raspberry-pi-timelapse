@@ -60,10 +60,10 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # Source files
 set(SOURCES
     src/main.cpp
-    src/Graph.cpp
-    src/Detector.cpp
-    src/RelPredictor.cpp
-    src/Runner.cpp
+    src/graph.cpp
+    src/detector.cpp
+    src/rel_predictor.cpp
+    src/runner.cpp
 )
 
 # Create executable

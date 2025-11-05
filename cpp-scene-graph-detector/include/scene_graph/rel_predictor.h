@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include "Graph.h"
-#include "Detector.h"
+#include "graph.h"
+#include "detector.h"
 
 namespace scene_graph {
 

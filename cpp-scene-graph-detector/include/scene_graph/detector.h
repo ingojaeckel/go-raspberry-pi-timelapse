@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include "Graph.h"
+#include "graph.h"
 
 namespace scene_graph {
 

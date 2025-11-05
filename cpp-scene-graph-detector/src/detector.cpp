@@ -1,4 +1,4 @@
-#include "scene_graph/Detector.h"
+#include "scene_graph/detector.h"
 #include <fstream>
 #include <algorithm>
 #include <iostream>

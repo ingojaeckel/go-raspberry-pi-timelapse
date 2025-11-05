@@ -25,10 +25,10 @@ target_link_libraries(scene_graph_tests
 
 # Add library sources (not main.cpp)
 target_sources(scene_graph_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/Graph.cpp
-    ${CMAKE_SOURCE_DIR}/src/Detector.cpp
-    ${CMAKE_SOURCE_DIR}/src/RelPredictor.cpp
-    ${CMAKE_SOURCE_DIR}/src/Runner.cpp
+    ${CMAKE_SOURCE_DIR}/src/graph.cpp
+    ${CMAKE_SOURCE_DIR}/src/detector.cpp
+    ${CMAKE_SOURCE_DIR}/src/rel_predictor.cpp
+    ${CMAKE_SOURCE_DIR}/src/runner.cpp
 )
 
 # Add tests to CTest

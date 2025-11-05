@@ -1,4 +1,4 @@
-#include "scene_graph/RelPredictor.h"
+#include "scene_graph/rel_predictor.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>

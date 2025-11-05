@@ -1,4 +1,4 @@
-#include "scene_graph/Graph.h"
+#include "scene_graph/graph.h"
 #include <fstream>
 #include <sstream>
 #include <iomanip>

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "scene_graph/RelPredictor.h"
+#include "scene_graph/rel_predictor.h"
 
 using namespace scene_graph;
 

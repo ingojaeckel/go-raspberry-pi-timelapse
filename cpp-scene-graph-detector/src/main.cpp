@@ -2,7 +2,7 @@
 #include <string>
 #include <iomanip>
 #include <opencv2/opencv.hpp>
-#include "scene_graph/Runner.h"
+#include "scene_graph/runner.h"
 
 void printUsage(const char* program_name) {
     std::cout << "Usage: " << program_name << " [OPTIONS]\n\n";

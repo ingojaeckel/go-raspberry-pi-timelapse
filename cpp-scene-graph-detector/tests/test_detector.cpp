@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "scene_graph/Detector.h"
+#include "scene_graph/detector.h"
 
 using namespace scene_graph;
 

@@ -4,9 +4,9 @@
 #include <string>
 #include <memory>
 #include <opencv2/opencv.hpp>
-#include "Graph.h"
-#include "Detector.h"
-#include "RelPredictor.h"
+#include "graph.h"
+#include "detector.h"
+#include "rel_predictor.h"
 
 namespace scene_graph {
 

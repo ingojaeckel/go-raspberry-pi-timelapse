@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "scene_graph/Graph.h"
+#include "scene_graph/graph.h"
 
 using namespace scene_graph;
 
