@@ -1,4 +1,6 @@
 #include "scene_model.hpp"
+
+#define _USE_MATH_DEFINES  // Required for M_PI on Windows/MSVC
 #include <algorithm>
 #include <cmath>
 #include <sstream>
