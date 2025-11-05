@@ -281,9 +281,6 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         // Get camera name (empty string if not available)
                         std::string camera_name = "";  // Could be extended to get actual camera name
                         
-                        // Check if brightness filter is active
-                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
-                        
                         // Get system monitor metrics
                         double disk_usage_percent = -1.0;
                         double cpu_temp_celsius = -1.0;
@@ -326,9 +323,6 @@ void runMainProcessingLoop(ApplicationContext& ctx) {
                         // Get statistics for display (same as viewfinder)
                         auto stats = gatherSystemStats(ctx);
                         std::string camera_name = "";
-                        
-                        // Check if brightness filter is active
-                        bool brightness_filter_active = ctx.frame_processor->isBrightnessFilterActive();
                         
                         // Get system monitor metrics
                         double disk_usage_percent = -1.0;
