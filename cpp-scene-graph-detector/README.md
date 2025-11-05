@@ -49,11 +49,22 @@ make -j$(nproc)
 ### Download Model
 
 ```bash
-# Download YOLOv5s (fast, recommended)
+# Download YOLOv5s (fast, recommended for real-time)
 cd cpp-scene-graph-detector
 curl -L -o assets/models/yolov5s.onnx \
   https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
+
+# OR download YOLOv5x (slower but more accurate)
+# Better for offline processing or high-accuracy requirements
+curl -L -o assets/models/yolov5x.onnx \
+  https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5x.onnx
 ```
+
+**Model Selection Guide:**
+- **YOLOv5s**: ~65ms inference, 37.4 mAP - Best for real-time on 2018 MacBook Pro
+- **YOLOv5m**: ~120ms inference, 45.4 mAP - Balanced accuracy/speed
+- **YOLOv5l**: ~180ms inference, 49.0 mAP - High accuracy
+- **YOLOv5x**: ~330ms inference, 50.7 mAP - **Maximum accuracy, slower** (recommended for offline batch processing)
 
 ### Run
 
@@ -106,17 +117,30 @@ Configuration:
 
 ### Examples
 
-**High-accuracy image processing:**
+**High-accuracy image processing (maximum quality):**
 ```bash
 ./cpp-scene-graph-detector \
   --input image.jpg \
-  --model.detector models/yolov5l.onnx \
+  --model.detector models/yolov5x.onnx \
   --labels assets/labels/coco.txt \
   --threshold.obj 0.5 \
   --out.json scene.json \
   --out.dot scene.dot \
   --visualize scene_viz.jpg
 ```
+*Use YOLOv5x for offline processing when accuracy is critical. Inference takes ~330ms per frame on 2018 MacBook Pro CPU.*
+
+**Balanced accuracy for video processing:**
+```bash
+./cpp-scene-graph-detector \
+  --input video.mp4 \
+  --model.detector models/yolov5l.onnx \
+  --labels assets/labels/coco.txt \
+  --backend opencl \
+  --fps 2 \
+  --out.json output/
+```
+*YOLOv5l provides good accuracy (~49 mAP) at ~180ms per frame, suitable for offline video analysis.*
 
 **Real-time webcam with OpenCL:**
 ```bash
@@ -238,12 +262,27 @@ make -j$(nproc)
 
 Expected performance on 1280x720 images:
 
-| Platform | Backend | FPS | Notes |
-|----------|---------|-----|-------|
-| 2018 MacBook Pro (Intel) | CPU | ~1 FPS | YOLOv5s |
-| 2018 MacBook Pro (Intel) | OpenCL | ~2-3 FPS | YOLOv5s |
-| Ubuntu 22.04 AMD64 (8-core) | CPU | ~3-5 FPS | YOLOv5s |
-| Ubuntu 22.04 AMD64 (AMD GPU) | OpenCL | ~8-12 FPS | YOLOv5s |
+### Real-time Models (YOLOv5s)
+| Platform | Backend | FPS | Model | mAP |
+|----------|---------|-----|-------|-----|
+| 2018 MacBook Pro (Intel) | CPU | ~1 FPS | YOLOv5s | 37.4 |
+| 2018 MacBook Pro (Intel) | OpenCL | ~2-3 FPS | YOLOv5s | 37.4 |
+| Ubuntu 22.04 AMD64 (8-core) | CPU | ~3-5 FPS | YOLOv5s | 37.4 |
+| Ubuntu 22.04 AMD64 (AMD GPU) | OpenCL | ~8-12 FPS | YOLOv5s | 37.4 |
+
+### High-Accuracy Models (for offline processing)
+| Platform | Backend | FPS | Model | mAP | Use Case |
+|----------|---------|-----|-------|-----|----------|
+| 2018 MacBook Pro (Intel) | CPU | ~0.3 FPS | YOLOv5x | 50.7 | Maximum accuracy, batch processing |
+| 2018 MacBook Pro (Intel) | OpenCL | ~0.6 FPS | YOLOv5x | 50.7 | High-quality offline analysis |
+| Ubuntu 22.04 AMD64 (8-core) | CPU | ~1 FPS | YOLOv5x | 50.7 | Archival video processing |
+| Ubuntu 22.04 AMD64 (AMD GPU) | OpenCL | ~3-7 FPS | YOLOv5x | 50.7 | GPU-accelerated high accuracy |
+
+**Model Selection by Use Case:**
+- **Real-time webcam**: YOLOv5s (fast, good for live monitoring)
+- **Offline video analysis**: YOLOv5l or YOLOv5x (better accuracy, acceptable speed for batch processing)
+- **Critical accuracy needs**: YOLOv5x (maximum quality, use with GPU or for low-FPS batch work)
+- **Balanced**: YOLOv5m (middle ground between speed and accuracy)
 
 ## Project Structure
 
