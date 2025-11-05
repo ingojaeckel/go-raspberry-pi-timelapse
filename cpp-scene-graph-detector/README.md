@@ -1,24 +1,24 @@
 # C++ Scene Graph Detector
 
-A standalone C++ application for detecting objects and spatial relationships in images and video, producing structured scene graphs.
+A standalone C++ application for real-time webcam monitoring with object detection and spatial relation inference.
 
 ## Overview
 
-This application combines object detection (using YOLO models via OpenCV DNN) with spatial relation prediction to create scene graphs that describe "what is where" in an image.
+This application provides continuous environmental observation by analyzing webcam feeds in real-time. It combines object detection (using YOLO models via OpenCV DNN) with spatial relation prediction to create scene graphs that describe "what is where" in the current view.
 
 **Scene Graph**: A structured representation where:
-- **Nodes** = Detected objects (person, car, tree, etc.)
+- **Nodes** = Detected objects (person, car, tree, house, etc.)
 - **Edges** = Spatial relationships (left_of, on, contains, etc.)
 
 ## Features
 
+- ✅ **Real-time Webcam Monitoring** with live preview
 - ✅ **Object Detection** via ONNX models (YOLOv5, etc.)
-- ✅ **Spatial Relation Prediction** (geometric or learned)
-- ✅ **JSON Export** with standardized schema
-- ✅ **Graphviz DOT Export** for visualization
-- ✅ **Real-time Preview** with bounding boxes and scene description
-- ✅ **Webcam Support** with automatic scene change detection
-- ✅ **Video Processing** with frame sampling
+- ✅ **Spatial Relation Prediction** (11 geometric predicates)
+- ✅ **Bounding Box Overlay** with labels and confidence scores
+- ✅ **Scene Description Overlay** showing detected relationships
+- ✅ **Automatic Photo Capture** when scene changes (new objects detected)
+- ✅ **Console Logging** of detected objects and relations
 - ✅ **Multi-backend** support (CPU, OpenCL)
 - ✅ **Cross-platform** (macOS Intel, Linux AMD64)
 
@@ -69,22 +69,19 @@ curl -L -o assets/models/yolov5x.onnx \
 ### Run
 
 ```bash
-# Process single image
-./build/cpp-scene-graph-detector \
-  --input samples/scene.jpg \
-  --model.detector assets/models/yolov5s.onnx \
-  --labels assets/labels/coco.txt \
-  --out.json output.json \
-  --visualize output.jpg
-
-# Process webcam with preview
+# Start real-time webcam detection with preview
 ./build/cpp-scene-graph-detector \
   --camera-id 0 \
   --model.detector assets/models/yolov5s.onnx \
   --labels assets/labels/coco.txt \
-  --out.json output/ \
-  --show-preview
+  --output-dir captures/
 ```
+
+The application will:
+- Show a live preview window with bounding boxes and scene description
+- Log detected objects and spatial relations to console
+- Automatically save photos to `captures/` when the scene changes (new object types detected)
+- Press ESC or 'q' to quit
 
 ## Usage
 
@@ -97,113 +94,77 @@ Required:
   --model.detector PATH     Path to ONNX object detector model
   --labels PATH             Path to class labels file
 
-Input (one required):
-  --input PATH              Input image or video file
+Input:
   --camera-id N             Webcam device ID (default: 0)
-
-Output:
-  --out.json PATH           Output JSON file/directory
-  --out.dot PATH            Output Graphviz DOT file (optional)
-  --visualize PATH          Save visualization image (optional)
 
 Configuration:
   --backend TYPE            cpu|opencl|auto (default: cpu)
   --threshold.obj N         Object confidence threshold (default: 0.25)
   --threshold.rel N         Relation confidence threshold (default: 0.5)
   --max-objects N           Max objects to detect (default: 128)
-  --fps N                   Video/webcam FPS (default: 1)
-  --show-preview            Show real-time preview window
+  --output-dir PATH         Directory for scene change photos (default: output/)
+  --fps N                   Processing FPS (default: 1)
 ```
 
 ### Examples
 
-**High-accuracy image processing (maximum quality):**
+**Basic webcam monitoring (fast, real-time):**
 ```bash
 ./cpp-scene-graph-detector \
-  --input image.jpg \
+  --camera-id 0 \
+  --model.detector models/yolov5s.onnx \
+  --labels assets/labels/coco.txt
+```
+*Uses YOLOv5s for fast real-time detection at ~1 FPS on 2018 MacBook Pro CPU.*
+
+**High-accuracy environmental monitoring:**
+```bash
+./cpp-scene-graph-detector \
+  --camera-id 0 \
   --model.detector models/yolov5x.onnx \
   --labels assets/labels/coco.txt \
   --threshold.obj 0.5 \
-  --out.json scene.json \
-  --out.dot scene.dot \
-  --visualize scene_viz.jpg
+  --output-dir environmental_captures/
 ```
-*Use YOLOv5x for offline processing when accuracy is critical. Inference takes ~330ms per frame on 2018 MacBook Pro CPU.*
+*Uses YOLOv5x for maximum accuracy. Slower (~0.3 FPS) but better for detailed environmental observation.*
 
-**Balanced accuracy for video processing:**
-```bash
-./cpp-scene-graph-detector \
-  --input video.mp4 \
-  --model.detector models/yolov5l.onnx \
-  --labels assets/labels/coco.txt \
-  --backend opencl \
-  --fps 2 \
-  --out.json output/
-```
-*YOLOv5l provides good accuracy (~49 mAP) at ~180ms per frame, suitable for offline video analysis.*
-
-**Real-time webcam with OpenCL:**
+**GPU-accelerated webcam:**
 ```bash
 ./cpp-scene-graph-detector \
   --camera-id 0 \
   --model.detector models/yolov5s.onnx \
   --labels assets/labels/coco.txt \
-  --backend opencl \
-  --show-preview \
-  --out.json captures/
+  --backend opencl
+```
+*Leverages OpenCL for GPU acceleration (2-3x faster on compatible hardware).*
+
+## Scene Graph Output
+
+When a scene change is detected, the application:
+
+1. **Logs to console**: Displays detected objects and spatial relations
+2. **Saves a photo**: Captures the current frame with bounding box and scene description overlays to the output directory
+
+Example console output:
+```
+Scene changed - saved outputs
+Objects detected: 3
+  - house (confidence: 0.92)
+  - tree (confidence: 0.87)
+  - car (confidence: 0.88)
+Relations found: 2
+  - tree left_of house
+  - car right_of house
 ```
 
-**Video processing:**
-```bash
-./cpp-scene-graph-detector \
-  --input video.mp4 \
-  --model.detector models/yolov5m.onnx \
-  --labels assets/labels/coco.txt \
-  --fps 2 \
-  --out.json output/
-```
-
-## Scene Graph Format
-
-The application outputs JSON with the following structure:
-
-```json
-{
-  "meta": {
-    "timestamp": "2024-01-15 14:30:00",
-    "image_width": "1280",
-    "image_height": "720"
-  },
-  "objects": [
-    {
-      "id": 0,
-      "class_id": 0,
-      "label": "person",
-      "score": 0.95,
-      "bbox": {
-        "x": 0.5,
-        "y": 0.5,
-        "width": 0.2,
-        "height": 0.3
-      }
-    }
-  ],
-  "relations": [
-    {
-      "subject_id": 0,
-      "predicate": "left_of",
-      "object_id": 1,
-      "score": 1.0
-    }
-  ]
-}
-```
-
-See [docs/SCENE_GRAPH_FORMAT.md](docs/SCENE_GRAPH_FORMAT.md) for full specification.
+The saved photo includes:
+- Green bounding boxes around detected objects
+- Labels with class name and confidence score
+- Scene description overlay at the bottom showing object count and key relationships
 
 ## Spatial Predicates
 
-The system supports the following spatial relationships:
+The system automatically infers the following spatial relationships:
 
 | Predicate | Description | Example |
 |-----------|-------------|---------|
