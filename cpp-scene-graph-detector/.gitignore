@@ -1,0 +1,32 @@
+# Build directories
+build/
+build-*/
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Compiled binaries
+cpp-scene-graph-detector
+scene_graph_tests
+*.o
+*.a
+*.so
+*.dylib
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test artifacts
+Testing/
+
+# OS files
+.DS_Store
+Thumbs.db
