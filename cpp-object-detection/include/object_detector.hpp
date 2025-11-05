@@ -49,7 +49,7 @@ public:
         // For default 1280x720 (720p): 50px ≈ 3.9% of width or 6.9% of height
         // For 640x480: 50px ≈ 7.8% of width or 10.4% of height
         // Allows for small positional variance due to detection jitter while preventing false matches
-        static constexpr float MATCH_DISTANCE_THRESHOLD = 50.0f;
+        static constexpr float MATCH_DISTANCE_THRESHOLD = 100.0f;
     };
 
     ObjectDetector(const std::string& model_path,
