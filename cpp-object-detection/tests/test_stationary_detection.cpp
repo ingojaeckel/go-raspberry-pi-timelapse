@@ -216,3 +216,250 @@ TEST_F(StationaryDetectionTest, ConfigurableTimeout) {
         detector, logger, perf_monitor, 1, 10, test_output_dir);
     EXPECT_NE(processor_default, nullptr);
 }
+
+TEST_F(StationaryDetectionTest, RememberedStationaryObjectBasic) {
+    // Test that a stationary object is remembered when it disappears
+    // and restored when re-detected
+    
+    ASSERT_TRUE(detector != nullptr);
+    
+    // Create fake detections with same position to make object stationary
+    std::vector<Detection> detections;
+    Detection det;
+    det.class_name = "person";
+    det.bbox = cv::Rect(100, 100, 50, 100);
+    det.confidence = 0.6f;  // Lower confidence (flickering scenario)
+    detections.push_back(det);
+    
+    // Update tracking multiple times to make it stationary
+    for (int i = 0; i < 5; i++) {
+        detector->updateTracking(detections);
+    }
+    
+    // Verify object is stationary
+    const auto& tracked1 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked1.size(), 1);
+    EXPECT_TRUE(tracked1[0].is_stationary);
+    
+    // Simulate object disappearing (not detected for >30 frames)
+    std::vector<Detection> empty_detections;
+    for (int i = 0; i < 35; i++) {
+        detector->updateTracking(empty_detections);
+    }
+    
+    // Object should be removed from active tracking
+    const auto& tracked2 = detector->getTrackedObjects();
+    EXPECT_EQ(tracked2.size(), 0);
+    
+    // Re-detect the object at the same position
+    detector->updateTracking(detections);
+    
+    // Object should be restored as stationary (not treated as new)
+    const auto& tracked3 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked3.size(), 1);
+    EXPECT_TRUE(tracked3[0].is_stationary);
+    EXPECT_FALSE(tracked3[0].is_new);  // Should not be marked as new
+}
+
+TEST_F(StationaryDetectionTest, RememberedStationaryObjectDifferentLocation) {
+    // Test that a remembered object is NOT restored if detected at a different location
+    
+    ASSERT_TRUE(detector != nullptr);
+    
+    // Create fake detections at position (100, 100)
+    std::vector<Detection> detections1;
+    Detection det1;
+    det1.class_name = "person";
+    det1.bbox = cv::Rect(100, 100, 50, 100);
+    det1.confidence = 0.6f;
+    detections1.push_back(det1);
+    
+    // Make object stationary
+    for (int i = 0; i < 5; i++) {
+        detector->updateTracking(detections1);
+    }
+    
+    // Verify object is stationary
+    const auto& tracked1 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked1.size(), 1);
+    EXPECT_TRUE(tracked1[0].is_stationary);
+    
+    // Simulate object disappearing
+    std::vector<Detection> empty_detections;
+    for (int i = 0; i < 35; i++) {
+        detector->updateTracking(empty_detections);
+    }
+    
+    // Re-detect at a far away position (200, 200) - beyond match threshold
+    std::vector<Detection> detections2;
+    Detection det2;
+    det2.class_name = "person";
+    det2.bbox = cv::Rect(200, 200, 50, 100);
+    det2.confidence = 0.6f;
+    detections2.push_back(det2);
+    
+    detector->updateTracking(detections2);
+    
+    // Object should be treated as new (different location)
+    const auto& tracked2 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked2.size(), 1);
+    EXPECT_TRUE(tracked2[0].is_new);  // Should be marked as new
+    EXPECT_FALSE(tracked2[0].is_stationary);  // Not yet stationary
+}
+
+TEST_F(StationaryDetectionTest, RememberedStationaryObjectNearbyLocation) {
+    // Test that a remembered object IS restored if detected nearby (within threshold)
+    
+    ASSERT_TRUE(detector != nullptr);
+    
+    // Create fake detections at position (100, 100)
+    std::vector<Detection> detections1;
+    Detection det1;
+    det1.class_name = "car";
+    det1.bbox = cv::Rect(100, 100, 80, 60);
+    det1.confidence = 0.55f;
+    detections1.push_back(det1);
+    
+    // Make object stationary
+    for (int i = 0; i < 5; i++) {
+        detector->updateTracking(detections1);
+    }
+    
+    // Verify object is stationary
+    const auto& tracked1 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked1.size(), 1);
+    EXPECT_TRUE(tracked1[0].is_stationary);
+    
+    // Simulate object disappearing
+    std::vector<Detection> empty_detections;
+    for (int i = 0; i < 35; i++) {
+        detector->updateTracking(empty_detections);
+    }
+    
+    // Re-detect at a nearby position (120, 110) - within RememberedStationaryObject::MATCH_DISTANCE_THRESHOLD
+    std::vector<Detection> detections2;
+    Detection det2;
+    det2.class_name = "car";
+    det2.bbox = cv::Rect(120, 110, 80, 60);
+    det2.confidence = 0.55f;
+    detections2.push_back(det2);
+    
+    detector->updateTracking(detections2);
+    
+    // Object should be restored as stationary
+    const auto& tracked2 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked2.size(), 1);
+    EXPECT_TRUE(tracked2[0].is_stationary);
+    EXPECT_FALSE(tracked2[0].is_new);  // Should not be marked as new
+}
+
+TEST_F(StationaryDetectionTest, RememberedStationaryObjectDifferentType) {
+    // Test that remembered objects only match by type AND location
+    
+    ASSERT_TRUE(detector != nullptr);
+    
+    // Create a stationary "car" at position (100, 100)
+    std::vector<Detection> car_detections;
+    Detection car_det;
+    car_det.class_name = "car";
+    car_det.bbox = cv::Rect(100, 100, 80, 60);
+    car_det.confidence = 0.7f;
+    car_detections.push_back(car_det);
+    
+    // Make car stationary
+    for (int i = 0; i < 5; i++) {
+        detector->updateTracking(car_detections);
+    }
+    
+    // Verify car is stationary
+    const auto& tracked1 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked1.size(), 1);
+    EXPECT_TRUE(tracked1[0].is_stationary);
+    EXPECT_EQ(tracked1[0].object_type, "car");
+    
+    // Simulate car disappearing
+    std::vector<Detection> empty_detections;
+    for (int i = 0; i < 35; i++) {
+        detector->updateTracking(empty_detections);
+    }
+    
+    // Detect a "person" at the same position
+    std::vector<Detection> person_detections;
+    Detection person_det;
+    person_det.class_name = "person";
+    person_det.bbox = cv::Rect(100, 100, 50, 100);
+    person_det.confidence = 0.7f;
+    person_detections.push_back(person_det);
+    
+    detector->updateTracking(person_detections);
+    
+    // Person should be treated as new (different type)
+    const auto& tracked2 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked2.size(), 1);
+    EXPECT_EQ(tracked2[0].object_type, "person");
+    EXPECT_TRUE(tracked2[0].is_new);  // Should be marked as new
+    EXPECT_FALSE(tracked2[0].is_stationary);  // Not yet stationary
+}
+
+TEST_F(StationaryDetectionTest, MultipleRememberedObjects) {
+    // Test handling multiple remembered stationary objects
+    
+    ASSERT_TRUE(detector != nullptr);
+    
+    // Create two stationary objects at different positions
+    std::vector<Detection> two_detections;
+    
+    Detection det1;
+    det1.class_name = "person";
+    det1.bbox = cv::Rect(100, 100, 50, 100);
+    det1.confidence = 0.6f;
+    two_detections.push_back(det1);
+    
+    Detection det2;
+    det2.class_name = "car";
+    det2.bbox = cv::Rect(300, 200, 80, 60);
+    det2.confidence = 0.65f;
+    two_detections.push_back(det2);
+    
+    // Make both objects stationary
+    for (int i = 0; i < 5; i++) {
+        detector->updateTracking(two_detections);
+    }
+    
+    // Verify both are stationary
+    const auto& tracked1 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked1.size(), 2);
+    EXPECT_TRUE(tracked1[0].is_stationary);
+    EXPECT_TRUE(tracked1[1].is_stationary);
+    
+    // Simulate both disappearing
+    std::vector<Detection> empty_detections;
+    for (int i = 0; i < 35; i++) {
+        detector->updateTracking(empty_detections);
+    }
+    
+    // Re-detect both objects
+    detector->updateTracking(two_detections);
+    
+    // Both should be restored as stationary
+    const auto& tracked2 = detector->getTrackedObjects();
+    ASSERT_EQ(tracked2.size(), 2);
+    
+    // Find person and car in the results
+    bool person_found = false;
+    bool car_found = false;
+    for (const auto& obj : tracked2) {
+        if (obj.object_type == "person") {
+            person_found = true;
+            EXPECT_TRUE(obj.is_stationary);
+            EXPECT_FALSE(obj.is_new);
+        } else if (obj.object_type == "car") {
+            car_found = true;
+            EXPECT_TRUE(obj.is_stationary);
+            EXPECT_FALSE(obj.is_new);
+        }
+    }
+    
+    EXPECT_TRUE(person_found);
+    EXPECT_TRUE(car_found);
+}

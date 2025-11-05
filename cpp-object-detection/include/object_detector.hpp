@@ -33,6 +33,25 @@ public:
         static constexpr float STATIONARY_MOVEMENT_THRESHOLD = 10.0f;  // Max avg movement (pixels) to be stationary
     };
 
+    /**
+     * Remembered stationary object - persists even after object is removed from active tracking
+     * Used to restore stationary status when object is re-detected
+     */
+    struct RememberedStationaryObject {
+        std::string object_type;
+        cv::Point2f last_known_position;
+        std::chrono::steady_clock::time_point first_stationary_time;  // When object originally became stationary
+        std::chrono::steady_clock::time_point last_seen_time;  // When object was last detected
+        int accumulated_stationary_seconds;  // Total time object was stationary before losing tracking
+        
+        // Constants for matching
+        // Maximum Euclidean distance (in pixels) between bounding box centers to consider same object
+        // For default 1280x720 (720p): 50px ≈ 3.9% of width or 6.9% of height
+        // For 640x480: 50px ≈ 7.8% of width or 10.4% of height
+        // Allows for small positional variance due to detection jitter while preventing false matches
+        static constexpr float MATCH_DISTANCE_THRESHOLD = 50.0f;
+    };
+
     ObjectDetector(const std::string& model_path,
                   const std::string& config_path,
                   const std::string& classes_path,
@@ -134,7 +153,14 @@ private:
     std::shared_ptr<class GoogleSheetsClient> google_sheets_client_;  // Optional Google Sheets integration
     
     std::unique_ptr<IDetectionModel> detection_model_;
+    
+    // Active tracking: Objects currently being detected in recent frames (removed after 30 frames of non-detection)
     std::vector<ObjectTracker> tracked_objects_;
+    
+    // Historical memory: Previously stationary objects that lost tracking but may reappear
+    // Persists up to 24 hours to restore stationary status if object is re-detected at same location
+    // This prevents "flickering" where low-confidence detections are intermittently lost
+    std::vector<RememberedStationaryObject> remembered_stationary_objects_;
     
     bool initialized_;
     
@@ -145,10 +171,15 @@ private:
     // Limits to prevent unbounded growth
     static constexpr size_t MAX_TRACKED_OBJECTS = 100;  // Reasonable limit for concurrent objects
     static constexpr int MAX_OBJECT_TYPE_ENTRIES = 50;   // Limit different object types tracked
+    static constexpr size_t MAX_REMEMBERED_STATIONARY_OBJECTS = 50;  // Limit remembered stationary objects
+    static constexpr int REMEMBERED_OBJECT_EXPIRY_HOURS = 24;  // Remove remembered objects after 24 hours
     
     void updateTrackedObjects(const std::vector<Detection>& detections);
     void logObjectEvents(const std::vector<Detection>& current_detections);
     void cleanupOldTrackedObjects();
     void limitObjectTypeCounts();
     void updateStationaryStatus(ObjectTracker& tracker);
+    void rememberStationaryObject(const ObjectTracker& tracker);
+    void cleanupOldRememberedObjects();
+    RememberedStationaryObject* findRememberedStationaryObject(const std::string& object_type, const cv::Point2f& position);
 };
