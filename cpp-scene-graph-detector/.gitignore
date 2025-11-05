@@ -1,0 +1,45 @@
+# Build artifacts
+build/
+build-*/
+*.o
+*.a
+*.so
+*.dylib
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+*.cmake
+
+# Executables
+cpp-scene-graph-detector
+scene_graph_tests
+
+# Models (too large for git)
+assets/models/*.onnx
+assets/models/*.pth
+assets/models/*.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Test outputs
+output/
+*.json
+*.dot
+*.jpg
+*.png
+!samples/*.json
+
+# Logs
+*.log
