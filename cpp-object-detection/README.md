@@ -11,6 +11,10 @@ A standalone C++ executable for real-time object detection from webcam data at 7
 - **Headless operation** - no X11 required
 - **Object tracking and permanence** - Distinguishes new objects from moving objects
 - **Position-based tracking** for people, vehicles, and small animals (cat/dog/fox)
+- **🆕 3D Scene Model** - Comprehensive scene representation with stationary and dynamic objects
+  - **Stationary object detection** - Trees, benches, traffic lights, fire hydrants, and more
+  - **Spatial relationships** - Track relative positions between objects
+  - **Scene composition** - Understand the complete environment being monitored
 - **🆕 Stationary object detection** - Automatically stops taking photos of stationary objects after configurable timeout
 - **Real-time viewfinder** - optional on-screen preview with detection bounding boxes and performance statistics (--show-preview)
   - **Debug overlay** with performance metrics, detection counts, uptime, and top detected objects
@@ -153,6 +157,99 @@ Time: 250s - Both stationary for > 120s → Photo SKIPPED
 - **Configurable**: Adjust timeout based on your monitoring needs
 - **Smart Resume**: Automatically starts capturing again when movement is detected
 
+## 3D Scene Model
+
+The application includes a comprehensive scene model that represents the complete monitored environment, tracking both stationary and dynamic objects with their spatial relationships.
+
+### Overview
+
+The scene model provides:
+- **Object Tracking**: Maintains a complete inventory of detected objects (both stationary and dynamic)
+- **Spatial Relationships**: Calculates and tracks relative positions between objects
+- **Scene Composition**: Provides a holistic view of the environment being monitored
+- **Stationary Object Support**: Automatically identifies and tracks stationary scene elements
+
+### Stationary Object Types
+
+The system now detects and tracks various stationary objects that make up a 3D scene:
+
+| Object Type | Description | Use Case |
+|-------------|-------------|----------|
+| **potted plant** | Plants, small trees, bushes (COCO proxy) | Natural scene elements |
+| **bench** | Park benches, outdoor seating | Scene fixtures |
+| **traffic light** | Street traffic signals | Urban monitoring |
+| **fire hydrant** | Fire safety equipment | Street infrastructure |
+| **stop sign** | Traffic control signs | Road monitoring |
+| **parking meter** | Parking infrastructure | Urban scenes |
+| **chair** | Outdoor chairs | Scene furniture |
+| **couch** | Outdoor furniture | Residential monitoring |
+| **dining table** | Outdoor tables | Scene composition |
+
+> **Note**: The COCO dataset doesn't include specific classes for "tree", "hedge", "bush", or "house". We use "potted plant" as the closest proxy for natural vegetation. Custom trained models would be needed for more specific classification.
+
+### Spatial Relationships
+
+The scene model automatically calculates spatial relationships between detected objects:
+
+**Relative Position Descriptions:**
+- Directional: "to the right of", "above", "below", "to the left of"
+- Diagonal: "above and to the right", "below and to the left", etc.
+- Distance context: "very close" (<100px), "nearby" (<300px), "moderate distance" (<600px), "far away" (>600px)
+
+**Example Scene Analysis:**
+```
+Scene contains 5 objects (3 stationary, 2 dynamic):
+  - 1 bench at (200, 300)
+  - 1 potted plant at (450, 280) - nearby to the right of bench
+  - 1 traffic light at (600, 150) - above and to the right of bench (far away)
+  - 1 person at (250, 320) - below and to the right of bench (very close)
+  - 1 car at (500, 400) - below and to the right of bench (moderate distance)
+```
+
+### Scene Statistics
+
+The scene model provides comprehensive statistics:
+- Total number of objects in scene
+- Count of stationary vs. dynamic objects
+- Objects grouped by type
+- Average detection confidence per object
+- Object persistence (first detected, last seen times)
+
+### API Usage
+
+The scene model is available programmatically through the `SceneModel` class:
+
+```cpp
+#include "scene_model.hpp"
+
+SceneModel scene;
+
+// Add/update objects as they're detected
+scene.addOrUpdateObject("bench", position, bbox, confidence, is_stationary);
+
+// Get all stationary objects
+auto stationary = scene.getStationaryObjects();
+
+// Get spatial relationships
+auto relationships = scene.getSpatialRelationships();
+
+// Get scene statistics
+auto stats = scene.getSceneStats();
+std::cout << "Scene: " << stats.total_objects << " objects ("
+          << stats.stationary_objects << " stationary)" << std::endl;
+
+// Get textual description
+std::cout << scene.getSceneDescription() << std::endl;
+```
+
+### Benefits
+
+- **Scene Understanding**: Provides context about the complete environment, not just moving objects
+- **Relationship Tracking**: Understand how objects are positioned relative to each other
+- **Memory Efficient**: Bounded data structures prevent memory growth in long-running deployments
+- **Automatic Classification**: Stationary objects are automatically identified based on object type
+- **Depth Estimation**: Simple heuristic-based depth estimation from bounding box size
+
 ## Model Selection
 
 The application supports multiple detection models with different speed/accuracy characteristics:
@@ -276,7 +373,7 @@ public:
 
 4. **Object Detector (`object_detector.hpp/cpp`)**
    - Object detection orchestrator using pluggable models
-   - Target class filtering (person, vehicles, animals, furniture, books)
+   - Target class filtering (person, vehicles, animals, furniture, stationary objects)
    - **🆕 Enhanced object tracking and permanence model**:
      - Tracks objects frame-to-frame based on position and type
      - Maintains position history (up to 10 recent positions) for movement pattern analysis
@@ -289,22 +386,31 @@ public:
      - See [MOVEMENT_DETECTION_IMPROVEMENTS.md](docs/MOVEMENT_DETECTION_IMPROVEMENTS.md) for details
    - Model switching and performance monitoring
 
-5. **🆕 Detection Model Interface (`detection_model_interface.hpp`)**
+5. **🆕 Scene Model (`scene_model.hpp/cpp`)**
+   - Comprehensive 3D scene representation
+   - Tracks stationary and dynamic objects with spatial relationships
+   - Supports detection of: benches, potted plants, traffic lights, fire hydrants, stop signs, parking meters, outdoor furniture
+   - Calculates relative positions and distances between objects
+   - Provides scene statistics and textual descriptions
+   - Bounded data structures for long-term operation
+   - Automatic depth estimation from bounding box size
+
+6. **🆕 Detection Model Interface (`detection_model_interface.hpp`)**
    - Abstract interface for pluggable detection models
    - Standardized detection API and metrics
    - Factory pattern for model creation
 
-6. **🆕 YOLO Model Implementations (`yolo_v5_model.hpp/cpp`)**
+7. **🆕 YOLO Model Implementations (`yolo_v5_model.hpp/cpp`)**
    - YOLOv5s: Fast model optimized for real-time detection
    - YOLOv5l: High-accuracy model for precision applications
    - Extensible framework for future model types
 
-5. **Logger (`logger.hpp/cpp`)**
+8. **Logger (`logger.hpp/cpp`)**
    - Structured logging with timestamps
    - Object detection event logging
    - Performance and heartbeat logging
 
-6. **Performance Monitor (`performance_monitor.hpp/cpp`)**
+9. **Performance Monitor (`performance_monitor.hpp/cpp`)**
    - Frame rate calculation
    - Processing time tracking
    - Performance warning system
@@ -927,11 +1033,52 @@ ssh user@target-system 'tail -f /var/log/object_detection.log'
 1. **Update target classes in `object_detector.cpp`:**
 ```cpp
 std::vector<std::string> ObjectDetector::getTargetClasses() {
-    return {"person", "car", "truck", "bus", "motorcycle", "bicycle", "cat", "dog", "bird", "bear", "chair", "book"};
+    return {
+        "person", "car", "truck", "bus", "motorcycle", "bicycle", 
+        "cat", "dog", "bird", "bear", "chair", "book",
+        // Stationary scene objects
+        "potted plant", "bench", "traffic light", "fire hydrant",
+        "stop sign", "parking meter", "couch", "dining table"
+    };
 }
 ```
 
-2. **Ensure model supports the classes** (COCO dataset includes most common objects)
+2. **Add stationary object types to scene model** (if applicable) in `scene_model.cpp`:
+```cpp
+std::vector<std::string> SceneModel::getStationaryObjectTypes() {
+    return {
+        "potted plant", "bench", "traffic light", "fire hydrant",
+        "stop sign", "parking meter", "chair", "couch", "dining table"
+        // Add your new stationary object type here
+    };
+}
+```
+
+3. **Ensure model supports the classes** (COCO dataset includes most common objects)
+
+### Working with the Scene Model
+
+The scene model can be used to:
+
+1. **Track object composition**:
+```cpp
+auto stats = scene.getSceneStats();
+// Access: stats.total_objects, stats.stationary_objects, stats.objects_by_type
+```
+
+2. **Analyze spatial relationships**:
+```cpp
+auto relationships = scene.getSpatialRelationships();
+for (const auto& rel : relationships) {
+    std::cout << rel.object1_type << " is " << rel.relative_position 
+              << " " << rel.object2_type << std::endl;
+}
+```
+
+3. **Find nearest objects**:
+```cpp
+auto* nearest_bench = scene.findNearestObject("bench", cv::Point2f(x, y));
+```
 
 ### Extending Detection Logic
 
