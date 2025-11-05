@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "num_objects": 2,
+    "num_relations": 1
+  },
+  "objects": [
+    {
+      "id": 0,
+      "label": "person",
+      "class_id": 0,
+      "score": 0.87,
+      "bbox": {
+        "x": 200.00,
+        "y": 300.00,
+        "width": 120.00,
+        "height": 240.00
+      }
+    },
+    {
+      "id": 1,
+      "label": "car",
+      "class_id": 2,
+      "score": 0.92,
+      "bbox": {
+        "x": 500.00,
+        "y": 350.00,
+        "width": 200.00,
+        "height": 150.00
+      }
+    }
+  ],
+  "relations": [
+    {
+      "subject_id": 0,
+      "predicate": "left_of",
+      "object_id": 1,
+      "score": 1.00
+    }
+  ]
+}

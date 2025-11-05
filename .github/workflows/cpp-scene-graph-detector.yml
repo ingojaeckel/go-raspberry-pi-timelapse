@@ -1,0 +1,190 @@
+name: C++ Scene Graph Detector Build
+
+on:
+  push:
+    paths:
+      - 'cpp-scene-graph-detector/**'
+      - '.github/workflows/cpp-scene-graph-detector.yml'
+  pull_request:
+    paths:
+      - 'cpp-scene-graph-detector/**'
+      - '.github/workflows/cpp-scene-graph-detector.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build and Test
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x86_64
+            platform: linux
+          - os: macos-13
+            arch: x86_64
+            platform: macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            libopencv-dev \
+            pkg-config \
+            libgtest-dev
+
+      - name: Install dependencies (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          brew update
+          brew install \
+            cmake \
+            opencv \
+            pkg-config \
+            googletest
+
+      - name: Build Google Test (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp lib/*.a /usr/lib || sudo cp *.a /usr/lib
+
+      - name: Configure CMake
+        working-directory: cpp-scene-graph-detector
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DSCENE_GRAPH_BUILD_TESTS=ON
+
+      - name: Build application
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            make -j$(sysctl -n hw.ncpu)
+          else
+            make -j$(nproc)
+          fi
+
+      - name: Run unit tests
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          if [ -f "tests/scene_graph_tests" ]; then
+            ./tests/scene_graph_tests
+          else
+            echo "Unit tests not available for this configuration"
+          fi
+
+      - name: Test executable help
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          ./cpp-scene-graph-detector --help
+
+      - name: Create artifact name
+        id: artifact
+        run: echo "name=scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: |
+            cpp-scene-graph-detector/build/cpp-scene-graph-detector
+            cpp-scene-graph-detector/assets/
+            cpp-scene-graph-detector/README.md
+          retention-days: 30
+
+  build-opencl:
+    name: Build with OpenCL
+    runs-on: ubuntu-22.04
+    needs: build-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            libopencv-dev \
+            pkg-config \
+            ocl-icd-opencl-dev
+
+      - name: Configure with OpenCL
+        working-directory: cpp-scene-graph-detector
+        run: |
+          mkdir -p build-opencl
+          cd build-opencl
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DSCENE_GRAPH_WITH_OPENCL=ON
+
+      - name: Build with OpenCL
+        working-directory: cpp-scene-graph-detector/build-opencl
+        run: |
+          make -j$(nproc)
+
+      - name: Test OpenCL build
+        working-directory: cpp-scene-graph-detector/build-opencl
+        run: |
+          ./cpp-scene-graph-detector --help
+          echo "OpenCL build completed successfully"
+
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-22.04
+    needs: build-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            libopencv-dev \
+            pkg-config
+
+      - name: Build application
+        working-directory: cpp-scene-graph-detector
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+
+      - name: Test missing required args
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          # Should fail without required args
+          ! ./cpp-scene-graph-detector
+          echo "Correctly rejected missing arguments"
+
+      - name: Test invalid backend
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          # Should fail with invalid backend
+          ! ./cpp-scene-graph-detector --backend invalid
+          echo "Correctly rejected invalid backend"
+
+      - name: Verify assets structure
+        run: |
+          # Check that required asset files exist
+          test -f cpp-scene-graph-detector/assets/models/coco.names
+          test -f cpp-scene-graph-detector/assets/models/README.md
+          echo "Assets structure verified"
