@@ -13,6 +13,7 @@ Download a YOLOv5 or similar ONNX model for object detection:
 curl -L -o detector.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 # Inference: ~65ms on 2018 MacBook Pro CPU
 # Accuracy: 37.4 mAP on COCO
+#   (mAP = mean Average Precision: 0-100%, higher = better detection accuracy)
 # Best for: Real-time webcam processing
 ```
 
@@ -21,6 +22,7 @@ curl -L -o detector.onnx https://github.com/ultralytics/yolov5/releases/download
 curl -L -o detector.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5m.onnx
 # Inference: ~120ms on 2018 MacBook Pro CPU
 # Accuracy: 45.4 mAP on COCO
+#   (mAP = mean Average Precision: 0-100%, higher = better detection accuracy)
 # Best for: Balance between speed and accuracy
 ```
 
@@ -29,6 +31,7 @@ curl -L -o detector.onnx https://github.com/ultralytics/yolov5/releases/download
 curl -L -o detector.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5l.onnx
 # Inference: ~180ms on 2018 MacBook Pro CPU
 # Accuracy: 49.0 mAP on COCO
+#   (mAP = mean Average Precision: 0-100%, higher = better detection accuracy)
 # Best for: Offline video processing where accuracy matters
 ```
 
@@ -37,9 +40,18 @@ curl -L -o detector.onnx https://github.com/ultralytics/yolov5/releases/download
 curl -L -o detector.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5x.onnx
 # Inference: ~330ms on 2018 MacBook Pro CPU, ~150ms with OpenCL on AMD GPU
 # Accuracy: 50.7 mAP on COCO
+#   (mAP = mean Average Precision: 0-100%, higher = better detection accuracy)
 # Best for: Batch processing, archival analysis, or when maximum accuracy is required
 # Note: Slower but provides best object detection quality
 ```
+
+**What is mAP?**
+- **mAP** (mean Average Precision) measures how accurately a model detects and localizes objects
+- Scale: 0-100% (higher is better)
+- Combines two metrics:
+  - **Precision**: % of detections that are correct (not false positives)
+  - **Recall**: % of actual objects that are detected (not missed)
+- Example: 50.7 mAP means the model correctly detects and localizes objects with 50.7% average precision across all object classes
 
 ### Hardware Requirements for 24 FPS Real-time Processing
 

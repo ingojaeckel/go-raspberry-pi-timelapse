@@ -88,60 +88,6 @@ SceneGraph Runner::processImage(const cv::Mat& image) {
     return graph;
 }
 
-bool Runner::processVideo(const std::string& video_path,
-                         const std::string& output_dir,
-                         int frames_per_second) {
-    cv::VideoCapture cap(video_path);
-    if (!cap.isOpened()) {
-        std::cerr << "Failed to open video: " << video_path << std::endl;
-        return false;
-    }
-    
-    double fps = cap.get(cv::CAP_PROP_FPS);
-    int frame_skip = static_cast<int>(fps / frames_per_second);
-    if (frame_skip < 1) frame_skip = 1;
-    
-    int frame_count = 0;
-    int processed_count = 0;
-    cv::Mat frame;
-    SceneGraph prev_graph;
-    
-    while (cap.read(frame)) {
-        frame_count++;
-        
-        if (frame_count % frame_skip != 0) {
-            continue;
-        }
-        
-        SceneGraph graph = processImage(frame);
-        
-        // Check if scene changed
-        if (hasSceneChanged(prev_graph, graph)) {
-            // Save outputs
-            std::ostringstream oss;
-            oss << output_dir << "/frame_" << std::setw(6) << std::setfill('0') 
-                << processed_count << ".json";
-            graph.toJSON(oss.str());
-            
-            // Save visualization if requested
-            if (config_.show_preview) {
-                cv::Mat vis = visualize(frame, graph);
-                std::ostringstream img_oss;
-                img_oss << output_dir << "/frame_" << std::setw(6) << std::setfill('0') 
-                        << processed_count << ".jpg";
-                cv::imwrite(img_oss.str(), vis);
-            }
-            
-            prev_graph = graph;
-        }
-        
-        processed_count++;
-    }
-    
-    cap.release();
-    return true;
-}
-
 bool Runner::processWebcam(int camera_id,
                           const std::string& output_dir,
                           int frames_per_second) {

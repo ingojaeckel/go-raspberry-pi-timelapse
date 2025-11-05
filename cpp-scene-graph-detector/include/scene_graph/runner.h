@@ -35,14 +35,6 @@ public:
     // Initialize with configuration
     bool initialize(const RunnerConfig& config);
     
-    // Process single image
-    SceneGraph processImage(const cv::Mat& image);
-    
-    // Process video file
-    bool processVideo(const std::string& video_path,
-                     const std::string& output_dir,
-                     int frames_per_second = 1);
-    
     // Process webcam stream
     bool processWebcam(int camera_id,
                       const std::string& output_dir,
@@ -59,6 +51,9 @@ private:
     std::unique_ptr<Detector> detector_;
     std::unique_ptr<RelPredictor> rel_predictor_;
     bool initialized_;
+    
+    // Process single image (internal use only)
+    SceneGraph processImage(const cv::Mat& image);
     
     // Scene change detection
     bool hasSceneChanged(const SceneGraph& prev, const SceneGraph& current);

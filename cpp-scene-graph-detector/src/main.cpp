@@ -17,12 +17,15 @@ void printUsage(const char* program_name) {
     std::cout << "  --max-objects N           Maximum objects to detect (default: 128)\n";
     std::cout << "  --output-dir PATH         Directory for saving scene change photos (default: output/)\n";
     std::cout << "  --fps N                   Frames per second for processing (default: 1)\n";
+    std::cout << "  --show-preview            Show real-time preview with bounding boxes and scene graph (default: on)\n";
+    std::cout << "  --no-preview              Disable real-time preview window\n";
     std::cout << "  -h, --help                Show this help message\n";
     std::cout << "\nEXAMPLE:\n";
     std::cout << "  " << program_name << " \\\n";
     std::cout << "    --camera-id 0 \\\n";
     std::cout << "    --model.detector models/detector.onnx \\\n";
-    std::cout << "    --labels assets/labels/coco.txt\n";
+    std::cout << "    --labels assets/labels/coco.txt \\\n";
+    std::cout << "    --show-preview\n";
 }
 
 int main(int argc, char** argv) {
@@ -37,6 +40,7 @@ int main(int argc, char** argv) {
     int max_objects = 128;
     int camera_id = 0;  // Default to camera 0
     int fps = 1;
+    bool show_preview = true;  // Default to showing preview
     
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -64,6 +68,10 @@ int main(int argc, char** argv) {
             output_dir = argv[++i];
         } else if (arg == "--fps" && i + 1 < argc) {
             fps = std::stoi(argv[++i]);
+        } else if (arg == "--show-preview") {
+            show_preview = true;
+        } else if (arg == "--no-preview") {
+            show_preview = false;
         }
     }
     
@@ -89,7 +97,7 @@ int main(int argc, char** argv) {
     config.object_threshold = obj_threshold;
     config.relation_threshold = rel_threshold;
     config.max_objects = max_objects;
-    config.show_preview = true;  // Always show preview
+    config.show_preview = show_preview;
     
     scene_graph::Runner runner;
     if (!runner.initialize(config)) {
@@ -103,7 +111,11 @@ int main(int argc, char** argv) {
     std::cout << "Object threshold: " << obj_threshold << "\n";
     std::cout << "Relation threshold: " << rel_threshold << "\n";
     std::cout << "Output directory: " << output_dir << "\n";
-    std::cout << "Press ESC or 'q' to quit\n\n";
+    if (show_preview) {
+        std::cout << "Preview: enabled (Press ESC or 'q' to quit)\n\n";
+    } else {
+        std::cout << "Preview: disabled\n\n";
+    }
     
     // Create output directory if it doesn't exist
     std::system(("mkdir -p " + output_dir).c_str());
