@@ -3,6 +3,11 @@
 
 namespace scene_graph {
 
+// Spatial relation thresholds
+namespace {
+    constexpr int OVERLAP_TOLERANCE_PIXELS = 10;  // Small overlap tolerance for left_of/right_of
+}
+
 RelPredictor::RelPredictor() : model_loaded_(false) {
 }
 
@@ -105,14 +110,14 @@ bool RelPredictor::isLeftOf(const cv::Rect& a, const cv::Rect& b) const {
     // A is left of B if A's right edge is before B's center
     int a_right = a.x + a.width;
     int b_center = b.x + b.width / 2;
-    return a_right < b_center && (a_right < b.x + 10);  // Small overlap tolerance
+    return a_right < b_center && (a_right < b.x + OVERLAP_TOLERANCE_PIXELS);
 }
 
 bool RelPredictor::isRightOf(const cv::Rect& a, const cv::Rect& b) const {
     // A is right of B if A's left edge is after B's center
     int a_left = a.x;
     int b_center = b.x + b.width / 2;
-    return a_left > b_center && (a_left > b.x + b.width - 10);  // Small overlap tolerance
+    return a_left > b_center && (a_left > b.x + b.width - OVERLAP_TOLERANCE_PIXELS);
 }
 
 bool RelPredictor::overlaps(const cv::Rect& a, const cv::Rect& b) const {
