@@ -20,10 +20,11 @@ struct RunnerConfig {
     float relation_threshold;
     int max_objects;
     bool show_preview;
+    bool verbose;
     
     RunnerConfig() : backend("cpu"), object_threshold(0.25f), 
                     relation_threshold(0.5f), max_objects(128),
-                    show_preview(false) {}
+                    show_preview(false), verbose(false) {}
 };
 
 // Main pipeline runner
@@ -53,7 +54,7 @@ private:
     bool initialized_;
     
     // Process single image (internal use only)
-    SceneGraph processImage(const cv::Mat& image);
+    SceneGraph processImage(const cv::Mat& image, double& elapsed_ms);
     
     // Scene change detection
     bool hasSceneChanged(const SceneGraph& prev, const SceneGraph& current);
@@ -62,6 +63,7 @@ private:
     void drawSceneGraphOverlay(cv::Mat& image, const SceneGraph& graph);
     void drawBoundingBoxes(cv::Mat& image, const SceneGraph& graph);
     void drawSceneDescription(cv::Mat& image, const SceneGraph& graph);
+    void drawAnalysisTime(cv::Mat& image, double elapsed_ms);
 };
 
 } // namespace scene_graph

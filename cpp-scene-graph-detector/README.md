@@ -82,11 +82,30 @@ curl -L -o assets/models/yolov5x.onnx \
   --model.detector assets/models/yolov5s.onnx \
   --labels assets/labels/coco.txt \
   --output-dir captures/
+
+# With verbose timing information
+./build/cpp-scene-graph-detector \
+  --camera-id 0 \
+  --model.detector assets/models/yolov5s.onnx \
+  --labels assets/labels/coco.txt \
+  --output-dir captures/ \
+  --verbose
+
+# With OpenCL GPU acceleration (if available)
+./build/cpp-scene-graph-detector \
+  --camera-id 0 \
+  --model.detector assets/models/yolov5s.onnx \
+  --labels assets/labels/coco.txt \
+  --backend opencl \
+  --verbose
 ```
 
 The application will:
 - Show a live preview window with bounding boxes and scene description
+- Display analysis time (in milliseconds) in the top-right corner of the preview
 - Log detected objects and spatial relations to console
+- With `--verbose`: Show detailed timing for each frame analysis
+- With `backend=opencl` on macOS: Show warning if OpenCL fails and falls back to CPU
 - Automatically save photos to `captures/` when the scene changes (new object types detected)
 - Press ESC or 'q' to quit
 

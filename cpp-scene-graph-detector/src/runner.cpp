@@ -22,6 +22,19 @@ bool Runner::initialize(const RunnerConfig& config) {
         return false;
     }
     
+    // Check if backend matches requested backend and warn if fallback occurred
+    std::string actual_backend = detector_->getActualBackend();
+    if (config.backend == "opencl" && actual_backend == "cpu") {
+#ifdef __APPLE__
+        std::cerr << "WARNING: OpenCL backend requested but not available on macOS." << std::endl;
+        std::cerr << "         OpenCL support on macOS may require additional configuration." << std::endl;
+        std::cerr << "         Falling back to CPU backend. Performance will be reduced." << std::endl;
+#else
+        std::cerr << "WARNING: OpenCL backend requested but failed to initialize." << std::endl;
+        std::cerr << "         Falling back to CPU backend. Check OpenCL drivers/runtime." << std::endl;
+#endif
+    }
+    
     // Initialize relation predictor
     rel_predictor_.reset(loadRelPredictor(config.relation_model_path,
                                           config.backend));
@@ -34,13 +47,16 @@ bool Runner::initialize(const RunnerConfig& config) {
     return true;
 }
 
-SceneGraph Runner::processImage(const cv::Mat& image) {
+SceneGraph Runner::processImage(const cv::Mat& image, double& elapsed_ms) {
     SceneGraph graph;
     
     if (!initialized_) {
         std::cerr << "Runner not initialized" << std::endl;
+        elapsed_ms = 0.0;
         return graph;
     }
+    
+    auto start_time = std::chrono::high_resolution_clock::now();
     
     // Detect objects
     std::vector<Detection> detections = detector_->detect(image, config_.object_threshold);
@@ -76,6 +92,11 @@ SceneGraph Runner::processImage(const cv::Mat& image) {
         graph.addEdge(edge);
     }
     
+    // Calculate elapsed time
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration = end_time - start_time;
+    elapsed_ms = duration.count();
+    
     // Add metadata
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
@@ -84,6 +105,7 @@ SceneGraph Runner::processImage(const cv::Mat& image) {
     graph.setMetadata("timestamp", oss.str());
     graph.setMetadata("image_width", std::to_string(image.cols));
     graph.setMetadata("image_height", std::to_string(image.rows));
+    graph.setMetadata("analysis_time_ms", std::to_string(elapsed_ms));
     
     return graph;
 }
@@ -112,11 +134,21 @@ bool Runner::processWebcam(int camera_id,
             break;
         }
         
-        SceneGraph graph = processImage(frame);
+        double elapsed_ms = 0.0;
+        SceneGraph graph = processImage(frame, elapsed_ms);
+        
+        // Log timing if verbose
+        if (config_.verbose) {
+            std::cout << "Frame " << frame_count << ": Analysis took " 
+                     << std::fixed << std::setprecision(2) << elapsed_ms 
+                     << " ms | Objects: " << graph.getNodeCount() 
+                     << " | Relations: " << graph.getEdgeCount() << std::endl;
+        }
         
         // Show preview if requested
         if (config_.show_preview) {
             cv::Mat vis = visualize(frame, graph);
+            drawAnalysisTime(vis, elapsed_ms);
             cv::imshow("Scene Graph Detector", vis);
             
             int key = cv::waitKey(frame_delay);
@@ -135,14 +167,20 @@ bool Runner::processWebcam(int camera_id,
                 << frame_count << ".json";
             graph.toJSON(oss.str());
             
-            // Save visualization
+            // Save visualization with timing
             cv::Mat vis = visualize(frame, graph);
+            drawAnalysisTime(vis, elapsed_ms);
             std::ostringstream img_oss;
             img_oss << output_dir << "/scene_" << std::setw(6) << std::setfill('0') 
                     << frame_count << ".jpg";
             cv::imwrite(img_oss.str(), vis);
             
-            std::cout << "Scene changed - saved outputs" << std::endl;
+            std::cout << "Scene changed - saved outputs";
+            if (config_.verbose) {
+                std::cout << " (analysis: " << std::fixed << std::setprecision(2) 
+                         << elapsed_ms << " ms)";
+            }
+            std::cout << std::endl;
             
             prev_graph = graph;
         }
@@ -261,6 +299,30 @@ void Runner::drawSceneDescription(cv::Mat& image, const SceneGraph& graph) {
     // Draw text
     cv::putText(image, text, cv::Point(10, text_y),
                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 1);
+}
+
+void Runner::drawAnalysisTime(cv::Mat& image, double elapsed_ms) {
+    // Draw analysis time in top-right corner
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << elapsed_ms << " ms";
+    std::string text = oss.str();
+    
+    int baseline = 0;
+    cv::Size text_size = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 
+                                         0.7, 2, &baseline);
+    
+    int text_x = image.cols - text_size.width - 15;
+    int text_y = 30;
+    
+    // Draw semi-transparent background
+    cv::Mat roi = image(cv::Rect(text_x - 5, text_y - text_size.height - 5, 
+                                 text_size.width + 10, text_size.height + 10));
+    cv::Mat color(roi.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+    cv::addWeighted(color, 0.6, roi, 0.4, 0, roi);
+    
+    // Draw text
+    cv::putText(image, text, cv::Point(text_x, text_y),
+               cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 2);
 }
 
 } // namespace scene_graph

@@ -24,19 +24,51 @@ bool Detector::initialize(const std::string& model_path,
         if (backend == "opencl") {
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_OPENCL);
+            actual_backend_ = "opencl";
+            
+            // Try a test inference to verify OpenCL actually works
+            try {
+                cv::Mat test_blob = cv::Mat::zeros(1, 3, CV_32F);
+                net_.setInput(test_blob);
+                std::vector<cv::String> out_names = net_.getUnconnectedOutLayersNames();
+                if (!out_names.empty()) {
+                    cv::Mat test_out;
+                    net_.forward(test_out, out_names[0]);
+                }
+            } catch (const cv::Exception& e) {
+                // OpenCL failed, fallback to CPU
+                std::cerr << "WARNING: OpenCL backend failed to initialize (error: " 
+                         << e.what() << "), falling back to CPU" << std::endl;
+                net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+                net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+                actual_backend_ = "cpu";
+            }
         } else if (backend == "auto") {
             // Try OpenCL first, fall back to CPU
             try {
                 net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
                 net_.setPreferableTarget(cv::dnn::DNN_TARGET_OPENCL);
+                
+                // Test inference
+                cv::Mat test_blob = cv::Mat::zeros(1, 3, CV_32F);
+                net_.setInput(test_blob);
+                std::vector<cv::String> out_names = net_.getUnconnectedOutLayersNames();
+                if (!out_names.empty()) {
+                    cv::Mat test_out;
+                    net_.forward(test_out, out_names[0]);
+                }
+                actual_backend_ = "opencl";
             } catch (...) {
                 net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
                 net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+                actual_backend_ = "cpu";
+                std::cerr << "OpenCL not available, using CPU backend" << std::endl;
             }
         } else {
             // CPU backend (default)
             net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
             net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+            actual_backend_ = "cpu";
         }
         
         // Load labels

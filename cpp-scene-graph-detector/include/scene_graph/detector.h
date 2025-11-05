@@ -38,12 +38,16 @@ public:
     // Check if initialized
     bool isInitialized() const { return initialized_; }
     
+    // Get the actual backend being used (for warning if fallback occurred)
+    std::string getActualBackend() const { return actual_backend_; }
+    
 private:
     cv::dnn::Net net_;
     std::vector<std::string> labels_;
     bool initialized_;
     int input_width_;
     int input_height_;
+    std::string actual_backend_;
     
     // Pre-processing and post-processing
     cv::Mat preprocessImage(const cv::Mat& image);
