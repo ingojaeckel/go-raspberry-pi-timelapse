@@ -43,8 +43,3 @@ TEST(RelPredictorTest, PredictGeometric) {
     // Should find some relations (at least left_of/right_of)
     EXPECT_GT(relations.size(), 0);
 }
-
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
