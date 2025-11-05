@@ -94,6 +94,12 @@ TEST_F(ObjectDetectorTest, GetTargetClasses) {
     bool has_chair = std::find(target_classes.begin(), target_classes.end(), "chair") != target_classes.end();
     bool has_book = std::find(target_classes.begin(), target_classes.end(), "book") != target_classes.end();
     
+    // Check for new stationary object types
+    bool has_potted_plant = std::find(target_classes.begin(), target_classes.end(), "potted plant") != target_classes.end();
+    bool has_bench = std::find(target_classes.begin(), target_classes.end(), "bench") != target_classes.end();
+    bool has_traffic_light = std::find(target_classes.begin(), target_classes.end(), "traffic light") != target_classes.end();
+    bool has_fire_hydrant = std::find(target_classes.begin(), target_classes.end(), "fire hydrant") != target_classes.end();
+    
     EXPECT_TRUE(has_person);
     EXPECT_TRUE(has_car);
     EXPECT_TRUE(has_dog);
@@ -102,6 +108,10 @@ TEST_F(ObjectDetectorTest, GetTargetClasses) {
     EXPECT_TRUE(has_bear);
     EXPECT_TRUE(has_chair);
     EXPECT_TRUE(has_book);
+    EXPECT_TRUE(has_potted_plant);
+    EXPECT_TRUE(has_bench);
+    EXPECT_TRUE(has_traffic_light);
+    EXPECT_TRUE(has_fire_hydrant);
 }
 
 TEST_F(ObjectDetectorTest, IsTargetClass) {

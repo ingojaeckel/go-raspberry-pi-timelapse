@@ -128,9 +128,19 @@ std::vector<std::string> ObjectDetector::getTargetClasses() {
         "bird",
         "bear",        // Wild animals (closest to fox in COCO dataset)
         "chair",       // Furniture and objects
-        "book"
-        // Note: "fox" is not in COCO dataset, using "bear" as closest wild animal equivalent
-        // Note: "painting" is not in COCO dataset
+        "book",
+        // Stationary scene objects
+        "potted plant",   // Trees, plants, bushes (COCO proxy for natural objects)
+        "bench",          // Park benches, outdoor seating
+        "traffic light",  // Street fixtures
+        "fire hydrant",   // Street fixtures
+        "stop sign",      // Street signs
+        "parking meter",  // Street fixtures
+        "couch",          // Outdoor furniture
+        "dining table"    // Outdoor tables
+        // Note: "tree", "hedge", "bush", "house" are not in standard COCO dataset
+        // Using "potted plant" as closest proxy for trees/bushes/hedges
+        // Custom models would be needed for specific tree/building detection
     };
 }
 

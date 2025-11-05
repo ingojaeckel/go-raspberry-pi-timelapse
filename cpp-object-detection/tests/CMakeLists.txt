@@ -33,6 +33,7 @@ set(TEST_SOURCES
     test_long_term_operation.cpp
     test_stationary_detection.cpp
     test_google_sheets_client.cpp
+    test_scene_model.cpp
 )
 
 # Create test executable
@@ -84,6 +85,7 @@ target_sources(object_detection_tests PRIVATE
     ../src/network_streamer.cpp
     ../src/system_monitor.cpp
     ../src/google_sheets_client.cpp
+    ../src/scene_model.cpp
 )
 
 # Code coverage support for tests

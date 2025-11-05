@@ -100,6 +100,7 @@ set(SOURCES
     src/system_monitor.cpp
     src/google_sheets_client.cpp
     src/notification_manager.cpp
+    src/scene_model.cpp
 )
 
 # Create executable
