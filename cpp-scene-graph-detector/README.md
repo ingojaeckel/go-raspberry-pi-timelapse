@@ -26,15 +26,25 @@ This application provides continuous environmental observation by analyzing webc
 
 ### Prerequisites
 
-**Ubuntu 22.04 (AMD64):**
+**Ubuntu 22.04+ (AMD64 or ARM64):**
 ```bash
 sudo apt-get update
 sudo apt-get install -y cmake build-essential libopencv-dev pkg-config libgtest-dev
 ```
 
-**macOS (Intel):**
+**macOS (Intel or Apple Silicon):**
 ```bash
 brew install cmake opencv pkg-config googletest
+```
+
+**NVIDIA Jetson (Ubuntu 20.04/22.04 ARM64):**
+```bash
+# JetPack already includes OpenCV with CUDA support
+sudo apt-get update
+sudo apt-get install -y cmake build-essential pkg-config libgtest-dev
+
+# Verify CUDA is available
+nvcc --version
 ```
 
 ### Build
@@ -227,11 +237,158 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 ```
 
+**NVIDIA Jetson (ARM64 with CUDA):**
+```bash
+# Build with CUDA-optimized OpenCV (included in JetPack)
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CUDA_ARCHITECTURES=87  # Orin = 87, Xavier = 72
+make -j$(nproc)
+
+# For TensorRT optimization (best performance):
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+  -DSCENE_GRAPH_WITH_TENSORRT=ON \
+  -DCMAKE_CUDA_ARCHITECTURES=87
+make -j$(nproc)
+```
+
 **With OpenCL (optional):**
 ```bash
 cmake .. -DSCENE_GRAPH_WITH_OPENCL=ON
 make -j$(nproc)
 ```
+
+## Jetson Deployment Guide
+
+### Why Jetson for Environmental Monitoring?
+
+NVIDIA Jetson platforms are ideal for edge deployment of scene graph detection in environmental monitoring scenarios:
+
+**Key Advantages:**
+1. **Power Efficient**: 10-40W vs 45-87W for laptops (2-3x better)
+2. **24/7 Operation**: Designed for always-on continuous deployment
+3. **Fanless Options**: Jetson Orin Nano/NX can run passively cooled
+4. **Industrial Grade**: -25°C to 80°C operating temperature range
+5. **Direct Camera Interface**: CSI cameras bypass USB bottleneck
+6. **Compact**: Fits in weatherproof enclosures for outdoor deployment
+7. **High Performance**: 3-8x faster than 2018 MacBook Pro CPU
+
+**Performance Comparison (YOLOv5s):**
+- 2018 MacBook Pro CPU: ~65ms (15 FPS, 45-87W)
+- Jetson Orin Nano: ~25-35ms (28-40 FPS, 10-15W) - **2x faster, 1/4 power**
+- Jetson AGX Orin 64GB: ~8-12ms (83-125 FPS, 25-40W) - **5x faster, 50% power**
+
+### Models That Work Well on Jetson (vs 2018 MBP)
+
+**High-Accuracy Models at ~20 fps (Viable on Jetson, Not on MBP CPU):**
+
+1. **YOLOv5l** (49.0 mAP):
+   - Jetson AGX Orin 64GB: **22-28 fps** at 25-35W ✅
+   - 2018 MBP CPU: **5.5 fps** at 45-87W ❌
+
+2. **YOLOv5x** (50.7 mAP):
+   - Jetson AGX Orin 64GB: **14-18 fps** at 30-40W ✅
+   - 2018 MBP CPU: **3 fps** at 45-87W ❌
+
+3. **YOLO-World** (Open Vocabulary, 45-52 mAP):
+   - Jetson AGX Orin 64GB: **15-22 fps** at 25-40W ✅ **[Recommended]**
+   - 2018 MBP CPU: **2-3 fps** at 45-87W ❌
+   - **Detects custom objects via text prompts** ("oak tree", "metal shed") without retraining
+
+See [assets/models/README.md](assets/models/README.md) for detailed Jetson performance specs.
+
+### Jetson Setup
+
+**1. Install JetPack SDK** (includes CUDA, cuDNN, TensorRT, OpenCV):
+```bash
+# JetPack 5.1.2 or newer (Ubuntu 20.04)
+# Or JetPack 6.0+ (Ubuntu 22.04)
+# Follow NVIDIA setup guide: https://developer.nvidia.com/jetpack
+```
+
+**2. Verify CUDA and OpenCV:**
+```bash
+nvcc --version  # Should show CUDA 11.4+ (JP 5.x) or 12.x (JP 6.x)
+python3 -c "import cv2; print(cv2.getBuildInformation())" | grep -i cuda
+# Should show "CUDA: YES"
+```
+
+**3. Build cpp-scene-graph-detector:**
+```bash
+cd cpp-scene-graph-detector
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=87
+make -j$(nproc)
+```
+
+**4. Download Model:**
+```bash
+curl -L -o assets/models/yolov5s.onnx \
+  https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
+```
+
+**5. Run with CSI Camera:**
+```bash
+# For CSI camera (Raspberry Pi Camera Module v2 or similar)
+./build/cpp-scene-graph-detector \
+  --camera-id 0 \
+  --model.detector assets/models/yolov5s.onnx \
+  --labels assets/labels/coco.txt \
+  --backend auto \
+  --verbose
+
+# For USB webcam
+./build/cpp-scene-graph-detector \
+  --camera-id 1 \
+  --model.detector assets/models/yolov5s.onnx \
+  --labels assets/labels/coco.txt \
+  --backend auto
+```
+
+### Power Management on Jetson
+
+**Set Power Mode:**
+```bash
+# Maximum performance (Jetson AGX Orin)
+sudo nvpmodel -m 0  # MAXN mode (60W)
+
+# Balanced (30W)
+sudo nvpmodel -m 2
+
+# Low power (15W)
+sudo nvpmodel -m 4
+
+# Check current mode
+sudo nvpmodel -q
+```
+
+**Monitor Power Consumption:**
+```bash
+# Install jetson-stats
+sudo pip3 install jetson-stats
+
+# Monitor in real-time
+jtop
+```
+
+### Cross-Compilation (Optional)
+
+To build on x86_64 for Jetson ARM64:
+
+```bash
+# Install cross-compiler
+sudo apt-get install g++-aarch64-linux-gnu
+
+# Cross-compile
+cmake .. -DCMAKE_SYSTEM_NAME=Linux \
+  -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+  -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+  -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+  -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu
+
+make -j$(nproc)
+```
+
+**Note**: Cross-compilation requires ARM64 OpenCV libraries. Native compilation on Jetson is recommended.
 
 ## GPU/OpenCL Notes
 

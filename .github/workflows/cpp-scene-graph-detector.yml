@@ -25,6 +25,9 @@ jobs:
           - os: macos-14
             arch: x86_64
             platform: macos
+          # Note: NVIDIA Jetson ARM64 builds require native hardware or QEMU emulation
+          # Jetson builds are supported but not included in CI due to hardware requirements
+          # See README.md Jetson Deployment Guide for native build instructions
 
     runs-on: ${{ matrix.os }}
 

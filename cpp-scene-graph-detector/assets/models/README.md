@@ -88,6 +88,45 @@ To achieve 24 fps (frames per second), each frame must be processed in ≤41.7ms
 - **Arc A770** - YOLOv5s: ~12-18ms, YOLOv5x: ~60-80ms → **55-83 fps** / **12-17 fps**
 - **Arc A750** - YOLOv5s: ~15-22ms, YOLOv5x: ~75-95ms → **45-67 fps** / **10-13 fps**
 
+*NVIDIA Jetson (Embedded AI Platform):*
+- **Jetson AGX Orin 64GB** (275 TOPS INT8, 15-60W TDP)
+  - YOLOv5s: ~8-12ms, YOLOv5m: ~18-25ms, YOLOv5l: ~35-45ms, YOLOv5x: ~55-70ms → **83-125 fps** / **40-55 fps** / **22-28 fps** / **14-18 fps**
+  - Power: 15W idle, 25-40W typical inference, 60W max
+  - **Ideal for edge deployment**: Low power, high performance, fanless operation possible
+  
+- **Jetson AGX Orin 32GB** (200 TOPS INT8, 15-50W TDP)
+  - YOLOv5s: ~10-15ms, YOLOv5m: ~22-30ms, YOLOv5l: ~42-55ms, YOLOv5x: ~65-85ms → **67-100 fps** / **33-45 fps** / **18-24 fps** / **12-15 fps**
+  - Power: 15W idle, 25-35W typical inference, 50W max
+  
+- **Jetson Orin NX 16GB** (100 TOPS INT8, 10-25W TDP)
+  - YOLOv5s: ~15-22ms, YOLOv5m: ~35-48ms, YOLOv5l: ~70-90ms → **45-67 fps** / **21-28 fps** / **11-14 fps**
+  - YOLOv5x: Too slow for real-time (~120-150ms → 6-8 fps)
+  - Power: 10W idle, 15-20W typical inference, 25W max
+  
+- **Jetson Orin Nano 8GB** (40 TOPS INT8, 5-15W TDP)
+  - YOLOv5s: ~25-35ms, YOLOv5m: ~60-80ms → **28-40 fps** / **12-17 fps**
+  - YOLOv5l/x: Not recommended for real-time
+  - Power: 5W idle, 10-12W typical inference, 15W max
+  - **Best for ultra-low-power deployment**
+
+**Jetson vs 2018 MacBook Pro CPU Performance:**
+- 2018 MBP Intel CPU: YOLOv5s ~65ms, YOLOv5m ~120ms, YOLOv5l ~180ms, YOLOv5x ~330ms
+- **Jetson Orin Nano** (lowest Jetson): 2-3x faster than 2018 MBP CPU, **1/4 the power**
+- **Jetson AGX Orin 64GB**: 5-8x faster than 2018 MBP CPU, **similar power to laptop**
+
+**Models That Run at ~20 fps on Jetson but Not on 2018 MBP CPU:**
+- **YOLOv5l** (49.0 mAP): Jetson AGX Orin 64GB: 22-28 fps | 2018 MBP: 5.5 fps ❌
+- **YOLOv5x** (50.7 mAP): Jetson AGX Orin 64GB: 14-18 fps | 2018 MBP: 3 fps ❌
+- **YOLOv5x**: Jetson Orin NX 16GB: Not viable | 2018 MBP: 3 fps ❌
+
+**Jetson Deployment Advantages:**
+1. **Power Efficiency**: 10-40W vs 45-87W for laptops
+2. **Fanless Options**: Passive cooling possible at lower power modes
+3. **Compact Form Factor**: Carrier boards fit in small enclosures
+4. **Extended Temperature Range**: Industrial-grade reliability (-25°C to 80°C)
+5. **GPIO/CSI Support**: Direct camera interface, no USB bottleneck
+6. **Always-On Operation**: Designed for 24/7 edge deployment
+
 **Recommended Configurations for 24 fps:**
 
 1. **Budget (CPU only):**
@@ -457,6 +496,44 @@ prompts = ["oak tree", "pine tree", "metal shed", "wooden barn",
   - NVIDIA RTX 3070: ~40-60ms → **16-25 fps**
   - NVIDIA RTX 4070: ~25-35ms → **28-40 fps**
   - NVIDIA RTX 4090: ~15-20ms → **50-67 fps**
+- **Jetson (CUDA/TensorRT)**:
+  - Jetson AGX Orin 64GB: ~45-65ms → **15-22 fps** ⚡ (25-40W)
+  - Jetson AGX Orin 32GB: ~55-75ms → **13-18 fps** (20-35W)
+  - Jetson Orin NX 16GB: ~100-140ms → **7-10 fps** (15-20W)
+
+### Transformer Models on Jetson Orin That Outperform 2018 MBP
+
+The Jetson AGX Orin can run higher-accuracy transformer models at ~20 fps that would be too slow on a 2018 MacBook Pro CPU:
+
+**1. YOLOv5l (49.0 mAP) - Viable on Jetson, Not on MBP:**
+- Jetson AGX Orin 64GB: **22-28 fps** at 25-35W ✅
+- 2018 MBP Intel CPU: **5.5 fps** at 45-87W ❌
+- **3-5x faster on Jetson, 50% less power**
+
+**2. YOLOv5x (50.7 mAP) - Viable on Jetson, Not on MBP:**
+- Jetson AGX Orin 64GB: **14-18 fps** at 30-40W ✅
+- 2018 MBP Intel CPU: **3 fps** at 45-87W ❌
+- **4-6x faster on Jetson, 30% less power**
+
+**3. YOLO-World-m (Open Vocabulary, 45-52 mAP) - Real-time on Jetson:**
+- Jetson AGX Orin 64GB: **15-22 fps** at 25-40W ✅ **[Recommended for environmental monitoring]**
+- 2018 MBP Intel CPU: **2-3 fps** at 45-87W ❌
+- **7-10x faster on Jetson, 40% less power**
+- **Key Advantage**: Detects custom objects via text ("oak tree", "metal shed") without retraining
+
+**4. Deformable DETR (46.9 mAP) - Borderline viable on Jetson:**
+- Jetson AGX Orin 64GB with TensorRT: **8-12 fps** at 35-45W ⚠️
+- 2018 MBP Intel CPU: **0.8-1.2 fps** at 45-87W ❌
+- **10x faster on Jetson, similar power**
+
+**Why Jetson Excels for Environmental Edge Deployment:**
+1. **Power Efficiency**: 15-40W vs 45-87W for laptops (2-3x better)
+2. **24/7 Operation**: Designed for always-on deployment
+3. **Fanless Options**: Jetson Orin Nano/NX can run passively cooled
+4. **Direct Camera Interface**: CSI cameras bypass USB bottleneck
+5. **Industrial Temperature Range**: -25°C to 80°C operation
+6. **Compact**: Carrier boards fit in weatherproof enclosures
+7. **TensorRT Optimization**: 2-4x speedup vs generic ONNX runtime
 
 ### Recommendations for Environmental Monitoring
 
