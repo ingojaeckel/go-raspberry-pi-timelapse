@@ -65,17 +65,11 @@ func (c *Camera) Capture() (string, error) {
 	log.Printf("Running command: %s %v", commandRaspistill, args)
 	cmd := exec.Command(commandRaspistill, args...)
 
-	_, err := cmd.StdoutPipe()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Println(err)
-		return "", err
+		log.Printf("rpicam-still error: %s", string(output))
+		return "", fmt.Errorf("failed to capture with rpicam-still: %w", err)
 	}
-	err = cmd.Start()
-	if err != nil {
-		log.Println(err)
-		return "", err
-	}
-	cmd.Wait()
 	return fullPath, nil
 }
 
@@ -105,7 +99,7 @@ func (c *Camera) getWebcamFfmpegArgs() []string {
 			"-framerate", "30", // Explicitly set framerate
 			"-i", "0", // Default camera (device index 0)
 			"-frames:v", "1",
-			"-s", fmt.Sprintf("%dx%d", 1280, 720),
+			"-s", fmt.Sprintf("%dx%d", c.width, c.height),
 		}
 	}
 

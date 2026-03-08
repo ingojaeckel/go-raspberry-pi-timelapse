@@ -76,6 +76,37 @@ func TestTarTwoFilesWithPipe(t *testing.T) {
 	ensure.DeepEqual(t, count, 2)
 }
 
+func TestZipTwoFilesWithPipe(t *testing.T) {
+	f := []string{"files.go", "files_test.go"}
+	pr, pw := io.Pipe()
+
+	go func() {
+		err := ZipWithPipes(f, pw)
+		ensure.Nil(t, err)
+		defer pw.Close()
+	}()
+
+	// Read the entire zip into memory to verify
+	zipData, err := io.ReadAll(pr)
+	ensure.Nil(t, err)
+	ensure.True(t, len(zipData) > 0)
+
+	// Verify it's a valid zip by checking the magic number (PK\x03\x04)
+	ensure.True(t, len(zipData) >= 4)
+	ensure.DeepEqual(t, zipData[0], byte('P'))
+	ensure.DeepEqual(t, zipData[1], byte('K'))
+}
+
+func TestRemoveFileRejectsDirectories(t *testing.T) {
+	dir, err := os.MkdirTemp("", "test-remove-dir")
+	ensure.Nil(t, err)
+	defer os.RemoveAll(dir)
+
+	err = RemoveFile(dir)
+	ensure.NotNil(t, err)
+	ensure.DeepEqual(t, errCannotRemoveDirectory, err)
+}
+
 // Benchmarks for performance-sensitive operations
 
 func BenchmarkListFiles(b *testing.B) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
@@ -22,7 +23,7 @@ func HandleCommand(command string) error {
 			return e
 		}
 		for _, f := range images {
-			path := conf.StorageFolder + "/" + f.Name
+			path := filepath.Join(conf.StorageFolder, f.Name)
 			if err := os.Remove(path); err != nil {
 				return err
 			}
@@ -38,8 +39,8 @@ func RunCommand(command string, args ...string) (string, error) {
 	return string(bytes), err
 }
 
-// RunCommandOrPanic Same as RunCommand but panics in case of errors
-func RunCommandOrPanic(command string, args ...string) string {
+// RunCommandOrFallback runs a command and returns its output, or the error message on failure.
+func RunCommandOrFallback(command string, args ...string) string {
 	resp, err := RunCommand(command, args...)
 	if err != nil {
 		return err.Error()

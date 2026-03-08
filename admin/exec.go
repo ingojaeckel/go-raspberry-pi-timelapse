@@ -2,12 +2,12 @@ package admin
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"os/exec"
 )
 
 func execute(env []string, command string, args ...string) error {
-	fmt.Printf("execute(env=%v, command=%s, args=%v)\n", env, command, args)
+	log.Printf("execute(env=%v, command=%s, args=%v)\n", env, command, args)
 
 	cmd := exec.Command(command, args...)
 	outReader, err := cmd.StdoutPipe()
@@ -19,13 +19,13 @@ func execute(env []string, command string, args ...string) error {
 	stdoutScanner := bufio.NewScanner(outReader)
 	go func() {
 		for stdoutScanner.Scan() {
-			fmt.Printf("[cmd-stdout] %s\n", stdoutScanner.Text())
+			log.Printf("[cmd-stdout] %s\n", stdoutScanner.Text())
 		}
 	}()
 	errScanner := bufio.NewScanner(errReader)
 	go func() {
 		for errScanner.Scan() {
-			fmt.Printf("[cmd-stderr] %s\n", errScanner.Text())
+			log.Printf("[cmd-stderr] %s\n", errScanner.Text())
 		}
 	}()
 	return cmd.Run()

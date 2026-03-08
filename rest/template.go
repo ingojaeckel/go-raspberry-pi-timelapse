@@ -11,24 +11,19 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 )
 
-// TODO process should be auto restarted (e.g. by supervisord)
-// TODO add monitoring for main memory
-
 func GetMonitoring(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
+	w.Header().Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
 	json.NewEncoder(w).Encode(&MonitoringResponse{
-		Time:           admin.RunCommandOrPanic("/bin/date"),
-		GpuTemperature: admin.RunCommandOrPanic("/opt/vc/bin/vcgencmd", "measure_temp"),
-		CpuTemperature: admin.RunCommandOrPanic("/bin/cat", "/sys/class/thermal/thermal_zone0/temp"),
-		Uptime:         admin.RunCommandOrPanic("/usr/bin/uptime"),
-		FreeDiskSpace:  admin.RunCommandOrPanic("/bin/df", "-h"),
+		Time:           admin.RunCommandOrFallback("/bin/date"),
+		GpuTemperature: admin.RunCommandOrFallback("/opt/vc/bin/vcgencmd", "measure_temp"),
+		CpuTemperature: admin.RunCommandOrFallback("/bin/cat", "/sys/class/thermal/thermal_zone0/temp"),
+		Uptime:         admin.RunCommandOrFallback("/usr/bin/uptime"),
+		FreeDiskSpace:  admin.RunCommandOrFallback("/bin/df", "-h"),
 	})
 }
 
 func GetLogs(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
+	w.Header().Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
 
 	logFileContent, err := os.ReadFile(conf.LogFile)
 	if err == nil {
@@ -39,13 +34,12 @@ func GetLogs(w http.ResponseWriter, _ *http.Request) {
 }
 
 func GetPhotos(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("content-type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO limit to dev mode
+	w.Header().Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
 	json.NewEncoder(w).Encode(getPhotosFrom(conf.StorageFolder))
 }
 
 func getPhotosFrom(folder string) GetPhotosResponse {
-	files, _ := files.ListFiles(folder, true) // TODO handle error
+	files, _ := files.ListFiles(folder, true)
 	photos := make([]Photo, len(files))
 	for i, f := range files {
 		photos[i] = Photo{
@@ -59,13 +53,10 @@ func getPhotosFrom(folder string) GetPhotosResponse {
 
 func getHumanReadableSize(sizeInBytes int64) string {
 	if sizeInBytes >= 1024*1024 {
-		// At least 1MB of files
 		return fmt.Sprintf("%d MB", sizeInBytes/1024/1024)
 	}
 	if sizeInBytes >= 1024 {
-		// Size is between 1KB - 1MB
 		return fmt.Sprintf("%d KB", sizeInBytes/1024)
 	}
-	// Size is between 0 - 1KB
 	return fmt.Sprintf("%d bytes", sizeInBytes)
 }

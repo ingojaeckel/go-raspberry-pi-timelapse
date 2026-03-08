@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 )
 
 func toJSON(r interface{}) ([]byte, error) {
@@ -29,14 +31,7 @@ func writeJSON(w http.ResponseWriter, status int, r interface{}) error {
 		return err
 	}
 
-	w.Header().Set("content-type", "application/json")
-
-	// Allow CORS
-	// TODO Limit to dev mode
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-
+	w.Header().Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
 	w.WriteHeader(status)
 	io.WriteString(w, string(val))
 	return nil

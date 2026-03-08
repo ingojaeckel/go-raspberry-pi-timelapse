@@ -11,20 +11,20 @@ const (
 	settingsKey  = "s"
 )
 
-var missingBucketError = errors.New("missing bucket")
-var settingsNotFound = errors.New("settings not found")
+var errMissingBucket = errors.New("missing bucket")
+var errSettingsNotFound = errors.New("settings not found")
 
 var initialConfiguration = Settings{
 	DebugEnabled:           false,
 	SecondsBetweenCaptures: SecondsBetweenCaptures,
 	OffsetWithinHour:       DefaultOffsetWithinHour,
-	// Default resolution: 3280x2464 (8 MP). 66%: 2186x1642 (3.5 MP), 50%: 1640x1232 (2 MP)
+	// Resolution options: 0: 3280x2464 (8 MP), 1: 2186x1642 (3.5 MP), 2: 1640x1232 (2 MP)
 	PhotoResolutionWidth:    2186,
 	PhotoResolutionHeight:   1642,
 	PreviewResolutionWidth:  640,
 	PreviewResolutionHeight: 480,
 	RotateBy:                0,
-	ResolutionSetting:       0,
+	ResolutionSetting:       1,
 	Quality:                 100,
 }
 

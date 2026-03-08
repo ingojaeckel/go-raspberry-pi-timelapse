@@ -2,6 +2,7 @@ package conf
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -11,7 +12,7 @@ import (
 
 const (
 	minSecondsBetweenCaptures = 60
-	boldIoTimeout             = 1 * time.Second
+	boltIoTimeout             = 1 * time.Second
 )
 
 func LoadConfiguration() (*Settings, error) {
@@ -21,16 +22,18 @@ func LoadConfiguration() (*Settings, error) {
 	}
 	log.Println("Settings file exists.")
 
-	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boldIoTimeout})
+	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boltIoTimeout})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open settings file: %w", err)
+	}
 	defer db.Close()
 
 	val, exists, err := get(db, settingsKey)
 	if err != nil {
-		log.Fatal("Error loading settings: ", err.Error())
-		return nil, err
+		return nil, fmt.Errorf("error loading settings: %w", err)
 	}
 	if !exists {
-		return nil, settingsNotFound
+		return nil, errSettingsNotFound
 	}
 
 	var existingSettings Settings
@@ -47,22 +50,18 @@ func LoadConfiguration() (*Settings, error) {
 // WriteConfiguration Persist the provided settings. Returns the updated settings or an error.
 func WriteConfiguration(s Settings) (*Settings, error) {
 	log.Printf("Write configuration: %s\n", s.String())
-	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boldIoTimeout})
-	defer db.Close()
-
+	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boltIoTimeout})
 	if err != nil {
-		log.Fatalf("Failed to create settings file: %s", err.Error())
-		return nil, err
+		return nil, fmt.Errorf("failed to create settings file: %w", err)
 	}
+	defer db.Close()
 
 	marshalled, err := json.Marshal(s)
 	if err != nil {
-		log.Fatalf("Failed to marshal config: %s", err.Error())
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
 	}
 	if err := set(db, settingsKey, marshalled); err != nil {
-		log.Fatal("Failed to write settings: ", err.Error())
-		return nil, err
+		return nil, fmt.Errorf("failed to write settings: %w", err)
 	}
 	return &s, nil
 }
@@ -80,7 +79,7 @@ func set(db *bolt.DB, key string, value []byte) error {
 		}
 		b := tx.Bucket([]byte(bucket))
 		if b == nil {
-			return missingBucketError
+			return errMissingBucket
 		}
 		return b.Put([]byte(key), value)
 	})
@@ -92,7 +91,7 @@ func get(db *bolt.DB, key string) (value string, exists bool, err error) {
 		b := tx.Bucket([]byte(bucket))
 
 		if b == nil {
-			return missingBucketError
+			return errMissingBucket
 		}
 
 		v := b.Get([]byte(key))

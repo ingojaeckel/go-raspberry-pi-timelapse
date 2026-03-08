@@ -26,60 +26,43 @@ func New(folder string, initialSettings conf.Settings, configUpdatedChan <-chan 
 	}, nil
 }
 
-func (t Timelapse) CapturePeriodically() {
-	offsetDisabled := t.Settings.OffsetWithinHour < 0 // negative values disable the offset
+func (t *Timelapse) CapturePeriodically() {
+	go func() {
+		for {
+			t.waitForCapture()
 
-	if offsetDisabled {
-		log.Println("Offset is disabled. Will start taking pictures immediately.")
-		go func() {
-			for {
-				camera, err := NewCamera(t.Folder, t.Settings.PhotoResolutionWidth, t.Settings.PhotoResolutionHeight, t.Settings.RotateBy == 180, t.Settings.Quality)
-				if err != nil {
-					log.Printf("Error instantiating camera: %s\n", err)
-					// Sleep for a bit and create a new camera instance on the next iteration.
-				} else {
-					s, err := camera.Capture()
-					if err != nil {
-						log.Printf("Error during capture: %s\n", err.Error())
-					} else {
-						log.Printf("Photo stored in '%s'\n", s)
-					}
-					log.Printf("Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
-				}
+			beforeCapture := time.Now()
+
+			camera, err := NewCamera(t.Folder, t.Settings.PhotoResolutionWidth, t.Settings.PhotoResolutionHeight, t.Settings.RotateBy == 180, t.Settings.Quality)
+			if err != nil {
+				log.Printf("Error instantiating camera: %s\n", err)
 				time.Sleep(time.Duration(t.Settings.SecondsBetweenCaptures) * time.Second)
+				continue
 			}
-		}()
-	} else {
-		log.Println("Offset is enabled. Will wait before taking first picture.")
-		go func() {
-			for {
-				t.waitForCapture()
 
-				beforeCapture := time.Now()
-
-				camera, err := NewCamera(t.Folder, t.Settings.PhotoResolutionWidth, t.Settings.PhotoResolutionHeight, t.Settings.RotateBy == 180, t.Settings.Quality)
-				if err != nil {
-					log.Printf("Error instantiating camera: %s\n", err)
-					// Sleep for a bit and create a new camera instance on the next iteration.
-				} else {
-					photoPath, err := camera.Capture()
-					if err != nil {
-						log.Printf("Error during capture: %s\n", err.Error())
-
-						// Sleep for 1s after an error to ensure time changed sufficiently before next invocation of WaitForCapture
-						time.Sleep(time.Duration(1 * time.Second))
-						continue
-					}
-					log.Printf("Photo stored in '%s'\n", photoPath)
-				}
-				timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
-				log.Printf("Capture took %d seconds\n", timeToCaptureSeconds)
+			photoPath, err := camera.Capture()
+			if err != nil {
+				log.Printf("Error during capture: %s\n", err.Error())
+				time.Sleep(1 * time.Second)
+				continue
 			}
-		}()
-	}
+
+			log.Printf("Photo stored in '%s'\n", photoPath)
+			timeToCaptureSeconds := time.Now().Unix() - beforeCapture.Unix()
+			log.Printf("Capture took %d seconds\n", timeToCaptureSeconds)
+		}
+	}()
 }
 
 func (t *Timelapse) waitForCapture() {
+	offsetDisabled := t.Settings.OffsetWithinHour < 0
+
+	if offsetDisabled {
+		log.Printf("Offset is disabled. Sleeping for %d seconds.\n", t.Settings.SecondsBetweenCaptures)
+		t.sleepWithConfigUpdates(time.Duration(t.Settings.SecondsBetweenCaptures) * time.Second)
+		return
+	}
+
 	secondsUntilFirstCapture := t.getSecondsToFirstCapture(time.Now())
 	sleepDuration := time.Duration(secondsUntilFirstCapture) * time.Second
 	nextCaptureAt := time.Now().Add(sleepDuration)
@@ -89,8 +72,7 @@ func (t *Timelapse) waitForCapture() {
 	for {
 		secondsUntilFirstCapture := t.getSecondsToFirstCapture(time.Now())
 		if secondsUntilFirstCapture == 0 {
-			// Game time!
-			break
+			return
 		}
 		if t.Settings.DebugEnabled {
 			log.Printf("Sleeping for 1 second. Seconds left: %d. Time: %s.\n", secondsUntilFirstCapture, time.Now())
@@ -99,9 +81,22 @@ func (t *Timelapse) waitForCapture() {
 		case newConfig := <-t.ConfigUpdateChannel:
 			log.Printf("Received new configuration: %s\n", newConfig)
 			t.Settings = newConfig
-			break
-		case <-time.After(time.Duration(1 * time.Second)):
-			break
+		case <-time.After(1 * time.Second):
+		}
+	}
+}
+
+// sleepWithConfigUpdates sleeps for the given duration while still processing config updates.
+func (t *Timelapse) sleepWithConfigUpdates(d time.Duration) {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	for {
+		select {
+		case newConfig := <-t.ConfigUpdateChannel:
+			log.Printf("Received new configuration: %s\n", newConfig)
+			t.Settings = newConfig
+		case <-timer.C:
+			return
 		}
 	}
 }

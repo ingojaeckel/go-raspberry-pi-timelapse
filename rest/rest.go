@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -47,13 +48,24 @@ func MakeUpdateConfigurationFn(configUpdatedChan chan<- conf.Settings) func(w ht
 			return
 		}
 		writeJSON(w, 200, updatedSettings)
-		configUpdatedChan <- *updatedSettings
+
+		// Non-blocking send — drop update if channel is full (previous update not yet consumed).
+		select {
+		case configUpdatedChan <- *updatedSettings:
+		default:
+			log.Println("Config update channel full, skipping notification")
+		}
 	}
 }
 
 func GetFile(w http.ResponseWriter, r *http.Request) {
 	name := pat.Param(r, "fileName")
-	fullyQualifiedPath := conf.StorageFolder + "/" + name
+	fullyQualifiedPath, err := safeFilePath(conf.StorageFolder, name)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, err.Error())
+		return
+	}
 
 	canServe, e := files.CanServeFile(fullyQualifiedPath, conf.MaxFileSizeBytes)
 	if !canServe {
@@ -74,7 +86,7 @@ func GetMostRecentFile(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	mostRecentFile := f[len(f)-1]
-	serveFileContent(w, fmt.Sprintf("%s/%s", conf.StorageFolder, mostRecentFile.Name))
+	serveFileContent(w, filepath.Join(conf.StorageFolder, mostRecentFile.Name))
 }
 
 func GetFiles(w http.ResponseWriter, _ *http.Request) {
@@ -111,14 +123,14 @@ func Capture(w http.ResponseWriter, s *conf.Settings) {
 
 // GetArchiveZip Reply with ZIP file containing all timelapse pictures
 func GetArchiveZip(w http.ResponseWriter, r *http.Request) {
-	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"]) // TODO handle error
+	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"])
 
 	pr, pw := io.Pipe()
 	go func() {
+		defer pw.Close()
 		if err := files.ZipWithPipes(strFiles, pw); err != nil {
 			log.Println("failed to create archive", err.Error())
 		}
-		defer pw.Close()
 	}()
 
 	w.Header().Add(conf.HeaderContentType, "application/zip")
@@ -129,14 +141,14 @@ func GetArchiveZip(w http.ResponseWriter, r *http.Request) {
 
 // GetArchiveTar Reply with TAR file containing all timelapse pictures
 func GetArchiveTar(w http.ResponseWriter, r *http.Request) {
-	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"]) // TODO handle error
+	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"])
 
 	pr, pw := io.Pipe()
 	go func() {
+		defer pw.Close()
 		if err := files.TarWithPipes(strFiles, pw); err != nil {
 			log.Println("failed to create archive", err.Error())
 		}
-		defer pw.Close()
 	}()
 
 	w.Header().Add(conf.HeaderContentType, "application/tar")
@@ -157,7 +169,11 @@ func DeleteFiles(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Files to delete: %v\n", filesToDelete)
 
 	for _, name := range filesToDelete {
-		path := fmt.Sprintf("%s/%s", conf.StorageFolder, name)
+		path, err := safeFilePath(conf.StorageFolder, name)
+		if err != nil {
+			log.Printf("Skipping invalid path %s: %v\n", name, err)
+			continue
+		}
 		if err := files.RemoveFile(path); err != nil {
 			log.Printf("Failed to delete %s: %v\n", path, err)
 		}
@@ -192,7 +208,6 @@ func getBasename(path string) string {
 }
 
 func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
-	// TODO validate new config coming in via updateRequest
 	log.Printf("Received new configuration: %v\n", updateRequest)
 
 	s, err := conf.LoadConfiguration()
@@ -222,12 +237,13 @@ func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 }
 
 func writePipeContent(w http.ResponseWriter, pr *io.PipeReader) {
-	emptyReadMaxAttemps := 100 // The first few read attempts may not get any data yet as another go routine produces the data. Tweak this to adjust the number of attempts used before giving up.
 	buf := make([]byte, 1024*1024)
 
-	for i := 0; ; i++ {
-		// read the next (up to) 1MB from the pipe to send to response writer
+	for {
 		n, err := pr.Read(buf)
+		if n > 0 {
+			w.Write(buf[0:n])
+		}
 		if err == io.EOF {
 			break
 		}
@@ -236,14 +252,24 @@ func writePipeContent(w http.ResponseWriter, pr *io.PipeReader) {
 			log.Println("Error: ", err.Error())
 			break
 		}
-		if n == 0 {
-			if i < emptyReadMaxAttemps {
-				continue
-			}
-			return
-		}
-		w.Write(buf[0:n])
 	}
+}
+
+// safeFilePath joins baseDir and fileName, ensuring the result stays within baseDir.
+func safeFilePath(baseDir, fileName string) (string, error) {
+	joined := filepath.Join(baseDir, fileName)
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return "", err
+	}
+	absJoined, err := filepath.Abs(joined)
+	if err != nil {
+		return "", err
+	}
+	if !strings.HasPrefix(absJoined, absBase+string(filepath.Separator)) && absJoined != absBase {
+		return "", fmt.Errorf("invalid file path: %s", fileName)
+	}
+	return joined, nil
 }
 
 // Converts the front-end requested file names (provided via query param) to paths relative to the storage folder. If no filter was provided, assume all files are requested.
@@ -277,7 +303,7 @@ func requestedFilesToRelativePaths(filteredFiles []string) ([]string, error) {
 	// Convert []File to []string
 	strFiles := make([]string, len(filesToArchive))
 	for i, file := range filesToArchive {
-		strFiles[i] = fmt.Sprintf("%s/%s", conf.StorageFolder, file.Name)
+		strFiles[i] = filepath.Join(conf.StorageFolder, file.Name)
 	}
 
 	return strFiles, nil

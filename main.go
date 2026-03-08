@@ -56,9 +56,13 @@ func main() {
 	mux := goji.NewMux()
 	mux.Use(func(inner http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "*")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+
 			before := time.Now()
 			inner.ServeHTTP(w, r)
-			duration := time.Now().Sub(before)
+			duration := time.Since(before)
 			log.Printf("[%s] %s took %v\n", r.Method, r.RequestURI, duration)
 		})
 	})
@@ -73,7 +77,7 @@ func main() {
 		rest.Capture(w, initialSettings)
 	})
 
-	configUpdatedChan := make(chan conf.Settings)
+	configUpdatedChan := make(chan conf.Settings, 1)
 
 	mux.HandleFunc(pat.Get("/logs"), rest.GetLogs)
 	mux.HandleFunc(pat.Get("/photos"), rest.GetPhotos)

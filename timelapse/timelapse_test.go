@@ -80,6 +80,33 @@ func createTimelapseForTesting(offsetWithinHourSeconds int) Timelapse {
 	}
 }
 
+func TestConfigUpdateReceivedDuringWait(t *testing.T) {
+	ch := make(chan conf.Settings, 1)
+	tl := &Timelapse{
+		Folder: conf.StorageFolder,
+		Settings: conf.Settings{
+			SecondsBetweenCaptures: 3600, // long wait
+			OffsetWithinHour:       -1,   // offset disabled
+			DebugEnabled:           false,
+		},
+		ConfigUpdateChannel: ch,
+	}
+
+	// Send a config update before calling sleepWithConfigUpdates
+	newSettings := conf.Settings{
+		SecondsBetweenCaptures: 120,
+		OffsetWithinHour:       -1,
+		Quality:                50,
+	}
+	ch <- newSettings
+
+	// sleepWithConfigUpdates should process the channel message and update settings
+	tl.sleepWithConfigUpdates(1 * time.Second)
+
+	ensure.DeepEqual(t, 120, tl.Settings.SecondsBetweenCaptures)
+	ensure.DeepEqual(t, 50, tl.Settings.Quality)
+}
+
 // Benchmarks for performance-sensitive operations
 
 func BenchmarkGetSecondsToFirstCapture(b *testing.B) {
