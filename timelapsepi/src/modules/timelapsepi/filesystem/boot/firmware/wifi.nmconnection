@@ -10,6 +10,9 @@ ssid=timelapse-raspberry-pi
 
 [wifi-security]
 key-mgmt=wpa-psk
+proto=rsn
+pairwise=ccmp
+group=ccmp
 psk=InsertTheRealPassword
 
 [ipv4]
