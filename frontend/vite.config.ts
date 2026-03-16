@@ -7,10 +7,13 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
-    base: '/static/frontend/build/',
+    base: mode === 'production' ? '/static/frontend/build/' : '/',
     build: {
       outDir: 'build',
       sourcemap: true,
+    },
+    preview: {
+      port: 4173,
     },
     define: {
       // Make environment variables available at build time
@@ -22,6 +25,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/setupTests.ts',
+      exclude: ['e2e/**', 'node_modules/**'],
       css: {
         include: /.+/,
       },
