@@ -2,6 +2,7 @@
 #include <memory>
 #include "../include/detection_model_interface.hpp"
 #include "../include/yolo_v5_model.hpp"
+#include "../include/efficientdet_d3_model.hpp"
 #include "../include/logger.hpp"
 
 class DetectionModelInterfaceTest : public ::testing::Test {
@@ -163,6 +164,12 @@ TEST_F(DetectionModelInterfaceTest, DetectionModelFactoryParseModelType) {
               DetectionModelFactory::ModelType::YOLO_V5_SMALL);
     EXPECT_EQ(DetectionModelFactory::parseModelType("large"), 
               DetectionModelFactory::ModelType::YOLO_V5_LARGE);
+    EXPECT_EQ(DetectionModelFactory::parseModelType("efficientdet-d3"), 
+              DetectionModelFactory::ModelType::EFFICIENTDET_D3);
+    EXPECT_EQ(DetectionModelFactory::parseModelType("efficientdet_d3"), 
+              DetectionModelFactory::ModelType::EFFICIENTDET_D3);
+    EXPECT_EQ(DetectionModelFactory::parseModelType("efficientdet"), 
+              DetectionModelFactory::ModelType::EFFICIENTDET_D3);
               
     EXPECT_THROW(DetectionModelFactory::parseModelType("invalid_model"), 
                  std::invalid_argument);
@@ -177,6 +184,8 @@ TEST_F(DetectionModelInterfaceTest, DetectionModelFactoryModelTypeToString) {
         DetectionModelFactory::ModelType::YOLO_V8_NANO), "yolov8n");
     EXPECT_EQ(DetectionModelFactory::modelTypeToString(
         DetectionModelFactory::ModelType::YOLO_V8_MEDIUM), "yolov8m");
+    EXPECT_EQ(DetectionModelFactory::modelTypeToString(
+        DetectionModelFactory::ModelType::EFFICIENTDET_D3), "efficientdet-d3");
 }
 
 TEST_F(DetectionModelInterfaceTest, YoloV5SmallModelCreation) {
@@ -267,4 +276,41 @@ TEST_F(DetectionModelInterfaceTest, MockModelWithScaleFactor) {
     cv::Mat frame = cv::Mat::zeros(480, 640, CV_8UC3);
     auto detections = model->detect(frame);
     EXPECT_EQ(detections.size(), 1);
+}
+
+TEST_F(DetectionModelInterfaceTest, EfficientDetD3ModelCreation) {
+    auto model = DetectionModelFactory::createModel(
+        DetectionModelFactory::ModelType::EFFICIENTDET_D3, logger_);
+    
+    EXPECT_NE(model, nullptr);
+    EXPECT_EQ(model->getModelName(), "EfficientDet-D3");
+    EXPECT_FALSE(model->isInitialized());
+    
+    auto metrics = model->getMetrics();
+    EXPECT_EQ(metrics.model_name, "EfficientDet-D3");
+    EXPECT_EQ(metrics.model_type, "EfficientDet");
+    EXPECT_DOUBLE_EQ(metrics.accuracy_score, 0.89);
+    EXPECT_EQ(metrics.model_size_mb, 45);
+}
+
+TEST_F(DetectionModelInterfaceTest, EfficientDetD3AvailableInModels) {
+    auto available_models = DetectionModelFactory::getAvailableModels();
+    
+    // Should have at least 5 models now (YOLOv5s, YOLOv5l, YOLOv8n, YOLOv8m, EfficientDet-D3)
+    EXPECT_GE(available_models.size(), 5);
+    
+    // Check that EfficientDet-D3 is included
+    bool found_efficientdet = false;
+    for (const auto& model : available_models) {
+        if (model.model_name == "EfficientDet-D3") {
+            found_efficientdet = true;
+            EXPECT_EQ(model.model_type, "EfficientDet");
+            EXPECT_DOUBLE_EQ(model.accuracy_score, 0.89);
+            EXPECT_EQ(model.avg_inference_time_ms, 95);
+            EXPECT_EQ(model.model_size_mb, 45);
+            EXPECT_FALSE(model.description.empty());
+            break;
+        }
+    }
+    EXPECT_TRUE(found_efficientdet);
 }

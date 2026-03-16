@@ -163,6 +163,7 @@ The application supports multiple detection models with different speed/accuracy
 | YOLOv5l  | Slow (~120ms)| 85%    | 47MB | High-accuracy security |
 | YOLOv8n  | Fastest (~35ms) | 70% | 6MB  | Embedded systems |
 | YOLOv8m  | Slowest (~150ms) | 88% | 52MB | Maximum accuracy |
+| EfficientDet-D3 | Medium (~95ms) | 89% | 45MB | Outdoor scenes, multi-scale detection |
 
 > **🔄 Need newer YOLO models?** See [YOLO Model Conversion Guide](docs/YOLO_MODEL_CONVERSION.md) to convert YOLOv9, YOLOv10, or YOLOv11 models from PyTorch to ONNX format.
 
@@ -182,6 +183,9 @@ The application supports multiple detection models with different speed/accuracy
 
 # Maximum accuracy for security applications
 ./object_detection --model-type yolov8m --max-fps 1
+
+# EfficientDet-D3 for outdoor scenes with excellent multi-scale detection
+./object_detection --model-type efficientdet-d3 --max-fps 3
 ```
 
 ## Architecture
@@ -223,18 +227,18 @@ The application now features a modular detection model system:
 ```
                     DetectionModelFactory
                             │
-              ┌─────────────┼─────────────┐
-              │             │             │
-    ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-    │IDetectionModel  │ │IDetectionModel  │ │IDetectionModel  │
-    │  (Interface)    │ │  (Interface)    │ │  (Interface)    │
-    └─────────────────┘ └─────────────────┘ └─────────────────┘
-              │             │             │
-    ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-    │   YOLOv5s       │ │   YOLOv5l       │ │  YOLOv8n/m      │
-    │  Fast Model     │ │ Accurate Model  │ │ Future Models   │
-    │  ~65ms, 75%     │ │ ~120ms, 85%     │ │   Various       │
-    └─────────────────┘ └─────────────────┘ └─────────────────┘
+              ┌─────────────┼─────────────┬─────────────┐
+              │             │             │             │
+    ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+    │IDetectionModel  │ │IDetectionModel  │ │IDetectionModel  │ │IDetectionModel  │
+    │  (Interface)    │ │  (Interface)    │ │  (Interface)    │ │  (Interface)    │
+    └─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
+              │             │             │             │
+    ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+    │   YOLOv5s       │ │   YOLOv5l       │ │  YOLOv8n/m      │ │EfficientDet-D3  │
+    │  Fast Model     │ │ Accurate Model  │ │ Future Models   │ │  High Accuracy  │
+    │  ~65ms, 75%     │ │ ~120ms, 85%     │ │   Various       │ │  ~95ms, 89%     │
+    └─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
 **Key Benefits:**
@@ -375,12 +379,20 @@ cd cpp-object-detection
 ./scripts/build-linux-386.sh
 ```
 
-3. **Download a YOLO model (required for object detection):**
+3. **Download detection models (required for object detection):**
 ```bash
-# Use curl on macOS or wget on Linux
+# Recommended: Download all models using the automated script
+./scripts/download_models.sh
+
+# Or manually download individual models:
+# YOLOv5s (default, fast)
 curl -L -o models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
 # OR
 wget -O models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
+
+# EfficientDet-D3 (high accuracy, outdoor optimized)
+# Note: Requires manual conversion from TensorFlow to ONNX format
+# See scripts/download_models.sh for conversion instructions
 ```
 
 **For newer YOLO models (v9, v10, v11)**, see [YOLO Model Conversion Guide](docs/YOLO_MODEL_CONVERSION.md) to convert PyTorch models to ONNX format.

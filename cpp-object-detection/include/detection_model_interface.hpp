@@ -105,7 +105,8 @@ public:
         YOLO_V5_SMALL,    // Fast, lower accuracy
         YOLO_V5_LARGE,    // Slower, higher accuracy
         YOLO_V8_NANO,     // Fastest, good for embedded
-        YOLO_V8_MEDIUM    // Balanced speed/accuracy
+        YOLO_V8_MEDIUM,   // Balanced speed/accuracy
+        EFFICIENTDET_D3   // High accuracy, efficient detection with BiFPN
     };
     
     /**
