@@ -192,7 +192,7 @@ func getBasename(path string) string {
 }
 
 func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
-	// TODO validate new config coming in via updateRequest
+	// Configuration is already validated in MakeUpdateConfigurationFn before calling this function
 	log.Printf("Received new configuration: %v\n", updateRequest)
 
 	s, err := conf.LoadConfiguration()

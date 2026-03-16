@@ -12,6 +12,12 @@ const (
 	DefaultStorageFolder          = "timelapse-pictures"
 	TempFilesFolder               = "/tmp"
 	LogFile                       = "timelapse.log"
+	// Validation bounds
+	MinSecondsBetweenCaptures = 10  // Allow sufficient exposure time
+	MinQuality                = 1   // Quality must be at least 1
+	MaxQuality                = 100 // Quality cannot exceed 100
+	MinOffsetWithinHour       = 0   // Offset within hour minimum
+	MaxOffsetWithinHour       = 3599 // Offset within hour maximum (59 minutes 59 seconds)
 )
 
 var (
@@ -21,9 +27,10 @@ var (
 	SecondsBetweenCaptures = DefaultSecondsBetweenCaptures
 )
 
-// TODO merge values coming from different sources: config, settings, CLI
-
 // OverrideDefaultConfig Override default config values which were provided.
+// Note: These global values are used for initial configuration only. 
+// The Settings struct handles the actual runtime configuration with proper priority:
+// CLI flags → persisted settings → defaults (see CONFIGURATION.md for details)
 func OverrideDefaultConfig(listenAddressOverride *string, storageAddressOverride *string, logToFileOverride *bool, secondsBetweenCapturesOverride *int) {
 	if logToFileOverride != nil {
 		LogToFile = *logToFileOverride
