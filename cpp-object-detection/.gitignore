@@ -1,0 +1,50 @@
+# Build directories
+build/
+build-debug/
+build-release/
+build-profile/
+build-coverage/
+
+# Profiling results
+profiling_results/
+*.perf.data
+*.trace
+gmon.out
+massif.out.*
+cachegrind.out.*
+callgrind.out.*
+heaptrack.*.gz
+
+# Object detection outputs
+detections/
+object_detection.log
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled binaries
+object_detection
+object_detection_tests
+
+# Model files (large, download separately)
+models/*.onnx
+models/*.pt
+models/*.weights
+
+# Temporary files
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+*.gcda
+*.gcno
+*.gcov
+lcov.info

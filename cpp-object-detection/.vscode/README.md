@@ -1,6 +1,6 @@
-# VSCode Debug Configuration for cpp-object-detection
+# VSCode Debug and Profiling Configuration for cpp-object-detection
 
-This directory contains VSCode debug configurations for the cpp-object-detection project, optimized for debugging on macOS (with support for Linux as well).
+This directory contains VSCode debug and profiling configurations for the cpp-object-detection project, optimized for debugging and performance analysis on macOS and Linux.
 
 ## Prerequisites
 
@@ -57,6 +57,172 @@ This directory contains VSCode debug configurations for the cpp-object-detection
 ### Linux Debug Configurations
 
 Similar configurations using GDB instead of LLDB for Linux development.
+
+## Profiling Configurations
+
+### CPU Profiling Configurations
+
+#### 1. **Profile: CPU (macOS)**
+- **Purpose**: Run application with profiling symbols for macOS Instruments
+- **Build**: Uses `build-profile` task (RelWithDebInfo)
+- **Arguments**: `--max-fps 10 --verbose`
+- **Best for**: Identifying CPU hotspots and performance bottlenecks
+- **Usage**:
+  1. Select this configuration from Debug panel
+  2. Press F5 to launch
+  3. Use external profiling tools (Instruments, dtrace) to attach
+  4. Analyze with: `./scripts/profile_cpu_mac.sh`
+
+#### 2. **Profile: CPU (Linux)**
+- **Purpose**: Run application with profiling symbols for perf/gprof
+- **Build**: Uses `build-profile` task (RelWithDebInfo)
+- **Arguments**: `--max-fps 10 --verbose`
+- **Best for**: Identifying CPU hotspots on Linux
+- **Usage**:
+  1. Select this configuration from Debug panel
+  2. Press F5 to launch
+  3. Use external profiling tools (perf, gprof) to attach
+  4. Analyze with: `./scripts/profile_cpu_linux.sh`
+
+### Memory Profiling Configurations
+
+#### 3. **Profile: Memory - Valgrind (Linux)**
+- **Purpose**: Run application under Valgrind for memory leak detection
+- **Tool**: Valgrind memcheck
+- **Arguments**: `--max-fps 3 --verbose` (reduced FPS due to Valgrind overhead)
+- **Output**: `profiling_results/valgrind_vscode.log`
+- **Best for**: Finding memory leaks and invalid memory access
+- **Note**: Expect 10-50x slowdown
+- **Usage**:
+  1. Select this configuration from Debug panel
+  2. Press F5 to launch (will be slow)
+  3. Let run for a few minutes
+  4. Stop and review `profiling_results/valgrind_vscode.log`
+
+### Performance Testing Configuration
+
+#### 4. **Profile: Performance Test**
+- **Purpose**: Test high-load scenario with burst mode
+- **Arguments**: `--max-fps 15 --enable-burst-mode --verbose`
+- **Best for**: Stress testing and identifying bottlenecks under load
+- **Usage**:
+  1. Select this configuration
+  2. Press F5 to launch
+  3. Trigger object detection to activate burst mode
+  4. Monitor FPS and processing times in output
+
+## Profiling Tasks
+
+VSCode tasks available in the Tasks menu (Terminal → Run Task):
+
+### Build Tasks
+
+- **build-profile** - Build with RelWithDebInfo (optimized with debug symbols)
+- **create-profile-build-dir** - Create build-profile directory
+- **build-profile-make** - Compile profiling build with make
+
+### Profiling Tasks
+
+- **profile-cpu-mac** - Run CPU profiling on macOS (60s)
+- **profile-cpu-linux** - Run CPU profiling on Linux (60s)
+- **profile-memory-mac** - Run memory profiling on macOS (60s)
+- **profile-memory-linux** - Run memory profiling on Linux (60s)
+- **clean-profiling-results** - Delete profiling_results directory
+
+### Running Tasks
+
+1. Press `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Linux)
+2. Type "Tasks: Run Task"
+3. Select the desired profiling task
+4. Results will be in `profiling_results/` directory
+
+## Profiling Workflow
+
+### Quick Start: CPU Profiling
+
+**macOS:**
+```bash
+# 1. Build for profiling (or use VSCode task)
+./scripts/build_profile_mac.sh
+
+# 2. Run CPU profiling (or use VSCode task)
+./scripts/profile_cpu_mac.sh --duration 60
+
+# 3. Open results in Instruments
+open profiling_results/*_cpu_profile*.trace
+```
+
+**Linux:**
+```bash
+# 1. Build for profiling (or use VSCode task)
+./scripts/build_profile_linux.sh
+
+# 2. Run CPU profiling (or use VSCode task)
+./scripts/profile_cpu_linux.sh --duration 60
+
+# 3. Review results
+cat profiling_results/*_summary.txt
+less profiling_results/*_report.txt
+```
+
+### Quick Start: Memory Profiling
+
+**macOS:**
+```bash
+# Run memory profiling
+./scripts/profile_memory_mac.sh --duration 60 --type allocations
+
+# Open results in Instruments
+open profiling_results/*_memory_profile*.trace
+```
+
+**Linux:**
+```bash
+# Run Valgrind memory profiling
+./scripts/profile_memory_linux.sh --duration 60 --tool valgrind
+
+# Review leak summary
+cat profiling_results/*_summary.txt
+
+# Or use heaptrack for faster profiling
+./scripts/profile_memory_linux.sh --duration 60 --tool heaptrack
+```
+
+## Analyzing Profiling Results
+
+### CPU Profiling
+
+**Key metrics to look for:**
+1. **Hot functions** - Functions consuming >5% CPU time
+2. **Call stacks** - Where hot functions are called from
+3. **Self time vs. total time** - Direct computation vs. called functions
+
+**Common bottlenecks:**
+- `cv::dnn::Net::forward()` - YOLO inference (expected to be high)
+- `cv::resize()` - Image scaling (optimize with `--detection-scale`)
+- Frame queue operations - Consider parallel processing settings
+- I/O operations - Disk writes, network streaming
+
+### Memory Profiling
+
+**Key metrics to look for:**
+1. **Memory leaks** - Allocations never freed
+2. **Peak memory usage** - Maximum heap size
+3. **Allocation rate** - Frequency of allocations
+4. **Large allocations** - Big buffers or images
+
+**Common issues:**
+- Growing heap - Memory leak or unbounded frame queue
+- High peak - Large image buffers or model weights
+- Frequent allocations - Inefficient object reuse
+
+### Interpreting Results
+
+See `docs/PROFILING.md` for detailed analysis guide including:
+- How to read flame graphs
+- Optimization strategies
+- Before/after comparison techniques
+- Platform-specific profiling tips
 
 ## Debugging the macOS Issue
 

@@ -77,6 +77,66 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb"
+        },
+        {
+            "name": "Profile: CPU (macOS)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-profile/object_detection",
+            "args": ["--max-fps", "10", "--verbose"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build-profile",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "build-profile"
+        },
+        {
+            "name": "Profile: CPU (Linux)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-profile/object_detection",
+            "args": ["--max-fps", "10", "--verbose"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build-profile",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "build-profile"
+        },
+        {
+            "name": "Profile: Memory - Valgrind (Linux)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/valgrind",
+            "args": [
+                "--leak-check=full",
+                "--show-leak-kinds=all",
+                "--track-origins=yes",
+                "--verbose",
+                "--log-file=${workspaceFolder}/profiling_results/valgrind_vscode.log",
+                "${workspaceFolder}/build-profile/object_detection",
+                "--max-fps", "3", "--verbose"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build-profile",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "build-profile"
+        },
+        {
+            "name": "Profile: Performance Test",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-profile/object_detection",
+            "args": ["--max-fps", "15", "--enable-burst-mode", "--verbose"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build-profile",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "build-profile"
         }
     ]
 }
