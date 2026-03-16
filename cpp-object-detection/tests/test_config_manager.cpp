@@ -219,3 +219,32 @@ TEST_F(ConfigManagerTest, GpuDefaultDisabled) {
     const auto& config = config_manager->getConfig();
     EXPECT_FALSE(config.enable_gpu);
 }
+
+TEST_F(ConfigManagerTest, ScenePersistenceDefaultDisabled) {
+    const auto& config = config_manager->getConfig();
+    EXPECT_FALSE(config.enable_scene_persistence);
+    EXPECT_EQ(config.scene_db_path, "scenes.db");
+    EXPECT_EQ(config.scene_observation_seconds, 60);
+    EXPECT_DOUBLE_EQ(config.scene_match_threshold, 0.7);
+    EXPECT_DOUBLE_EQ(config.scene_position_tolerance, 0.15);
+}
+
+TEST_F(ConfigManagerTest, EnableScenePersistenceArgument) {
+    const char* argv[] = {
+        "program", 
+        "--enable-scene-persistence",
+        "--scene-db-path", "/tmp/test.db",
+        "--scene-observation-seconds", "30",
+        "--scene-match-threshold", "0.8"
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]);
+    
+    EXPECT_EQ(config_manager->parseArgs(argc, const_cast<char**>(argv)), ConfigManager::ParseResult::SUCCESS);
+    
+    const auto& config = config_manager->getConfig();
+    EXPECT_TRUE(config.enable_scene_persistence);
+    EXPECT_EQ(config.scene_db_path, "/tmp/test.db");
+    EXPECT_EQ(config.scene_observation_seconds, 30);
+    EXPECT_DOUBLE_EQ(config.scene_match_threshold, 0.8);
+    EXPECT_TRUE(config_manager->validateConfig());
+}

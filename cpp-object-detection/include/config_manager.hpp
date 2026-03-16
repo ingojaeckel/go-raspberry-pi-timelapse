@@ -73,6 +73,13 @@ public:
         bool enable_file_notification = false;      // Enable file-based notifications
         std::string notification_file_path = "/tmp/object_notifications.json"; // Path for notification file
         bool enable_stdio_notification = false;     // Enable stdio notifications
+        
+        // Scene persistence
+        bool enable_scene_persistence = false;      // Enable scene persistence to SQLite
+        std::string scene_db_path = "scenes.db";    // Path to SQLite database for scenes
+        int scene_observation_seconds = 60;         // Observation time before analyzing scene
+        double scene_match_threshold = 0.7;         // Minimum score to match scenes (0-1)
+        double scene_position_tolerance = 0.15;     // Position tolerance for matching (fraction of frame)
     };
 
     enum class ParseResult {
