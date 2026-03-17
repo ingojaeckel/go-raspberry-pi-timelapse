@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "timestamp": "2024-01-15 10:30:00",
+    "image_width": "1920",
+    "image_height": "1080",
+    "description": "Sample scene with houses and vegetation"
+  },
+  "objects": [
+    {
+      "id": 0,
+      "class_id": 14,
+      "label": "house",
+      "score": 0.950,
+      "bbox": {
+        "x": 0.300,
+        "y": 0.400,
+        "width": 0.250,
+        "height": 0.400
+      }
+    },
+    {
+      "id": 1,
+      "class_id": 14,
+      "label": "house",
+      "score": 0.910,
+      "bbox": {
+        "x": 0.700,
+        "y": 0.420,
+        "width": 0.220,
+        "height": 0.380
+      }
+    },
+    {
+      "id": 2,
+      "class_id": 15,
+      "label": "tree",
+      "score": 0.870,
+      "bbox": {
+        "x": 0.500,
+        "y": 0.350,
+        "width": 0.120,
+        "height": 0.450
+      }
+    },
+    {
+      "id": 3,
+      "class_id": 16,
+      "label": "bush",
+      "score": 0.760,
+      "bbox": {
+        "x": 0.150,
+        "y": 0.700,
+        "width": 0.100,
+        "height": 0.150
+      }
+    }
+  ],
+  "relations": [
+    {
+      "subject_id": 2,
+      "predicate": "between",
+      "object_id": 0,
+      "score": 1.000
+    },
+    {
+      "subject_id": 2,
+      "predicate": "between",
+      "object_id": 1,
+      "score": 1.000
+    },
+    {
+      "subject_id": 0,
+      "predicate": "left_of",
+      "object_id": 1,
+      "score": 1.000
+    },
+    {
+      "subject_id": 3,
+      "predicate": "left_of",
+      "object_id": 0,
+      "score": 1.000
+    }
+  ]
+}

@@ -1,0 +1,267 @@
+name: C++ Scene Graph Detector Build
+
+on:
+  push:
+    paths:
+      - 'cpp-scene-graph-detector/**'
+      - '.github/workflows/cpp-scene-graph-detector.yml'
+  pull_request:
+    paths:
+      - 'cpp-scene-graph-detector/**'
+      - '.github/workflows/cpp-scene-graph-detector.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build and Test
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+            platform: linux
+          - os: macos-14
+            arch: x86_64
+            platform: macos
+          # Note: NVIDIA Jetson ARM64 builds require native hardware or QEMU emulation
+          # Jetson builds are supported but not included in CI due to hardware requirements
+          # See README.md Jetson Deployment Guide for native build instructions
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            libopencv-dev \
+            pkg-config \
+            libgtest-dev \
+            lcov \
+            gcovr
+
+      - name: Install dependencies (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          brew update
+          brew install \
+            cmake \
+            opencv \
+            pkg-config \
+            googletest \
+            lcov \
+            gcovr
+
+      - name: Build Google Test (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp lib/*.a /usr/lib || sudo cp *.a /usr/lib
+
+      - name: Configure CMake
+        working-directory: cpp-scene-graph-detector
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DSCENE_GRAPH_BUILD_TESTS=ON
+
+      - name: Build application
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            make -j$(sysctl -n hw.ncpu)
+          else
+            make -j$(nproc)
+          fi
+
+      - name: Run unit tests
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          if [ -f "scene_graph_tests" ]; then
+            ./scene_graph_tests
+          else
+            echo "Unit tests not available for this configuration"
+          fi
+
+      - name: Test executable help
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          ./cpp-scene-graph-detector --help
+
+      - name: Create artifact name
+        id: artifact
+        run: echo "name=scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: |
+            cpp-scene-graph-detector/build/cpp-scene-graph-detector
+            cpp-scene-graph-detector/assets/
+            cpp-scene-graph-detector/README.md
+          retention-days: 30
+
+  build-static:
+    name: Static Build
+    runs-on: ${{ matrix.os }}
+    needs: build-test
+
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+            platform: linux
+          - os: macos-14
+            arch: x86_64
+            platform: macos
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            libopencv-dev \
+            pkg-config
+
+      - name: Install dependencies (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          brew update
+          brew install \
+            cmake \
+            opencv \
+            pkg-config
+
+      - name: Configure for static linking
+        working-directory: cpp-scene-graph-detector
+        run: |
+          mkdir -p build-static
+          cd build-static
+
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            # Linux x86_64 configuration
+            cmake .. -DCMAKE_BUILD_TYPE=Release \
+              -DSCENE_GRAPH_BUILD_TESTS=OFF \
+              -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++"
+          else
+            # macOS configuration (dynamic linking)
+            cmake .. -DCMAKE_BUILD_TYPE=Release \
+              -DSCENE_GRAPH_BUILD_TESTS=OFF
+          fi
+
+      - name: Build static executable
+        working-directory: cpp-scene-graph-detector/build-static
+        run: |
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            make -j$(sysctl -n hw.ncpu)
+          else
+            make -j$(nproc)
+          fi
+
+      - name: Test static executable
+        working-directory: cpp-scene-graph-detector/build-static
+        run: |
+          ./cpp-scene-graph-detector --help
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            otool -L ./cpp-scene-graph-detector || true
+          else
+            ldd cpp-scene-graph-detector || true
+          fi
+
+      - name: Create release package
+        working-directory: cpp-scene-graph-detector
+        run: |
+          mkdir -p release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}
+
+          cp build-static/cpp-scene-graph-detector release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/
+          cp README.md release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/
+          cp -r assets release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/
+          cp -r docs release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/
+          cp -r scripts release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/
+
+          # Create download script for YOLO model
+          cat << 'EOF' > release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/download_model.sh
+          #!/bin/bash
+          echo "Downloading YOLOv5s model..."
+          mkdir -p assets/models
+          if command -v curl >/dev/null; then
+            curl -L -o assets/models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
+          elif command -v wget >/dev/null; then
+            wget -O assets/models/yolov5s.onnx https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5s.onnx
+          else
+            echo "Please install curl or wget to download the model"
+            exit 1
+          fi
+          echo "Model downloaded successfully!"
+          EOF
+          chmod +x release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/download_model.sh
+
+          # Create tar archive
+          cd release
+          tar -czf scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}/
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}-release
+          path: cpp-scene-graph-detector/release/scene-graph-detector-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+          retention-days: 7
+
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-24.04
+    needs: build-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libopencv-dev pkg-config
+
+      - name: Build application
+        working-directory: cpp-scene-graph-detector
+        run: |
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+
+      - name: Test help command
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          ./cpp-scene-graph-detector --help
+
+      - name: Test invalid arguments
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          # Should fail without required arguments
+          ./cpp-scene-graph-detector && exit 1 || echo "Correctly rejected missing args"
+          
+          # Should fail with missing model
+          ./cpp-scene-graph-detector --input test.jpg --model.detector missing.onnx --labels ../assets/labels/coco.txt --out.json out.json && exit 1 || echo "Correctly rejected missing model"
+
+      - name: Verify executable
+        working-directory: cpp-scene-graph-detector/build
+        run: |
+          file cpp-scene-graph-detector
+          ldd cpp-scene-graph-detector || true
