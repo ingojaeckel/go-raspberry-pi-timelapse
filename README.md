@@ -1,5 +1,4 @@
 [![Go Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/Build/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions?query=workflow%3ABuild)
-[![Arduino Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions/workflows/arduino.yml/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions/workflows/arduino.yml)
 [![Latest Release](https://img.shields.io/github/v/release/ingojaeckel/go-raspberry-pi-timelapse?include_prereleases)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/releases/latest)
 
 # Go Raspberry Pi Timelapse
