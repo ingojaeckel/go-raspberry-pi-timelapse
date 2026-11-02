@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -31,11 +32,11 @@ func TestParseFlagsDefaults(t *testing.T) {
 }
 
 func TestParseFlags(t *testing.T) {
-	o, err := parseFlags([]string{"-port=:9090", "-logToFile=true", "-storageFolder=/p", "-secondsBetweenCaptures=600", "-captureRetries=0", "-minFreeDiskMB=10", "-pprof"})
+	o, err := parseFlags([]string{"-port=:9090", "-logToFile=true", "-storageFolder=/p", "-secondsBetweenCaptures=600", "-captureRetries=0", "-minFreeDiskMB=10", "-pprof", "-allowedHosts=camera.example.org, cam.example.net"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := options{listen: ":9090", logToFile: true, storageFolder: "/p", secondsBetweenCaptures: 600, captureRetries: 0, minFreeDiskMB: 10, pprof: true}
+	want := options{listen: ":9090", logToFile: true, storageFolder: "/p", secondsBetweenCaptures: 600, captureRetries: 0, minFreeDiskMB: 10, pprof: true, allowedHosts: "camera.example.org, cam.example.net"}
 	if o != want {
 		t.Fatalf("got %+v, want %+v", o, want)
 	}
@@ -52,6 +53,16 @@ func TestParseFlagsRejectsInvalidValues(t *testing.T) {
 		if _, err := parseFlags(args); err == nil {
 			t.Errorf("%v: expected an error", args)
 		}
+	}
+}
+
+func TestAllowedHostsList(t *testing.T) {
+	o := options{allowedHosts: " camera.example.org, ,cam.example.net "}
+	if got := o.allowedHostList(); !slices.Equal(got, []string{"camera.example.org", "cam.example.net"}) {
+		t.Fatalf("got %q", got)
+	}
+	if got := (options{}).allowedHostList(); len(got) != 0 {
+		t.Fatalf("got %q", got)
 	}
 }
 

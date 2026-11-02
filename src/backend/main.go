@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -48,6 +49,18 @@ type options struct {
 	minFreeDiskMB          int
 	pprof                  bool
 	version                bool
+	allowedHosts           string
+}
+
+// allowedHostList splits -allowedHosts into host names.
+func (o options) allowedHostList() []string {
+	var hosts []string
+	for h := range strings.SplitSeq(o.allowedHosts, ",") {
+		if h = strings.TrimSpace(h); h != "" {
+			hosts = append(hosts, h)
+		}
+	}
+	return hosts
 }
 
 func main() {
@@ -79,6 +92,7 @@ func parseFlags(args []string) (options, error) {
 	fs.IntVar(&o.captureRetries, "captureRetries", conf.DefaultCaptureRetries, "Additional attempts within the same slot when a capture fails.")
 	fs.IntVar(&o.minFreeDiskMB, "minFreeDiskMB", conf.DefaultMinFreeDiskMB, "Free disk space to keep. The oldest photos are deleted before a capture to keep at least this much free.")
 	fs.BoolVar(&o.pprof, "pprof", false, "Enable pprof profiling endpoints at /debug/pprof/")
+	fs.StringVar(&o.allowedHosts, "allowedHosts", "", "Comma-separated public host names the UI may be reached under. IP addresses, localhost, single-label names and .local/.lan/.home.arpa/.internal names are always allowed; anything else is rejected to block DNS rebinding.")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -159,7 +173,7 @@ func run(ctx context.Context, opts options, backend timelapse.Backend, ready fun
 		mux.Handle("GET /debug/pprof/", http.DefaultServeMux)
 	}
 	server := &http.Server{
-		Handler:           rest.Middleware(mux),
+		Handler:           rest.Middleware(mux, opts.allowedHostList()...),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 		ErrorLog:          slog.NewLogLogger(slog.Default().Handler(), slog.LevelWarn),

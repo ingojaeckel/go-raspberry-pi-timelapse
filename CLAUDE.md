@@ -45,7 +45,7 @@ All Go paths below are relative to `src/backend/`.
 - `main.go` — Flags, wiring, `http.Server` (timeouts, graceful shutdown on SIGINT/SIGTERM), stdlib `http.ServeMux` routes for the embedded frontend, slog logging
 - `web/` — `//go:embed dist` of the frontend build
 - `timelapse/` — `Scheduler.Run` (capture loop: aligned or unaligned schedule, retries within the slot, re-plans immediately on settings changes), `NextAligned`, `Camera` (one capture at a time, timeout, writes `.partial-*` then renames, never overwrites)
-- `rest/` — `Server` with the HTTP handlers, `Middleware` (CORS, `http.CrossOriginProtection`, debug request log). GET never changes state: `DELETE /file?f=`, `DELETE /photos`, `POST /admin/{shutdown,restart}`
+- `rest/` — `Server` with the HTTP handlers, `Middleware` (Host allowlist against DNS rebinding, `http.CrossOriginProtection`, no CORS headers, debug request log). GET never changes state: `DELETE /file?f=`, `DELETE /photos`, `POST /admin/{shutdown,restart}`
 - `conf/` — `Settings` + `Validate`/`Normalized`; `Store` keeps bbolt (`timelapse-settings.db`) open, serves settings from memory, notifies subscribers, recovers from a corrupt file
 - `files/` — Listing (oldest first, skips hidden/partial files), streaming ZIP/TAR, `RemoveFile` and `Reclaim` (delete oldest photos when free space < `-minFreeDiskMB`, ring buffer) via `os.Root`
 - `logfile/` — Size-capped rotating log (`timelapse.log` → `.1` at 10 MB) and `Tail` for `/logs`
@@ -64,7 +64,7 @@ Version info is injected via ldflags: `-X 'main.gitCommit=...' -X 'main.builtAt=
 
 If ldflags are not set, the version comes from the VCS info Go embeds (`debug.ReadBuildInfo`).
 
-CLI flags: `-port`, `-logToFile`, `-storageFolder`, `-secondsBetweenCaptures` (first-run default only; once settings are saved the database wins), `-captureRetries` (default 2), `-minFreeDiskMB` (default 256), `-pprof`, `-version`
+CLI flags: `-port`, `-logToFile`, `-storageFolder`, `-secondsBetweenCaptures` (first-run default only; once settings are saved the database wins), `-captureRetries` (default 2), `-minFreeDiskMB` (default 256), `-allowedHosts` (extra public host names; IPs, localhost, single-label and .local/.lan/.home.arpa/.internal names are always allowed), `-pprof`, `-version`
 
 Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. Dependencies: `go.etcd.io/bbolt`, `golang.org/x/sys` only.
 

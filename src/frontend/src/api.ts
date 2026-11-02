@@ -1,7 +1,11 @@
 // Typed client for the Go backend. Endpoints and payload shapes mirror
 // rest/model.go and conf/model.go exactly; do not rename fields.
 
-/** Empty in production: the UI is served by the same Go server it talks to. */
+/**
+ * Empty in production: the UI is served by the same Go server it talks to.
+ * The server sends no CORS headers, so a different origin only works through
+ * a proxy (`npm start` proxies to VITE_BACKEND).
+ */
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? '';
 
 export interface Settings {

@@ -83,7 +83,7 @@ func newEnv(t *testing.T) *env {
 	}
 	mux := http.NewServeMux()
 	e.srv.Register(mux)
-	ts := httptest.NewServer(Middleware(mux))
+	ts := httptest.NewServer(Middleware(mux, "camera.example.org"))
 	t.Cleanup(ts.Close)
 	e.url = ts.URL
 	return e
@@ -111,6 +111,10 @@ func do(t *testing.T, method, url string, body string, header ...string) (*http.
 		t.Fatal(err)
 	}
 	for i := 0; i+1 < len(header); i += 2 {
+		if header[i] == "Host" {
+			req.Host = header[i+1]
+			continue
+		}
 		req.Header.Set(header[i], header[i+1])
 	}
 	res, err := http.DefaultClient.Do(req)
@@ -497,12 +501,42 @@ func TestLogsWithoutLogFile(t *testing.T) {
 	wantStatus(t, res, body, 500)
 }
 
-func TestCORSAndPreflight(t *testing.T) {
+func TestOtherWebsitesCannotReadTheAPI(t *testing.T) {
 	e := newEnv(t)
-	res, body := do(t, "OPTIONS", e.url+"/configuration", "")
-	wantStatus(t, res, body, 204)
-	if res.Header.Get("Access-Control-Allow-Origin") != "*" {
-		t.Fatal(res.Header)
+	res, body := do(t, "GET", e.url+"/photos", "", "Origin", "https://evil.example.com")
+	wantStatus(t, res, body, 200)
+	if v := res.Header.Get("Access-Control-Allow-Origin"); v != "" {
+		t.Fatalf("Access-Control-Allow-Origin %q lets other websites read photos and settings", v)
+	}
+}
+
+func TestDNSRebindingIsRejected(t *testing.T) {
+	// A page on a public domain that re-resolves to the camera's IP is
+	// same-origin for the browser, so only the Host header gives it away.
+	e := newEnv(t)
+	e.photo(t, "a.jpg", "a", 0)
+	for _, host := range []string{"evil.example.com", "evil.example.com:8080", "192.168.4.1.nip.io"} {
+		res, body := do(t, "DELETE", e.url+"/photos", "", "Host", host, "Sec-Fetch-Site", "same-origin")
+		wantStatus(t, res, body, 403)
+		res, body = do(t, "GET", e.url+"/photos", "", "Host", host)
+		wantStatus(t, res, body, 403)
+	}
+	if !e.exists("a.jpg") {
+		t.Fatal("photos were deleted through a rebound host name")
+	}
+}
+
+func TestLocalHostNamesAreAccepted(t *testing.T) {
+	e := newEnv(t)
+	for _, host := range []string{
+		"192.168.4.1", "192.168.4.1:8080", "[fe80::1]:8080", "localhost:8080",
+		"raspberrypi", "raspberrypi:8080", "timelapse.local", "cam.lan:8080", "cam.home.arpa", "cam.internal",
+		"Camera.Example.Org:8080", // allowed explicitly (-allowedHosts)
+	} {
+		res, body := do(t, "GET", e.url+"/version", "", "Host", host)
+		if res.StatusCode != 200 {
+			t.Errorf("Host %q: status %d %q", host, res.StatusCode, body)
+		}
 	}
 }
 

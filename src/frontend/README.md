@@ -23,7 +23,8 @@ These must not change without changing `src/backend/main.go` and `src/backend/we
   `GET /photos`, `GET /file/:name`, `GET /file/last`, `GET /archive/{zip,tar}?f=…`, `GET /capture`,
   `GET|POST /configuration`, `GET /monitoring`, `GET /logs`, `GET /version`,
   `DELETE /file?f=…` (selected photos), `DELETE /photos` (all photos), `POST /admin/{restart,shutdown}`.
-  The server rejects cross-site POST/DELETE requests (`http.CrossOriginProtection`).
+  The server rejects cross-site POST/DELETE requests (`http.CrossOriginProtection`), sends no CORS headers,
+  and only answers to local host names (IPs, `localhost`, `*.local`, …; more via `-allowedHosts`) to block DNS rebinding.
   Payload types live in `src/api.ts` and mirror `src/backend/rest/model.go` and `src/backend/conf/settings.go`.
 - Only intervals that divide an hour evenly (60 s to 1 h) are valid, with an offset below the interval.
   `src/schedule.ts` and the Go scheduler are both tested against `src/schedule-cases.json`.
