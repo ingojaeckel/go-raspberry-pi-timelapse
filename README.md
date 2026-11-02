@@ -1,6 +1,5 @@
 [![Go Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/Build/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions?query=workflow%3ABuild)
 [![Arduino Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions/workflows/arduino.yml/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions/workflows/arduino.yml)
-[![C++ Build](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/workflows/C%2B%2B%20Object%20Detection%20Build/badge.svg)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/actions?query=workflow%3A%22C%2B%2B+Object+Detection+Build%22)
 [![Latest Release](https://img.shields.io/github/v/release/ingojaeckel/go-raspberry-pi-timelapse?include_prereleases)](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/releases/latest)
 
 # Go Raspberry Pi Timelapse
@@ -92,46 +91,6 @@ This project was created for a timelapse system consisting of the following core
 * https://learn.adafruit.com/running-opengl-based-games-and-emulators-on-adafruit-pitft-displays/tuning-performance
 * https://willhaley.com/blog/power-off-raspberry-pi-adafruit-tft-screen-shutdown/
 * Streaming raspivid output via network. (1) on the receiving device: `vlc -vvv udp://@:1234 :demux=h264`. (2) on the Pi: `raspivid -t 60000 -o udp://192.168.0.123:1234`.
-
-</details>
-
----
-
-## 🔬 Experimental: C++ Object Detection
-
-<details>
-<summary><b>Click to expand C++ Object Detection details</b></summary>
-
-This repository also includes an experimental C++ application for real-time object detection, located in the [`cpp-object-detection/`](cpp-object-detection/) directory.
-
-### Purpose & Comparison
-
-| Feature | Go Timelapse (Main Project) | C++ Object Detection (Experimental) |
-|---------|----------------------------|-------------------------------------|
-| **Primary Purpose** | Scheduled timelapse photography | Real-time object detection & tracking |
-| **Hardware Target** | Raspberry Pi Zero W | Higher-performance systems (Pi 4, desktop) |
-| **Camera Input** | Pi Camera Module (CSI) | USB webcams |
-| **Processing** | Minimal - just capture images | AI/ML object detection (YOLO) |
-| **Resource Usage** | Very low power | Higher CPU/memory requirements |
-| **Output** | Scheduled still images | Continuous detection logs & optional images |
-| **Use Cases** | Time-lapse videos, construction monitoring | Security monitoring, wildlife observation |
-| **Maturity** | Production-ready | Experimental/Research |
-
-### Key Features of C++ Object Detection
-
-- **Real-time detection** using YOLO models at 720p
-- **Object tracking** with movement detection
-- **Network streaming** via MJPEG
-- **Headless operation** for embedded systems
-- **GPU acceleration** support (CUDA/OpenCL)
-- **Smart photo storage** - only saves images when objects are detected
-- **Long-term operation** optimized for continuous 24/7 deployment
-
-### Getting Started
-
-For more information about the C++ object detection application, see the [cpp-object-detection/README.md](cpp-object-detection/README.md).
-
-**Note:** The C++ application is experimental and designed for different use cases than the main timelapse project. It requires more powerful hardware and has different dependencies (OpenCV, ONNX runtime).
 
 </details>
 
