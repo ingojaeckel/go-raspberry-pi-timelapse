@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"testing"
+	"time"
 )
 
 func TestReclaimDiskSpaceKeepsPhotosWhenThereIsRoom(t *testing.T) {
@@ -128,5 +129,26 @@ func TestVcsVersion(t *testing.T) {
 func TestVersionStringNeedsCommitAndBuildTime(t *testing.T) {
 	if got := versionString("abc", ""); got == "abc built at " {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestRunReturnsWhenServingFailsOnItsOwn(t *testing.T) {
+	t.Chdir(t.TempDir())
+	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 600, listen: "127.0.0.1:0"}, noCamera{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.close()
+	a.listener.Close() // Serve fails although nobody cancelled ctx
+
+	done := make(chan error, 1)
+	go func() { done <- a.run(context.Background(), nil) }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected the Serve error, so main exits and systemd restarts the service")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("run hung after the HTTP server failed")
 	}
 }

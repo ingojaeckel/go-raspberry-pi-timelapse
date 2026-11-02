@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -50,12 +52,13 @@ func OpenStore(path string, defaults Settings) (*Store, error) {
 	return s, nil
 }
 
-// openOrReplaceDB opens the database, moving an unreadable file aside and
-// starting a new one. A lock timeout (another process has it open) is
-// returned as is.
+// openOrReplaceDB opens the database. A file whose content bbolt cannot
+// read is moved aside and replaced by a new one. A file that cannot be
+// opened, locked or examined (permissions, another process holds it) is left
+// alone and the error returned: its settings may be fine.
 func openOrReplaceDB(path string) (*bolt.DB, error) {
 	db, err := openDB(path)
-	if err == nil || errors.Is(err, berrors.ErrTimeout) {
+	if err == nil || !isCorrupt(err) {
 		return db, err
 	}
 	aside := fmt.Sprintf("%s.corrupt-%d", path, time.Now().Unix())
@@ -81,6 +84,14 @@ func (s *Store) initialSettings(defaults Settings) (Settings, error) {
 	}
 	slog.Warn("saved settings were invalid and have been adjusted", "from", loaded, "to", normalized)
 	return normalized, s.put(normalized)
+}
+
+// isCorrupt reports whether an error from bolt.Open is about the file's
+// content, as opposed to an operating system error or a lock timeout.
+func isCorrupt(err error) bool {
+	var pathErr *fs.PathError
+	var errno syscall.Errno
+	return !errors.Is(err, berrors.ErrTimeout) && !errors.As(err, &pathErr) && !errors.As(err, &errno)
 }
 
 func openDB(path string) (*bolt.DB, error) {

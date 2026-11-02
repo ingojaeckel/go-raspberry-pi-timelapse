@@ -182,3 +182,40 @@ func TestOpenStoreFailsWhenACorruptFileCannotBeMovedAside(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 }
+
+func TestStoreKeepsASettingsFileItCannotOpen(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores file permissions")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.db")
+	s := openTestStore(t, path)
+	if _, err := s.Update(func(c *Settings) { c.Quality = 85 }); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+
+	os.Chmod(path, 0o400) // e.g. wrong owner after copying it around: intact, just not writable
+	if _, err := OpenStore(path, Default(1800)); err == nil {
+		t.Fatal("expected an error so the service fails and the problem gets noticed")
+	}
+	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 0 {
+		t.Fatalf("an intact settings file was moved aside: %v", matches)
+	}
+	os.Chmod(path, 0o600)
+	if got := openTestStore(t, path).Get().Quality; got != 85 {
+		t.Fatalf("saved settings lost: quality %d", got)
+	}
+}
+
+func TestStoreRecoversFromALargeCorruptFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.db")
+	os.WriteFile(path, []byte(strings.Repeat("garbage!", 64<<10)), 0o600) // big enough to pass the size check
+	if openTestStore(t, path).Get() != Default(1800) {
+		t.Fatal("expected defaults")
+	}
+	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 1 {
+		t.Fatalf("found %v", matches)
+	}
+}

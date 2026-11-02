@@ -98,13 +98,17 @@ func (a *app) close() {
 	}
 }
 
-// run starts the background loops and serves HTTP until ctx is cancelled.
+// run starts the background loops and serves HTTP until ctx is cancelled or
+// serving fails; either way the background loops are stopped before it returns.
 func (a *app) run(ctx context.Context, ready func(addr string)) error {
+	ctx, stop := context.WithCancel(ctx)
+	defer stop()
 	server := a.httpServer()
 	var wg sync.WaitGroup
 	wg.Go(func() { followDebugSetting(ctx, a.store, a.level) })
 	wg.Go(func() { a.scheduler().Run(ctx) })
 	err := serve(ctx, server, a.listener, ready)
+	stop()
 	wg.Wait()
 	return err
 }
