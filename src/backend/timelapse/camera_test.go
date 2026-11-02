@@ -1,86 +1,228 @@
 package timelapse
 
 import (
-	"runtime"
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
-
-	"github.com/facebookgo/ensure"
 )
 
-func TestCreateCameraWithoutPath(t *testing.T) {
-	_, err := NewCamera("", 200, 100, false, 100)
-	// Should have failed since path must not be empty.
-	ensure.NotNil(t, err)
-}
-
-func TestBuildingArguments(t *testing.T) {
-	unrotatedCamera, err := NewCamera("foo", 200, 100, false, 100)
-	ensure.Nil(t, err)
-	ensure.False(t, unrotatedCamera.flipVertically)
-	ensure.False(t, unrotatedCamera.flipHorizontally)
-
-	p := unrotatedCamera.getAbsoluteFilepath()
-	// Example: "foo/20210913-184442.jpg"
-	ensure.DeepEqual(t, 0, strings.Index(p, "foo/"))
-	ensure.DeepEqual(t, strings.Index(p, ".jpg"), 19)
-}
-
-func TestRaspistillArgs(t *testing.T) {
-	unrotatedCamera, _ := NewCamera("foo", 200, 100, false, 100)
-	args := unrotatedCamera.getRaspistillArgs("foo/someFile.jpg")
-	ensure.DeepEqual(t, []string{"--width", "200", "--height", "100", "--quality", "100", "--output", "foo/someFile.jpg"}, args)
-}
-
-func TestCreateRotatedCamera(t *testing.T) {
-	rotatedCamera, err := NewCamera("foo", 200, 100, true, 100)
-	ensure.Nil(t, err)
-	ensure.True(t, rotatedCamera.flipVertically)
-	ensure.True(t, rotatedCamera.flipHorizontally)
-}
-
-func TestCreateFileName(t *testing.T) {
-	ensure.DeepEqual(t, getFileName(time.Date(1974, time.January, 1, 1, 0, 0, 0, time.UTC)), "19740101-010000.jpg")
-	ensure.DeepEqual(t, getFileName(time.Date(1974, time.January, 19, 1, 2, 3, 0, time.UTC)), "19740119-010203.jpg")
-	ensure.DeepEqual(t, getFileName(time.Date(1974, time.May, 19, 1, 2, 3, 0, time.UTC)), "19740519-010203.jpg")
-	ensure.DeepEqual(t, getFileName(time.Date(1974, time.December, 19, 1, 2, 3, 4, time.UTC)), "19741219-010203.jpg")
-}
-
-func TestIsDevelopment(t *testing.T) {
-	// Test that isDevelopment returns true for non-ARM architectures
-	arch := runtime.GOARCH
-	result := isDevelopment()
-	
-	if arch == "arm" || arch == "arm64" {
-		ensure.False(t, result)
-	} else {
-		// On x86_64, amd64, 386, etc., should return true
-		ensure.True(t, result)
+func TestRpicamStillArgs(t *testing.T) {
+	got := rpicamStillArgs("foo/someFile.jpg", Options{Width: 200, Height: 100, Quality: 100})
+	want := []string{"--width", "200", "--height", "100", "--quality", "100", "--output", "foo/someFile.jpg"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v", got)
 	}
 }
 
-func TestWebcamCaptureArgsBasic(t *testing.T) {
-	camera, _ := NewCamera("/tmp", 640, 480, false, 75)
-	// We can't fully test captureWithWebcam without an actual webcam,
-	// but we can verify the basic structure exists and doesn't panic
-	ensure.NotNil(t, camera)
+func TestRpicamStillArgsRotated(t *testing.T) {
+	got := rpicamStillArgs("x.jpg", Options{Width: 200, Height: 100, Quality: 90, Rotate: true})
+	want := []string{"--width", "200", "--height", "100", "--quality", "90", "--vflip", "--hflip", "--output", "x.jpg"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v", got)
+	}
 }
 
-func TestWebcamCaptureArgsWithRotation(t *testing.T) {
-	camera, _ := NewCamera("/tmp", 1920, 1080, true, 90)
-	// Verify the camera is created with rotation settings
-	ensure.True(t, camera.flipHorizontally)
-	ensure.True(t, camera.flipVertically)
+func TestFfmpegArgsLinux(t *testing.T) {
+	got := ffmpegArgs("linux", "x.jpg", Options{Width: 640, Height: 480, Quality: 75, Rotate: true})
+	want := []string{"-f", "v4l2", "-video_size", "640x480", "-i", "/dev/video0", "-frames:v", "1", "-q:v", "75", "-vf", "hflip,vflip", "-y", "x.jpg"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v", got)
+	}
 }
 
-func TestWebcamCaptureOSDetection(t *testing.T) {
-	// Verify that the webcam capture function exists and can be called
-	// We can't test actual capture without a webcam, but we can verify
-	// the function handles different operating systems
-	camera, _ := NewCamera("/tmp", 640, 480, false, 75)
-	ensure.NotNil(t, camera)
-	
-	// The actual OS detection happens in captureWithWebcam via runtime.GOOS
-	// which will be "linux", "darwin", etc. depending on the build platform
+func TestFfmpegArgsDarwin(t *testing.T) {
+	got := ffmpegArgs("darwin", "x.jpg", Options{Width: 640, Height: 480, Quality: 75})
+	want := []string{"-f", "avfoundation", "-framerate", "30", "-i", "0", "-frames:v", "1", "-s", "640x480", "-y", "x.jpg"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestDetectBackendPrefersRpicamStillWhenInstalled(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("PATH", dir)
+	if _, ok := DetectBackend().(rpicamStill); ok {
+		t.Fatal("rpicam-still is not installed, expected ffmpeg")
+	}
+	os.WriteFile(filepath.Join(dir, "rpicam-still"), []byte("#!/bin/sh\n"), 0o755)
+	if _, ok := DetectBackend().(rpicamStill); !ok {
+		t.Fatal("expected rpicam-still when it is on PATH, regardless of GOARCH")
+	}
+}
+
+func TestFileName(t *testing.T) {
+	if got := fileName(time.Date(1974, time.December, 19, 1, 2, 3, 4, time.UTC)); got != "19741219-010203.jpg" {
+		t.Fatalf("got %s", got)
+	}
+}
+
+// backendFunc adapts a function to Backend.
+type backendFunc func(ctx context.Context, path string, o Options) error
+
+func (f backendFunc) Capture(ctx context.Context, path string, o Options) error {
+	return f(ctx, path, o)
+}
+
+func writeJPEG(_ context.Context, path string, _ Options) error {
+	return os.WriteFile(path, []byte("jpeg"), 0o600)
+}
+
+func TestCaptureWritesToAHiddenFileAndRenames(t *testing.T) {
+	dir := t.TempDir()
+	var during string
+	cam := NewCamera(backendFunc(func(ctx context.Context, path string, o Options) error {
+		during = path
+		return writeJPEG(ctx, path, o)
+	}), time.Minute)
+
+	path, err := cam.Capture(t.Context(), dir, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(during) != dir || !strings.HasPrefix(filepath.Base(during), ".") {
+		t.Fatalf("camera should write to a hidden file in %s, wrote %s", dir, during)
+	}
+	if filepath.Dir(path) != dir || strings.HasPrefix(filepath.Base(path), ".") || !strings.HasSuffix(path, ".jpg") {
+		t.Fatalf("unexpected final path %s", path)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		t.Fatalf("expected only the final photo, found %v", entries)
+	}
+}
+
+func TestCaptureCreatesMissingFolder(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "photos")
+	if _, err := NewCamera(backendFunc(writeJPEG), time.Minute).Capture(t.Context(), dir, Options{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCaptureRemovesPartialFileOnFailure(t *testing.T) {
+	dir := t.TempDir()
+	cam := NewCamera(backendFunc(func(_ context.Context, path string, _ Options) error {
+		os.WriteFile(path, []byte("half a jpeg"), 0o600)
+		return errors.New("camera failed")
+	}), time.Minute)
+	if _, err := cam.Capture(t.Context(), dir, Options{}); err == nil {
+		t.Fatal("expected an error")
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		t.Fatalf("partial file left behind: %v", entries)
+	}
+}
+
+func TestCaptureNeverOverwritesAnExistingPhoto(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		dir := t.TempDir()
+		existing := filepath.Join(dir, fileName(time.Now()))
+		os.WriteFile(existing, []byte("older photo"), 0o600)
+
+		path, err := NewCamera(backendFunc(writeJPEG), time.Minute).Capture(t.Context(), dir, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if path == existing {
+			t.Fatal("overwrote a photo taken at the same wall clock second (e.g. after the clock moved back)")
+		}
+		if got, _ := os.ReadFile(existing); string(got) != "older photo" {
+			t.Fatal("existing photo was modified")
+		}
+		if !strings.HasSuffix(path, "-1.jpg") {
+			t.Fatalf("expected a numbered name, got %s", path)
+		}
+	})
+}
+
+func TestCaptureTimesOutAHangingCamera(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		cam := NewCamera(backendFunc(func(ctx context.Context, _ string, _ Options) error {
+			<-ctx.Done() // rpicam-still hangs
+			return ctx.Err()
+		}), 30*time.Second)
+		start := time.Now()
+		_, err := cam.Capture(t.Context(), t.TempDir(), Options{})
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("err = %v, want deadline exceeded", err)
+		}
+		if took := time.Since(start); took != 30*time.Second {
+			t.Fatalf("gave up after %v", took)
+		}
+	})
+}
+
+func TestCaptureUsesTheCameraOneAtATime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var active, maxActive atomic.Int32
+		cam := NewCamera(backendFunc(func(ctx context.Context, path string, o Options) error {
+			n := active.Add(1)
+			defer active.Add(-1)
+			if n > maxActive.Load() {
+				maxActive.Store(n)
+			}
+			time.Sleep(5 * time.Second)
+			return writeJPEG(ctx, path, o)
+		}), time.Minute)
+
+		var wg sync.WaitGroup
+		dir := t.TempDir()
+		for range 3 {
+			wg.Go(func() {
+				if _, err := cam.Capture(t.Context(), dir, Options{}); err != nil {
+					t.Error(err)
+				}
+			})
+		}
+		wg.Wait()
+		if maxActive.Load() != 1 {
+			t.Fatalf("%d captures ran at the same time", maxActive.Load())
+		}
+	})
+}
+
+func TestCaptureStopsWaitingForTheCameraWhenCancelled(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		cam := NewCamera(backendFunc(func(context.Context, string, Options) error {
+			<-release
+			return nil
+		}), time.Hour)
+		go cam.Capture(t.Context(), t.TempDir(), Options{})
+		synctest.Wait() // first capture holds the camera
+
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if _, err := cam.Capture(ctx, t.TempDir(), Options{}); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("err = %v", err)
+		}
+		close(release)
+	})
+}
+
+func TestRunCommandKillsProcessOnTimeout(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	err := runCommand(ctx, "sleep", "10")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if took := time.Since(start); took > 5*time.Second {
+		t.Fatalf("took %v", took)
+	}
+}
+
+func TestRunCommandIncludesOutputInError(t *testing.T) {
+	err := runCommand(t.Context(), "sh", "-c", "echo camera not found >&2; exit 1")
+	if err == nil || !strings.Contains(err.Error(), "camera not found") {
+		t.Fatalf("err = %v", err)
+	}
 }

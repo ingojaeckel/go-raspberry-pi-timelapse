@@ -5,25 +5,23 @@ import { Icon } from '../components/Icon';
 import { ConfirmDialog, Notice, PageHeader, Spinner } from '../components/ui';
 import { formatPastHour } from '../format';
 import { useNow, useResource } from '../hooks';
-import { capturesPerDay, captureSlots } from '../schedule';
+import { capturesPerDay, captureSlots, formatInterval, isValidInterval, VALID_INTERVALS } from '../schedule';
 
-type Unit = 'sec' | 'min' | 'h';
-const UNIT_SECONDS: Record<Unit, number> = { sec: 1, min: 60, h: 3600 };
-
-function bestUnit(seconds: number): Unit {
-  if (seconds % 3600 === 0) return 'h';
-  if (seconds % 60 === 0) return 'min';
-  return 'sec';
+function offsetHint(interval: number): string {
+  const last = (interval - 1) / 60;
+  return interval >= 120 ? `Pick a minute from 0 to ${Math.floor(last)}.` : `Pick a value from 0 to ${+last.toFixed(2)} minutes.`;
 }
 
-/** Mirrors conf/valid/strict_validator.go so problems show before saving. */
+/** Mirrors Settings.Validate in src/backend/conf/settings.go so problems show before saving. */
 export function validate(s: Settings): Partial<Record<keyof Settings, string>> {
   const errors: Partial<Record<keyof Settings, string>> = {};
-  if (!Number.isInteger(s.SecondsBetweenCaptures) || s.SecondsBetweenCaptures < 1) {
-    errors.SecondsBetweenCaptures = 'Use a whole number of seconds, 1 or more.';
-  }
-  if (s.OffsetWithinHour !== -1 && (!Number.isInteger(s.OffsetWithinHour) || s.OffsetWithinHour < 0 || s.OffsetWithinHour > 3599)) {
-    errors.OffsetWithinHour = 'Pick a minute from 0 to 59.';
+  if (!isValidInterval(s.SecondsBetweenCaptures)) {
+    errors.SecondsBetweenCaptures = 'Pick one of the listed intervals.';
+  } else if (
+    s.OffsetWithinHour !== -1 &&
+    (!Number.isInteger(s.OffsetWithinHour) || s.OffsetWithinHour < 0 || s.OffsetWithinHour >= s.SecondsBetweenCaptures)
+  ) {
+    errors.OffsetWithinHour = offsetHint(s.SecondsBetweenCaptures);
   }
   if (!Number.isInteger(s.Quality) || s.Quality < 1 || s.Quality > 100) {
     errors.Quality = 'Use a value from 1 to 100.';
@@ -60,7 +58,6 @@ interface Props {
 
 export function SettingsView({ settings, error, onSaved }: Props) {
   const [draft, setDraft] = useState<Settings | undefined>(settings);
-  const [unit, setUnit] = useState<Unit>('min');
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState<{ tone: 'ok' | 'error' | 'warn'; text: string } | null>(null);
   const [pending, setPending] = useState<AdminCommand | null>(null);
@@ -68,10 +65,7 @@ export function SettingsView({ settings, error, onSaved }: Props) {
   const now = useNow();
 
   useEffect(() => {
-    if (settings && !draft) {
-      setDraft(settings);
-      setUnit(bestUnit(settings.SecondsBetweenCaptures));
-    }
+    if (settings && !draft) setDraft(settings);
   }, [settings, draft]);
 
   if (!draft) {
@@ -88,8 +82,16 @@ export function SettingsView({ settings, error, onSaved }: Props) {
   const dirty = settings !== undefined && JSON.stringify(settings) !== JSON.stringify(draft);
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setDraft({ ...draft, [k]: v });
   const aligned = draft.OffsetWithinHour !== -1;
-  const intervalValue = draft.SecondsBetweenCaptures / UNIT_SECONDS[unit];
+  const intervalSupported = isValidInterval(draft.SecondsBetweenCaptures);
   const slots = captureSlots(draft);
+  // Changing the interval keeps the capture times lined up: offset modulo the
+  // new interval is the earliest capture of the old schedule within the hour.
+  const setInterval = (seconds: number) =>
+    setDraft({
+      ...draft,
+      SecondsBetweenCaptures: seconds,
+      OffsetWithinHour: aligned ? Math.max(0, draft.OffsetWithinHour) % seconds : -1,
+    });
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
@@ -152,27 +154,27 @@ export function SettingsView({ settings, error, onSaved }: Props) {
             <div className="fields">
               <div className="field">
                 <label htmlFor="interval">Take a photo every</label>
-                <div className="inline">
-                  <input
-                    id="interval"
-                    type="number"
-                    inputMode="decimal"
-                    min={unit === 'sec' ? 1 : 0}
-                    step={unit === 'sec' ? 1 : 'any'}
-                    value={Number.isFinite(intervalValue) ? +intervalValue.toFixed(4) : ''}
-                    aria-invalid={!!errors.SecondsBetweenCaptures}
-                    aria-describedby="interval-help"
-                    onChange={(e) => set('SecondsBetweenCaptures', Math.round(e.target.valueAsNumber * UNIT_SECONDS[unit]))}
-                  />
-                  <select aria-label="Unit" value={unit} onChange={(e) => setUnit(e.target.value as Unit)}>
-                    <option value="sec">seconds</option>
-                    <option value="min">minutes</option>
-                    <option value="h">hours</option>
-                  </select>
-                </div>
+                <select
+                  id="interval"
+                  value={draft.SecondsBetweenCaptures}
+                  aria-invalid={!!errors.SecondsBetweenCaptures}
+                  aria-describedby="interval-help"
+                  onChange={(e) => setInterval(Number(e.target.value))}
+                >
+                  {!intervalSupported && (
+                    <option value={draft.SecondsBetweenCaptures} disabled>
+                      {formatInterval(draft.SecondsBetweenCaptures)} (not supported)
+                    </option>
+                  )}
+                  {VALID_INTERVALS.map((v) => (
+                    <option key={v} value={v}>
+                      {formatInterval(v)}
+                    </option>
+                  ))}
+                </select>
                 <p id="interval-help" className={errors.SecondsBetweenCaptures ? 'help error' : 'help'}>
                   {errors.SecondsBetweenCaptures ??
-                    `About ${capturesPerDay(draft).toLocaleString()} photos a day.`}
+                    `${capturesPerDay(draft).toLocaleString()} photos a day. Intervals divide the hour evenly so every hour has the same capture times.`}
                 </p>
               </div>
 
@@ -203,7 +205,7 @@ export function SettingsView({ settings, error, onSaved }: Props) {
                       type="number"
                       inputMode="numeric"
                       min={0}
-                      max={59}
+                      max={(draft.SecondsBetweenCaptures - 1) / 60}
                       step="any"
                       value={+(draft.OffsetWithinHour / 60).toFixed(2)}
                       aria-invalid={!!errors.OffsetWithinHour}
@@ -307,7 +309,7 @@ export function SettingsView({ settings, error, onSaved }: Props) {
               <input type="checkbox" checked={draft.DebugEnabled} onChange={(e) => set('DebugEnabled', e.target.checked)} />
               Detailed logging
             </label>
-            <p className="help">Writes a line every second while waiting for a capture. Useful for troubleshooting only.</p>
+            <p className="help">Logs every request and scheduling step. Useful for troubleshooting only.</p>
           </div>
         </fieldset>
 

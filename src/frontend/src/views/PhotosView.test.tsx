@@ -56,11 +56,11 @@ describe('PhotosView', () => {
     await user.click(screen.getByRole('button', { name: 'Delete' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Delete 1 photo?' });
-    expect(callsTo(f, 'GET', '/file/delete')).toHaveLength(0);
+    expect(callsTo(f, 'DELETE', '/file')).toHaveLength(0);
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
-    await waitFor(() => expect(callsTo(f, 'GET', '/file/delete')).toHaveLength(1));
-    const url = new URL(String(callsTo(f, 'GET', '/file/delete')[0]![0]), 'http://x');
+    await waitFor(() => expect(callsTo(f, 'DELETE', '/file')).toHaveLength(1));
+    const url = new URL(String(callsTo(f, 'DELETE', '/file')[0]![0]), 'http://x');
     expect(url.searchParams.getAll('f')).toEqual(['20261102-091500.jpg']);
     expect(await screen.findByText('Deleted 1 photo.')).toBeInTheDocument();
     await waitFor(() => expect(callsTo(f, 'GET', '/photos')).toHaveLength(2));

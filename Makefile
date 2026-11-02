@@ -38,20 +38,21 @@ test-frontend: $(FRONTEND)/node_modules
 vet: frontend
 	cd $(BACKEND) && go vet ./...
 
+# -race needs cgo, which the Pi cross-compile does not use; tests run natively.
 test-go: frontend
-	cd $(BACKEND) && go test -v -cover ./...
+	cd $(BACKEND) && go test -race -shuffle=on -cover ./...
 
 test: test-frontend vet test-go
 
 # Development build for quick local iteration.
 dev: test
-	cd $(BACKEND) && go build -v -o go-raspberry-pi-timelapse -ldflags="$(LDFLAGS)" .
+	cd $(BACKEND) && go build -v -trimpath -o go-raspberry-pi-timelapse -ldflags="$(LDFLAGS)" .
 
 # Release build for the Pi. The committed binary at src/backend/bin/arm is what
 # the Pi image runs (see src/installer/custompios/.../timelapse.service).
 pi: test
 	cd $(BACKEND) && GOOS=linux GOARCH=arm GOARM=6 CGO_ENABLED=0 \
-		go build -v -a -o $(PI_BIN) -ldflags="-s -w $(LDFLAGS)" .
+		go build -v -a -trimpath -o $(PI_BIN) -ldflags="-s -w $(LDFLAGS)" .
 	file $(BACKEND)/$(PI_BIN)
 	du $(BACKEND)/$(PI_BIN)
 

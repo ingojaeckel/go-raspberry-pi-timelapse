@@ -1,29 +1,49 @@
-import { captureSlots, capturesPerDay, secondsToNextCapture } from './schedule';
+import {
+  VALID_INTERVALS,
+  captureSlots,
+  capturesPerDay,
+  formatInterval,
+  isValidInterval,
+  secondsToNextCapture,
+} from './schedule';
+import shared from './schedule-cases.json';
+
+// schedule-cases.json is shared with src/backend/timelapse/schedule_test.go, so
+// the UI predicts exactly what the camera does.
 
 const at = (min: number, sec: number) => new Date(2017, 0, 1, 1, min, sec);
 const halfHourly = { SecondsBetweenCaptures: 1800, OffsetWithinHour: 900 };
 
 describe('secondsToNextCapture', () => {
-  // Same cases as TestGetInitialSleepTime / TestGetSecondsToFirstCapture in timelapse_test.go
-  it.each([
-    [9, 13, 47 + 5 * 60],
-    [8, 0, 7 * 60],
-    [16, 0, 29 * 60],
-    [30, 59, 14 * 60 + 1],
-    [46, 1, 29 * 60 - 1],
-    [32, 1, 13 * 60 - 1],
-    [16, 1, 29 * 60 - 1],
-    [8, 1, 7 * 60 - 1],
-  ])('at :%i:%i waits %i s like the Go scheduler', (m, s, expected) => {
-    expect(secondsToNextCapture(halfHourly, at(m, s))).toBe(expected);
-  });
+  it.each(shared.cases)(
+    'interval $interval offset $offset at :$minute:$second waits $wait s like the Go scheduler',
+    ({ interval, offset, minute, second, wait }) => {
+      expect(secondsToNextCapture({ SecondsBetweenCaptures: interval, OffsetWithinHour: offset }, at(minute, second))).toBe(wait);
+    },
+  );
 
   it('is null when captures are not aligned to the hour', () => {
     expect(secondsToNextCapture({ SecondsBetweenCaptures: 60, OffsetWithinHour: -1 }, at(0, 0))).toBeNull();
   });
 
-  it('waits for the next hour when the interval is longer than an hour', () => {
-    expect(secondsToNextCapture({ SecondsBetweenCaptures: 7200, OffsetWithinHour: 600 }, at(20, 0))).toBe(50 * 60);
+  it('is null for intervals the camera rejects', () => {
+    expect(secondsToNextCapture({ SecondsBetweenCaptures: 7200, OffsetWithinHour: 600 }, at(20, 0))).toBeNull();
+  });
+});
+
+describe('valid intervals', () => {
+  it('match the Go validator', () => {
+    expect(VALID_INTERVALS).toEqual(shared.validIntervals);
+    for (const v of shared.validIntervals) expect(isValidInterval(v)).toBe(true);
+    for (const v of shared.invalidIntervals) expect(isValidInterval(v)).toBe(false);
+  });
+
+  it('have readable labels', () => {
+    expect(formatInterval(60)).toBe('1 minute');
+    expect(formatInterval(72)).toBe('72 seconds');
+    expect(formatInterval(90)).toBe('90 seconds');
+    expect(formatInterval(600)).toBe('10 minutes');
+    expect(formatInterval(3600)).toBe('1 hour');
   });
 });
 
@@ -31,14 +51,16 @@ describe('captureSlots', () => {
   it('lists capture times past the hour', () => {
     expect(captureSlots(halfHourly)).toEqual([900, 2700]);
     expect(captureSlots({ SecondsBetweenCaptures: 900, OffsetWithinHour: 0 })).toEqual([0, 900, 1800, 2700]);
+    expect(captureSlots({ SecondsBetweenCaptures: 3600, OffsetWithinHour: 600 })).toEqual([600]);
   });
 
-  it('wraps slots past the end of the hour', () => {
-    expect(captureSlots({ SecondsBetweenCaptures: 1200, OffsetWithinHour: 1800 })).toEqual([600, 1800, 3000]);
+  it('is null for intervals the camera rejects', () => {
+    expect(captureSlots({ SecondsBetweenCaptures: 1000, OffsetWithinHour: 0 })).toBeNull();
   });
 
   it('counts photos per day', () => {
     expect(capturesPerDay(halfHourly)).toBe(48);
     expect(capturesPerDay({ SecondsBetweenCaptures: 600, OffsetWithinHour: -1 })).toBe(144);
+    expect(capturesPerDay({ SecondsBetweenCaptures: 1000, OffsetWithinHour: -1 })).toBe(0);
   });
 });

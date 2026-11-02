@@ -1,16 +1,25 @@
+// Package files lists, archives, deletes and prunes the photos in the storage
+// folder. Every access by name goes through os.Root, so names from HTTP
+// requests cannot escape the folder.
 package files
 
 import (
 	"archive/tar"
 	"archive/zip"
+	"cmp"
 	"errors"
+	"fmt"
 	"io"
-	"log"
+	"io/fs"
 	"os"
-	"sort"
+	"slices"
+	"strings"
 )
 
-var errCannotRemoveDirectory = errors.New("cannot remove a directory")
+var (
+	ErrNotAFile = errors.New("not a regular file")
+	ErrDiskFull = errors.New("not enough free disk space, even after deleting every photo")
+)
 
 type File struct {
 	Name         string `json:"name"`
@@ -20,137 +29,141 @@ type File struct {
 	Bytes        int64  `json:"bytes"`
 }
 
-func RemoveFile(path string) error {
-	fileInfo, err := os.Stat(path)
+// ListFiles returns the regular files in dir, oldest first. Hidden files
+// (such as photos still being written, see timelapse.Camera) are skipped.
+func ListFiles(dir string) ([]File, error) {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if fileInfo.IsDir() {
-		return errCannotRemoveDirectory
-	}
-	return os.Remove(path)
-}
-
-func ListFiles(dirname string, skipDirectories bool) ([]File, error) {
-	fileInfo, e := os.ReadDir(dirname)
-	if e != nil {
-		return []File{}, e
-	}
-	numberOfFiles := 0
-	files := make([]File, len(fileInfo))
-	for _, f := range fileInfo {
-		if skipDirectories && f.IsDir() {
+	files := make([]File, 0, len(entries))
+	for _, e := range entries {
+		if !e.Type().IsRegular() || strings.HasPrefix(e.Name(), ".") {
 			continue
 		}
-		fileInfo, e := f.Info()
-		if e != nil {
-			log.Printf("Error reading file info for %s: %s\n", f.Name(), e.Error())
-			return nil, e
+		info, err := e.Info()
+		if errors.Is(err, fs.ErrNotExist) {
+			continue // deleted since ReadDir
 		}
-		files[numberOfFiles] = File{
-			Name:         f.Name(),
-			ModTime:      fileInfo.ModTime().String(),
-			ModTimeEpoch: fileInfo.ModTime().Unix(),
-			IsDir:        f.IsDir(),
-			Bytes:        fileInfo.Size(),
+		if err != nil {
+			return nil, err
 		}
-		numberOfFiles = numberOfFiles + 1
+		files = append(files, File{
+			Name:         e.Name(),
+			ModTime:      info.ModTime().String(),
+			ModTimeEpoch: info.ModTime().Unix(),
+			Bytes:        info.Size(),
+		})
 	}
-
-	files = files[:numberOfFiles]
-	sort.Sort(ByAge(files))
-
+	slices.SortFunc(files, func(a, b File) int {
+		return cmp.Or(cmp.Compare(a.ModTimeEpoch, b.ModTimeEpoch), cmp.Compare(a.Name, b.Name))
+	})
 	return files, nil
 }
 
-func GetFile(path string) ([]byte, error) {
-	// TODO add prefix to path if necessary
-	return os.ReadFile(path)
-}
-
-// CanServeFile True if the given file can be served via HTTP. False otherwise because it does not exist, is a directory, or because it is too large.
-func CanServeFile(path string, maxFileSizeBytes int64) (bool, error) {
-	fileInfo, err := os.Stat(path)
+// RemoveFile deletes the regular file name inside dir.
+func RemoveFile(dir, name string) error {
+	root, err := os.OpenRoot(dir)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return !fileInfo.IsDir() && fileInfo.Size() <= maxFileSizeBytes, nil
+	defer root.Close()
+	info, err := root.Lstat(name)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%s: %w", name, ErrNotAFile)
+	}
+	return root.Remove(name)
 }
 
-// TarWithPipes combines all files specified by filePaths.
-// Tries to minimize memory usage by using pipes.
-// As a result this can only write as quickly as the content is being read.
-func TarWithPipes(filePaths []string, pw *io.PipeWriter) error {
-	tw := tar.NewWriter(pw)
-	defer tw.Close()
-
-	for _, f := range filePaths {
-		info, err := os.Stat(f)
-		if err != nil {
-			return err
-		}
-		hdr := &tar.Header{
-			Name:    f,
-			Size:    info.Size(),
-			Mode:    int64(info.Mode()),
-			ModTime: info.ModTime(),
-		}
+// WriteTar streams a tar archive of the named files in dir to w.
+func WriteTar(w io.Writer, dir string, names []string) error {
+	tw := tar.NewWriter(w)
+	err := eachFile(dir, names, func(name string, info fs.FileInfo, f io.Reader) error {
+		hdr := &tar.Header{Name: name, Size: info.Size(), Mode: int64(info.Mode().Perm()), ModTime: info.ModTime()}
 		if err := tw.WriteHeader(hdr); err != nil {
 			return err
 		}
-		file, err := os.Open(f)
+		_, err := io.Copy(tw, f)
+		return err
+	})
+	return errors.Join(err, tw.Close())
+}
+
+// WriteZip streams an uncompressed zip archive of the named files in dir to w.
+// JPEGs do not compress, so storing them saves CPU on the Pi.
+func WriteZip(w io.Writer, dir string, names []string) error {
+	zw := zip.NewWriter(w)
+	err := eachFile(dir, names, func(name string, info fs.FileInfo, f io.Reader) error {
+		entry, err := zw.CreateHeader(&zip.FileHeader{Name: name, Modified: info.ModTime(), Method: zip.Store})
 		if err != nil {
 			return err
 		}
-		if _, err := io.Copy(tw, file); err != nil {
-			log.Println(err.Error())
-			return err
+		_, err = io.Copy(entry, f)
+		return err
+	})
+	return errors.Join(err, zw.Close())
+}
+
+// eachFile opens each named file inside dir in turn and closes it before
+// moving on to the next one.
+func eachFile(dir string, names []string, fn func(name string, info fs.FileInfo, f io.Reader) error) error {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	for _, name := range names {
+		if err := withFile(root, name, fn); err != nil {
+			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
 	return nil
 }
 
-// ZipWithPipes combines all files specified by filePaths.
-// Tries to minimize memory usage by using pipes.
-// As a result this can only write as quickly as the content is being read.
-func ZipWithPipes(filePaths []string, pw *io.PipeWriter) error {
-	w := zip.NewWriter(pw)
-	defer w.Close()
+func withFile(root *os.Root, name string, fn func(string, fs.FileInfo, io.Reader) error) error {
+	f, err := root.Open(name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	return fn(name, info, f)
+}
 
-	for _, f := range filePaths {
-		info, err := os.Stat(f)
-		if err != nil {
-			return err
+// Reclaim deletes the oldest photos in dir until at least minFree bytes are
+// free on its file system, so the camera keeps the most recent photos like a
+// ring buffer. It returns the names of the deleted files, and ErrDiskFull if
+// deleting every photo was not enough.
+func Reclaim(dir string, minFree uint64) ([]string, error) {
+	return reclaim(dir, minFree,
+		func() (uint64, error) { return FreeBytes(dir) },
+		func(name string) error { return RemoveFile(dir, name) })
+}
+
+func reclaim(dir string, minFree uint64, free func() (uint64, error), remove func(string) error) ([]string, error) {
+	avail, err := free()
+	if err != nil || avail >= minFree {
+		return nil, err
+	}
+	photos, err := ListFiles(dir)
+	if err != nil {
+		return nil, err
+	}
+	var removed []string
+	for _, p := range photos {
+		if err := remove(p.Name); err != nil {
+			return removed, err
 		}
-		zipFile, err := w.CreateHeader(&zip.FileHeader{
-			Name:     info.Name(),
-			Modified: info.ModTime(),
-			Method:   zip.Store,
-		})
-		if err != nil {
-			return err
-		}
-		content, err := os.ReadFile(f)
-		if err != nil {
-			return err
-		}
-		_, err = zipFile.Write(content)
-		if err != nil {
-			return err
+		removed = append(removed, p.Name)
+		if avail, err = free(); err != nil || avail >= minFree {
+			return removed, err
 		}
 	}
-	return nil
-}
-
-// ByAge Implements the sort.Interface to allow sorting files by their age.
-type ByAge []File
-
-func (b ByAge) Len() int {
-	return len(b)
-}
-func (b ByAge) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
-}
-func (b ByAge) Less(i, j int) bool {
-	return b[i].ModTimeEpoch < b[j].ModTimeEpoch
+	return removed, ErrDiskFull
 }

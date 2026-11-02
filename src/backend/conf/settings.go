@@ -2,108 +2,143 @@ package conf
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
-	"os"
-	"time"
-
-	"github.com/boltdb/bolt"
 )
 
 const (
-	minSecondsBetweenCaptures = 60
-	boltIoTimeout             = 1 * time.Second
+	MinSecondsBetweenCaptures = 60
+	MaxSecondsBetweenCaptures = 3600
+	// OffsetDisabled turns off alignment to the hour: captures then run every
+	// SecondsBetweenCaptures counted from start-up.
+	OffsetDisabled = -1
 )
 
-func LoadConfiguration() (*Settings, error) {
-	if areSettingsMissing(settingsFile) {
-		log.Println("Creating initial settings file..")
-		return WriteConfiguration(initialConfiguration)
-	}
-	log.Println("Settings file exists.")
+// ErrInvalid is wrapped by every validation error.
+var ErrInvalid = errors.New("invalid settings")
 
-	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boltIoTimeout})
-	if err != nil {
-		return nil, fmt.Errorf("failed to open settings file: %w", err)
-	}
-	defer db.Close()
-
-	val, exists, err := get(db, settingsKey)
-	if err != nil {
-		return nil, fmt.Errorf("error loading settings: %w", err)
-	}
-	if !exists {
-		return nil, errSettingsNotFound
-	}
-
-	var existingSettings Settings
-	err = json.Unmarshal([]byte(val), &existingSettings)
-
-	if existingSettings.SecondsBetweenCaptures < minSecondsBetweenCaptures {
-		// Enforce min time between captures. this also protects for errors as a result of this being 0.
-		existingSettings.SecondsBetweenCaptures = minSecondsBetweenCaptures
-	}
-
-	return &existingSettings, err
+// Settings is persisted as JSON and served to the frontend unchanged; the
+// field names are part of the API (src/frontend/src/api.ts).
+type Settings struct {
+	SecondsBetweenCaptures int
+	// OffsetWithinHour is the first capture in seconds past the hour,
+	// 0 <= offset < SecondsBetweenCaptures, or OffsetDisabled.
+	OffsetWithinHour        int
+	PhotoResolutionWidth    int
+	PhotoResolutionHeight   int
+	PreviewResolutionWidth  int
+	PreviewResolutionHeight int
+	// RotateBy is 0 or 180.
+	RotateBy int
+	// ResolutionSetting selects PhotoResolutionWidth/Height, see resolutions.
+	ResolutionSetting int
+	Quality           int
+	DebugEnabled      bool
 }
 
-// WriteConfiguration Persist the provided settings. Returns the updated settings or an error.
-func WriteConfiguration(s Settings) (*Settings, error) {
-	log.Printf("Write configuration: %s\n", s.String())
-	db, err := bolt.Open(settingsFile, 0600, &bolt.Options{Timeout: boltIoTimeout})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create settings file: %w", err)
-	}
-	defer db.Close()
-
-	marshalled, err := json.Marshal(s)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config: %w", err)
-	}
-	if err := set(db, settingsKey, marshalled); err != nil {
-		return nil, fmt.Errorf("failed to write settings: %w", err)
-	}
-	return &s, nil
+func (s Settings) String() string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }
 
-func areSettingsMissing(path string) bool {
-	_, err := os.Stat(path)
-	return os.IsNotExist(err)
+// resolutions maps ResolutionSetting to the photo size (Camera Module v2).
+var resolutions = [...][2]int{
+	0: {3280, 2464}, // 8 MP
+	1: {2186, 1642}, // 3.5 MP
+	2: {1640, 1232}, // 2 MP
 }
 
-func set(db *bolt.DB, key string, value []byte) error {
-	log.Printf("setting '%s': '%s' -> '%s'\n", bucket, key, string(value))
-	return db.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(bucket)); err != nil {
-			return err
-		}
-		b := tx.Bucket([]byte(bucket))
-		if b == nil {
-			return errMissingBucket
-		}
-		return b.Put([]byte(key), value)
-	})
+// Default returns the settings used when nothing has been saved yet.
+func Default(secondsBetweenCaptures int) Settings {
+	return Settings{
+		SecondsBetweenCaptures:  secondsBetweenCaptures,
+		OffsetWithinHour:        DefaultOffsetWithinHour % secondsBetweenCaptures,
+		PreviewResolutionWidth:  640,
+		PreviewResolutionHeight: 480,
+		ResolutionSetting:       1,
+		Quality:                 100,
+	}.withResolution()
 }
 
-func get(db *bolt.DB, key string) (value string, exists bool, err error) {
-	log.Printf("getting '%s': '%s'\n", bucket, key)
-	err = db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
+// ValidInterval reports whether seconds is an allowed capture interval: at
+// least a minute, at most an hour, and dividing the hour evenly so that every
+// hour has the same capture times.
+func ValidInterval(seconds int) bool {
+	return seconds >= MinSecondsBetweenCaptures && seconds <= MaxSecondsBetweenCaptures && 3600%seconds == 0
+}
 
-		if b == nil {
-			return errMissingBucket
+// ValidIntervals lists every allowed interval in ascending order.
+func ValidIntervals() []int {
+	var out []int
+	for s := MinSecondsBetweenCaptures; s <= MaxSecondsBetweenCaptures; s++ {
+		if ValidInterval(s) {
+			out = append(out, s)
 		}
+	}
+	return out
+}
 
-		v := b.Get([]byte(key))
-		if v == nil {
-			value = ""
-			exists = false
-			return nil
+// Validate reports the first problem with s, wrapping ErrInvalid.
+func (s Settings) Validate() error {
+	invalid := func(format string, args ...any) error {
+		return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, args...))
+	}
+	if !ValidInterval(s.SecondsBetweenCaptures) {
+		return invalid("SecondsBetweenCaptures must be between %d and %d and divide an hour evenly, got %d",
+			MinSecondsBetweenCaptures, MaxSecondsBetweenCaptures, s.SecondsBetweenCaptures)
+	}
+	if s.OffsetWithinHour != OffsetDisabled && (s.OffsetWithinHour < 0 || s.OffsetWithinHour >= s.SecondsBetweenCaptures) {
+		return invalid("OffsetWithinHour must be %d or between 0 and %d, got %d",
+			OffsetDisabled, s.SecondsBetweenCaptures-1, s.OffsetWithinHour)
+	}
+	if s.Quality < 1 || s.Quality > 100 {
+		return invalid("Quality must be between 1 and 100, got %d", s.Quality)
+	}
+	if s.RotateBy != 0 && s.RotateBy != 180 {
+		return invalid("RotateBy must be 0 or 180, got %d", s.RotateBy)
+	}
+	if s.ResolutionSetting < 0 || s.ResolutionSetting >= len(resolutions) {
+		return invalid("ResolutionSetting must be between 0 and %d, got %d", len(resolutions)-1, s.ResolutionSetting)
+	}
+	return nil
+}
+
+// Normalized repairs settings saved by older versions, which accepted any
+// interval, into the closest valid ones while keeping the capture times the
+// camera actually used:
+//   - intervals round up to the next valid one (anything under a minute was
+//     already treated as a minute, anything over an hour as an hour);
+//   - an offset at or beyond the interval is reduced modulo the interval,
+//     which yields the same capture times every hour.
+func (s Settings) Normalized() Settings {
+	if !ValidInterval(s.SecondsBetweenCaptures) {
+		next := MaxSecondsBetweenCaptures
+		for _, v := range ValidIntervals() {
+			if v >= s.SecondsBetweenCaptures {
+				next = v
+				break
+			}
 		}
-		value = string(v)
-		exists = true
-		log.Printf("Found value '%s': '%s' -> '%s'\n", bucket, key, value)
-		return nil
-	})
-	return value, exists, err
+		s.SecondsBetweenCaptures = next
+	}
+	if s.OffsetWithinHour < 0 {
+		s.OffsetWithinHour = OffsetDisabled
+	} else {
+		s.OffsetWithinHour %= s.SecondsBetweenCaptures
+	}
+	s.Quality = min(max(s.Quality, 1), 100)
+	if s.RotateBy != 180 {
+		s.RotateBy = 0 // only 180 ever had an effect on the camera
+	}
+	if s.ResolutionSetting < 0 || s.ResolutionSetting >= len(resolutions) {
+		s.ResolutionSetting = 0 // unknown values always meant 3280x2464
+	}
+	return s.withResolution()
+}
+
+// withResolution sets the photo size from ResolutionSetting, which must be valid.
+func (s Settings) withResolution() Settings {
+	r := resolutions[s.ResolutionSetting]
+	s.PhotoResolutionWidth, s.PhotoResolutionHeight = r[0], r[1]
+	return s
 }

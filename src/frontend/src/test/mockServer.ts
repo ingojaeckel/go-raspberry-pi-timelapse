@@ -43,10 +43,10 @@ export function mockServer(overrides: Record<string, Handler> = {}) {
     'GET /monitoring': () => json(monitoring),
     'GET /logs': () => json({ Logs: '2026/11/02 10:00:00 started\n2026/11/02 10:15:00 Error during capture: boom\n' }),
     'GET /version': () => new Response('Hello from arm on linux [version:abc]'),
-    'GET /file/delete': () => json(1),
-    'GET /admin/restart': () => new Response(''),
-    'GET /admin/shutdown': () => new Response(''),
-    'GET /admin/clear': () => new Response(''),
+    'DELETE /file': () => json(1),
+    'DELETE /photos': () => json(3),
+    'POST /admin/restart': () => new Response(null, { status: 204 }),
+    'POST /admin/shutdown': () => new Response(null, { status: 204 }),
     ...overrides,
   };
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

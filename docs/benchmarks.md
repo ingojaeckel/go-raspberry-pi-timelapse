@@ -26,60 +26,29 @@ Run files package benchmarks:
 go test -bench=. -benchmem ./files/...
 ```
 
-Run rest package benchmarks:
-```bash
-go test -bench=. -benchmem ./rest/...
-```
-
 ### Run Specific Benchmarks
 
-Run only the getSecondsToFirstCapture benchmarks:
+Run only the scheduling benchmark:
 ```bash
-go test -bench=BenchmarkGetSecondsToFirstCapture -benchmem ./timelapse/...
+go test -run='^$' -bench=BenchmarkNextAligned -benchmem ./timelapse/...
 ```
 
 ## Benchmark Coverage
 
-### Timelapse Package (`timelapse/timelapse_test.go`)
+Benchmarks use the `for b.Loop()` form (Go 1.24+).
 
-1. **BenchmarkGetSecondsToFirstCapture**
-   - Tests the performance of calculating sleep time until next capture
-   - Measures single time calculation
-   - **Typical Result:** ~15 ns/op, 0 B/op, 0 allocs/op
+### Timelapse Package (`timelapse/schedule_test.go`)
 
-2. **BenchmarkGetSecondsToFirstCaptureVariousTimes**
-   - Tests the performance across multiple different time scenarios
-   - Measures calculation with various times in an hour
-   - **Typical Result:** ~62 ns/op, 0 B/op, 0 allocs/op
-
-3. **BenchmarkGetSecondsToFirstCaptureShortInterval**
-   - Tests performance with short capture intervals (60 seconds)
-   - Simulates high-frequency capture scenarios
-   - **Typical Result:** ~75 ns/op, 0 B/op, 0 allocs/op
+1. **BenchmarkNextAligned**
+   - Time of the next capture aligned to the hour (runs at least once per minute while waiting)
+   - **Typical Result:** ~60 ns/op, 0 B/op, 0 allocs/op (Apple M-series)
 
 ### Files Package (`files/files_test.go`)
 
 1. **BenchmarkListFiles**
-   - Tests the performance of listing files in a directory
-   - Includes directory reading and file metadata collection
-   - **Typical Result:** ~15 μs/op, 1297 B/op, 16 allocs/op
-
-2. **BenchmarkByAgeSort**
-   - Tests the performance of sorting 100 files by age
-   - Measures actual sorting performance using sort.Sort()
-   - **Typical Result:** ~1.4 μs/op, 6168 B/op, 2 allocs/op
-
-3. **BenchmarkByAgeSortFull**
-   - Tests sorting performance with 1000 files to verify scalability
-   - Simulates large timelapse photo collections
-   - **Typical Result:** ~13 μs/op, 57368 B/op, 2 allocs/op
-
-### Rest Package (`rest/template_test.go`)
-
-1. **BenchmarkGetHumanReadableSize**
-   - Tests the performance of formatting file sizes
-   - Measures conversion across bytes, KB, and MB ranges
-   - **Typical Result:** ~532 ns/op, 64 B/op, 8 allocs/op
+   - Lists and sorts a folder of 1000 photos (directory read, metadata, `slices.SortFunc`)
+   - Used by `/photos`, `/file/last`, the archives and disk space reclaiming
+   - **Typical Result:** ~3 ms/op, 600 KB/op, 6000 allocs/op (Apple M-series)
 
 ## Interpreting Results
 
@@ -107,17 +76,17 @@ After making changes, run benchmarks again:
 go test -bench=. -benchmem ./... > new.txt
 ```
 
-Compare using benchcmp (requires installation):
+Compare using benchstat:
 ```bash
-go get golang.org/x/tools/cmd/benchcmp
-benchcmp old.txt new.txt
+go install golang.org/x/perf/cmd/benchstat@latest
+benchstat old.txt new.txt
 ```
 
 ### CPU Profiling
 
 Generate CPU profile while benchmarking:
 ```bash
-go test -bench=BenchmarkGetSecondsToFirstCapture -cpuprofile=cpu.prof ./timelapse/...
+go test -run='^$' -bench=BenchmarkNextAligned -cpuprofile=cpu.prof ./timelapse/...
 go tool pprof cpu.prof
 ```
 
@@ -134,9 +103,7 @@ go tool pprof mem.prof
 These benchmarks help ensure that:
 
 1. **Time Calculations** remain fast (< 100 ns/op) for timelapse scheduling
-2. **File Operations** are efficient even with many photos (< 20 μs for listing)
-3. **Sorting Operations** scale well (< 2 μs for 100 items, < 15 μs for 1000 items)
-4. **Size Formatting** is efficient for UI rendering (< 1 μs/op)
+2. **File Operations** stay fast with many photos (a few ms for 1000 photos on a laptop; expect 10-20x slower on a Pi Zero)
 
 ## Continuous Performance Monitoring
 

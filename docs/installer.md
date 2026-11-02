@@ -23,7 +23,9 @@ As a result:
 
 - Rebuild and commit the binary with `make pi` before building an image, or the image ships a stale binary.
 - If the binary's location in the repo changes, change `ExecStart` in the same commit. A layout change only reaches new images after it is merged to the default branch.
-- The service has no `WorkingDirectory`, so `timelapse.log` and `timelapse-settings.db` are written relative to `/`.
+- The service runs as `pi` with `WorkingDirectory=/home/pi`, so `timelapse.log` (rotated at 10 MB to `timelapse.log.1`) and `timelapse-settings.db` live in `/home/pi`. It restarts automatically (`Restart=always`) after crashes and failed starts.
+- `/etc/sudoers.d/010_timelapse` lets `pi` run exactly `/sbin/shutdown -h now` and `/sbin/shutdown -r now`, which the web UI uses to shut down and restart the Pi.
+- Images built before these changes ran the service as root without a working directory, so their settings and log are in `/`. The unit file comes from the image, not from the git clone, so `git pull` does not change it; copy the new unit to `/etc/systemd/system/` (and move `/timelapse-settings.db` to `/home/pi`, owned by `pi`) to upgrade such a device.
 
 ## On-device helper scripts
 

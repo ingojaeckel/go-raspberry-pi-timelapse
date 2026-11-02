@@ -1,0 +1,3 @@
+# The timelapse service runs as pi and may shut down or restart the Pi from the
+# web UI (POST /admin/shutdown, POST /admin/restart). Nothing else.
+pi ALL=(root) NOPASSWD: /sbin/shutdown -h now, /sbin/shutdown -r now

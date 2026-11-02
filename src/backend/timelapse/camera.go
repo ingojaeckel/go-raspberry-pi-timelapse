@@ -1,11 +1,15 @@
 package timelapse
 
-// This has been adapted from https://github.com/loranbriggs/go-camera
+// Originally adapted from https://github.com/loranbriggs/go-camera
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
-	"log"
+	"io/fs"
+	"log/slog"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -15,142 +19,154 @@ import (
 )
 
 const (
-	commandRaspistill = "rpicam-still"
-	commandFfmpeg     = "ffmpeg"
+	commandRpicamStill = "rpicam-still"
+	commandFfmpeg      = "ffmpeg"
 )
 
-type Camera struct {
-	savePath                         string
-	width, height                    int
-	flipHorizontally, flipVertically bool
-	quality                          int
+// Options describe a single photo.
+type Options struct {
+	Width, Height, Quality int
+	// Rotate flips the image horizontally and vertically (180 degrees).
+	Rotate bool
 }
 
-// NewCamera Setting "rotate" to true will create a camera instance which will flip all pictures by 180 degrees. Each captured image will be flipped horizontally and vertically.
-func NewCamera(path string, width, height int, rotate bool, quality int) (Camera, error) {
-	if path == "" {
-		return Camera{}, errors.New("invalid config: path must not be empty")
+// Backend takes a photo and writes it to path.
+type Backend interface {
+	Capture(ctx context.Context, path string, o Options) error
+}
+
+// DetectBackend returns rpicam-still when it is installed (the Raspberry Pi),
+// and ffmpeg webcam capture otherwise (development machines).
+func DetectBackend() Backend {
+	if _, err := exec.LookPath(commandRpicamStill); err == nil {
+		return rpicamStill{}
 	}
-	return Camera{
-		savePath:         path,
-		width:            width,
-		height:           height,
-		flipHorizontally: rotate,
-		flipVertically:   rotate,
-		quality:          quality,
-	}, nil
+	return ffmpeg{goos: runtime.GOOS}
 }
 
-// isDevelopment detects whether the code is running on a development system (non-ARM)
-// or a deployment system (ARM/Raspberry Pi).
-// Development typically happens on x86_64/AMD64 Linux/macOS, while deployment is on ARM.
-func isDevelopment() bool {
-	arch := runtime.GOARCH
-	// ARM-based systems (arm, arm64) are considered deployment/production
-	// x86_64, amd64, 386, etc. are considered development
-	return arch != "arm" && arch != "arm64"
+type rpicamStill struct{}
+
+func (rpicamStill) Capture(ctx context.Context, path string, o Options) error {
+	return runCommand(ctx, commandRpicamStill, rpicamStillArgs(path, o)...)
 }
 
-func (c *Camera) Capture() (string, error) {
-	fullPath := c.getAbsoluteFilepath()
-
-	if isDevelopment() {
-		// On development systems, use ffmpeg to capture from webcam
-		log.Printf("Development mode: capturing from webcam to %s", fullPath)
-		return c.captureWithWebcam(fullPath)
-	}
-
-	// On Raspberry Pi, use rpicam-still
-	args := c.getRaspistillArgs(fullPath)
-	log.Printf("Running command: %s %v", commandRaspistill, args)
-	cmd := exec.Command(commandRaspistill, args...)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("rpicam-still error: %s", string(output))
-		return "", fmt.Errorf("failed to capture with rpicam-still: %w", err)
-	}
-	return fullPath, nil
-}
-
-func (c *Camera) getRaspistillArgs(fullPath string) []string {
+func rpicamStillArgs(path string, o Options) []string {
 	args := []string{
-		"--width", strconv.Itoa(c.width),
-		"--height", strconv.Itoa(c.height),
-		"--quality", strconv.Itoa(c.quality),
+		"--width", strconv.Itoa(o.Width),
+		"--height", strconv.Itoa(o.Height),
+		"--quality", strconv.Itoa(o.Quality),
 	}
-	if c.flipVertically {
-		args = append(args, "--vflip")
+	if o.Rotate {
+		args = append(args, "--vflip", "--hflip")
 	}
-	if c.flipHorizontally {
-		args = append(args, "--hflip")
-	}
-	return append(args, "--output", fullPath)
+	return append(args, "--output", path)
 }
 
-// getWebcamFfmpegArgs returns platform-specific ffmpeg arguments for webcam capture.
-// macOS uses avfoundation with device "0", Linux uses v4l2 with /dev/video0.
-func (c *Camera) getWebcamFfmpegArgs() []string {
-	if runtime.GOOS == "darwin" {
-		// macOS: use avfoundation
-		// ffmpeg -f avfoundation -i "0" -frames:v 1 -s WIDTHxHEIGHT -q:v QUALITY output.jpg
-		return []string{
-			"-f", "avfoundation",
-			"-framerate", "30", // Explicitly set framerate
-			"-i", "0", // Default camera (device index 0)
-			"-frames:v", "1",
-			"-s", fmt.Sprintf("%dx%d", c.width, c.height),
+type ffmpeg struct{ goos string }
+
+func (f ffmpeg) Capture(ctx context.Context, path string, o Options) error {
+	return runCommand(ctx, commandFfmpeg, ffmpegArgs(f.goos, path, o)...)
+}
+
+// ffmpegArgs captures one frame from the first webcam: avfoundation device 0
+// on macOS, /dev/video0 (v4l2) elsewhere.
+func ffmpegArgs(goos, path string, o Options) []string {
+	size := fmt.Sprintf("%dx%d", o.Width, o.Height)
+	var args []string
+	if goos == "darwin" {
+		args = []string{"-f", "avfoundation", "-framerate", "30", "-i", "0", "-frames:v", "1", "-s", size}
+	} else {
+		args = []string{"-f", "v4l2", "-video_size", size, "-i", "/dev/video0", "-frames:v", "1", "-q:v", strconv.Itoa(o.Quality)}
+	}
+	if o.Rotate {
+		args = append(args, "-vf", "hflip,vflip")
+	}
+	return append(args, "-y", path)
+}
+
+// runCommand runs a command, killing it when ctx ends. Its combined output is
+// included in the error.
+func runCommand(ctx context.Context, name string, args ...string) error {
+	slog.Debug("running command", "command", name, "args", args)
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.WaitDelay = 2 * time.Second // don't wait forever for orphaned pipes
+	var out bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if err := cmd.Run(); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			err = fmt.Errorf("%w (%v)", ctxErr, err)
+		}
+		return fmt.Errorf("%s: %w: %s", name, err, strings.TrimSpace(out.String()))
+	}
+	return nil
+}
+
+// Camera serializes access to the camera hardware, bounds every capture by a
+// timeout and writes photos atomically: the backend writes to a hidden file
+// which is renamed once complete, so a half-written photo is never listed or
+// served.
+type Camera struct {
+	backend Backend
+	timeout time.Duration
+	lock    chan struct{}
+}
+
+// NewCamera returns a Camera that gives up on a capture after timeout.
+func NewCamera(backend Backend, timeout time.Duration) *Camera {
+	return &Camera{backend: backend, timeout: timeout, lock: make(chan struct{}, 1)}
+}
+
+// Capture takes a photo into dir (created if missing) and returns its path.
+// It waits while another capture is using the camera.
+func (c *Camera) Capture(ctx context.Context, dir string, o Options) (string, error) {
+	select {
+	case c.lock <- struct{}{}:
+		defer func() { <-c.lock }()
+	case <-ctx.Done():
+		return "", fmt.Errorf("waiting for the camera: %w", ctx.Err())
+	}
+
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	final, err := freePath(dir, time.Now())
+	if err != nil {
+		return "", err
+	}
+	partial := filepath.Join(dir, ".partial-"+filepath.Base(final))
+
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	if err := c.backend.Capture(ctx, partial, o); err != nil {
+		os.Remove(partial)
+		return "", err
+	}
+	if err := os.Rename(partial, final); err != nil {
+		os.Remove(partial)
+		return "", err
+	}
+	return final, nil
+}
+
+// freePath returns the path for a photo taken at t that does not exist yet.
+// Names are second-resolution timestamps; if the clock moved backwards a
+// numeric suffix keeps the earlier photo from being overwritten.
+func freePath(dir string, t time.Time) (string, error) {
+	name := fileName(t)
+	stem := strings.TrimSuffix(name, ".jpg")
+	for i := 0; ; i++ {
+		if i > 0 {
+			name = fmt.Sprintf("%s-%d.jpg", stem, i)
+		}
+		p := filepath.Join(dir, name)
+		if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {
+			return p, nil
+		} else if err != nil {
+			return "", err
 		}
 	}
-
-	// Linux: use v4l2
-	// ffmpeg -f v4l2 -video_size WIDTHxHEIGHT -i /dev/video0 -frames:v 1 -q:v QUALITY output.jpg
-	return []string{
-		"-f", "v4l2",
-		"-video_size", fmt.Sprintf("%dx%d", c.width, c.height),
-		"-i", "/dev/video0",
-		"-frames:v", "1",
-		"-q:v", strconv.Itoa(c.quality),
-	}
 }
 
-// captureWithWebcam captures an image from the first available webcam using ffmpeg.
-// This is used on development systems where raspistill is not available.
-// Supports both Linux (v4l2) and macOS (avfoundation).
-func (c *Camera) captureWithWebcam(fullPath string) (string, error) {
-	args := c.getWebcamFfmpegArgs()
-
-	// Add flip filters if needed (works on both platforms)
-	var filters []string
-	if c.flipHorizontally {
-		filters = append(filters, "hflip")
-	}
-	if c.flipVertically {
-		filters = append(filters, "vflip")
-	}
-	if len(filters) > 0 {
-		args = append(args, "-vf", strings.Join(filters, ","))
-	}
-
-	args = append(args, "-y", fullPath)
-
-	log.Printf("Running command: %s %v", commandFfmpeg, args)
-	cmd := exec.Command(commandFfmpeg, args...)
-
-	// Capture stderr since ffmpeg outputs to stderr
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("ffmpeg error: %s", string(output))
-		return "", fmt.Errorf("failed to capture from webcam: %w", err)
-	}
-
-	return fullPath, nil
-}
-
-func getFileName(t time.Time) string {
-	return fmt.Sprintf("%4d%02d%02d-%02d%02d%02d.jpg", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-}
-
-func (c *Camera) getAbsoluteFilepath() string {
-	return filepath.Join(c.savePath, getFileName(time.Now()))
+func fileName(t time.Time) string {
+	return t.Format("20060102-150405") + ".jpg"
 }

@@ -13,14 +13,31 @@ const posted = (f: ReturnType<typeof mockServer>) =>
   JSON.parse(String(callsTo(f, 'POST', '/configuration')[0]?.[1]?.body)) as Settings;
 
 describe('SettingsView', () => {
-  it('shows the interval in minutes and the offset as a minute past the hour', () => {
+  it('shows the interval and the offset as a minute past the hour', () => {
     mockServer();
     renderSettings();
-    expect(screen.getByLabelText('Take a photo every')).toHaveValue(30);
-    expect(screen.getByRole('combobox', { name: 'Unit' })).toHaveValue('min');
+    expect(screen.getByRole('combobox', { name: 'Take a photo every' })).toHaveDisplayValue('30 minutes');
     // 900 seconds is minute 15, not "900 minutes" as the old UI showed
     expect(screen.getByLabelText('First capture at minute')).toHaveValue(15);
     expect(screen.getByText('Captures at :15, :45.')).toBeInTheDocument();
+  });
+
+  it('only offers intervals that divide an hour evenly', () => {
+    mockServer();
+    renderSettings();
+    const options = within(screen.getByRole('combobox', { name: 'Take a photo every' }))
+      .getAllByRole('option')
+      .map((o) => Number((o as HTMLOptionElement).value));
+    expect(options).toEqual([60, 72, 75, 80, 90, 100, 120, 144, 150, 180, 200, 225, 240, 300, 360, 400, 450, 600, 720, 900, 1200, 1800, 3600]);
+  });
+
+  it('keeps the offset within the new interval when the interval gets shorter', async () => {
+    mockServer();
+    renderSettings();
+    const user = userEvent.setup();
+    // minute 15 of every 30 minutes = :15 and :45; every 10 minutes from :05 keeps :15 and :45
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Take a photo every' }), '600');
+    expect(screen.getByLabelText('First capture at minute')).toHaveValue(5);
   });
 
   it('saves the full settings object in the units the backend expects', async () => {
@@ -28,10 +45,9 @@ describe('SettingsView', () => {
     const onSaved = renderSettings();
     const user = userEvent.setup();
 
-    await user.clear(screen.getByLabelText('Take a photo every'));
-    await user.type(screen.getByLabelText('Take a photo every'), '10');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Take a photo every' }), '600');
     await user.clear(screen.getByLabelText('First capture at minute'));
-    await user.type(screen.getByLabelText('First capture at minute'), '5');
+    await user.type(screen.getByLabelText('First capture at minute'), '3');
     await user.click(screen.getByRole('radio', { name: /2 MP/ }));
     await user.click(screen.getByRole('radio', { name: /Upside down/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -40,10 +56,26 @@ describe('SettingsView', () => {
     expect(posted(f)).toEqual({
       ...settings,
       SecondsBetweenCaptures: 600,
-      OffsetWithinHour: 300,
+      OffsetWithinHour: 180,
       ResolutionSetting: 2,
       RotateBy: 180,
     });
+  });
+
+  it('blocks an offset outside the interval', async () => {
+    mockServer();
+    renderSettings();
+    const user = userEvent.setup();
+    await user.clear(screen.getByLabelText('First capture at minute'));
+    await user.type(screen.getByLabelText('First capture at minute'), '30');
+    expect(screen.getByText('Pick a minute from 0 to 29.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  });
+
+  it('lets saved settings with an interval the camera now rejects be fixed', () => {
+    mockServer();
+    renderSettings({ ...settings, SecondsBetweenCaptures: 1000, OffsetWithinHour: 0 });
+    expect(screen.getByText('Pick one of the listed intervals.')).toBeInTheDocument();
   });
 
   it('turns hour alignment off by sending -1', async () => {
@@ -91,21 +123,36 @@ describe('SettingsView', () => {
     renderSettings();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Shut down' }));
-    expect(callsTo(f, 'GET', '/admin/shutdown')).toHaveLength(0);
+    expect(callsTo(f, 'POST', '/admin/shutdown')).toHaveLength(0);
     expect(screen.getByRole('heading', { name: 'Shut down the camera?' })).toBeInTheDocument();
     const dialog = screen.getByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Shut down' }));
-    await waitFor(() => expect(callsTo(f, 'GET', '/admin/shutdown')).toHaveLength(1));
+    await waitFor(() => expect(callsTo(f, 'POST', '/admin/shutdown')).toHaveLength(1));
     expect(await screen.findByText(/Wait until the green light/)).toBeInTheDocument();
   });
 
-  it('exposes delete-all through /admin/clear behind a confirmation', async () => {
+  it('deletes all photos with DELETE /photos only after confirmation', async () => {
     const f = mockServer();
     renderSettings();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Delete all photos' }));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(callsTo(f, 'GET', '/admin/clear')).toHaveLength(0);
+    expect(callsTo(f, 'DELETE', '/photos')).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Delete all photos' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete all photos' }));
+    await waitFor(() => expect(callsTo(f, 'DELETE', '/photos')).toHaveLength(1));
+    expect(await screen.findByText('All photos deleted.')).toBeInTheDocument();
+  });
+
+  it('never uses GET for actions that change state', async () => {
+    const f = mockServer();
+    renderSettings();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Restart' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Restart' }));
+    await waitFor(() => expect(callsTo(f, 'POST', '/admin/restart')).toHaveLength(1));
+    expect(f.mock.calls.filter(([u]) => String(u).includes('/admin/')).every(([, init]) => init?.method === 'POST')).toBe(true);
   });
 });
 
@@ -113,11 +160,8 @@ describe('validate', () => {
   it('matches the backend validator', () => {
     expect(validate(settings)).toEqual({});
     expect(validate({ ...settings, OffsetWithinHour: -1 })).toEqual({});
-    expect(Object.keys(validate({ ...settings, OffsetWithinHour: 3600, SecondsBetweenCaptures: 0, Quality: 101 }))).toEqual([
-      'SecondsBetweenCaptures',
-      'OffsetWithinHour',
-      'Quality',
-    ]);
+    expect(Object.keys(validate({ ...settings, OffsetWithinHour: 1800, Quality: 101 }))).toEqual(['OffsetWithinHour', 'Quality']);
+    expect(Object.keys(validate({ ...settings, SecondsBetweenCaptures: 1000 }))).toEqual(['SecondsBetweenCaptures']);
+    expect(Object.keys(validate({ ...settings, SecondsBetweenCaptures: 7200 }))).toEqual(['SecondsBetweenCaptures']);
   });
 });
-

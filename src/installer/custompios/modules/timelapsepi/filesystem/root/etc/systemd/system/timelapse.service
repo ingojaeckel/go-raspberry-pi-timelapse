@@ -1,7 +1,21 @@
 [Unit]
-Description = Start Timelapse 
-After = network.target
+Description=Timelapse camera
+After=network.target time-sync.target
+# Never stop restarting, see Restart= below.
+StartLimitIntervalSec=0
+
 [Service]
-ExecStart = /home/pi/go-raspberry-pi-timelapse/src/backend/bin/arm/go-raspberry-pi-timelapse -port=:8080 -logToFile=true -secondsBetweenCaptures=1800 -storageFolder=/home/pi/timelapse-pictures/
+User=pi
+Group=pi
+# timelapse-settings.db and timelapse.log are created here.
+WorkingDirectory=/home/pi
+ExecStart=/home/pi/go-raspberry-pi-timelapse/src/backend/bin/arm/go-raspberry-pi-timelapse -port=:8080 -logToFile=true -secondsBetweenCaptures=1800 -storageFolder=/home/pi/timelapse-pictures/
+# Come back after crashes and failed starts, forever.
+Restart=always
+RestartSec=5
+# SIGTERM lets the app finish its HTTP responses and abort a running capture
+# cleanly before systemd kills it.
+TimeoutStopSec=20
+
 [Install]
-WantedBy = multi-user.target
+WantedBy=multi-user.target

@@ -26,6 +26,8 @@ git clone --depth 1 https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git
 unpack /filesystem/root /
 
 sudo chmod 644 /etc/systemd/system/timelapse.service
+sudo chmod 440 /etc/sudoers.d/010_timelapse
+visudo -cf /etc/sudoers.d/010_timelapse
 sudo systemctl enable timelapse.service
 
 # Other system setup:

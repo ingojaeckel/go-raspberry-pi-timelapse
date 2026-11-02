@@ -17,7 +17,7 @@ make run        # build frontend, run server on :8080
 make loadtest   # k6 load test (requires k6)
 
 # Individual Go tests (Go module root is src/backend; frontend must be built first)
-cd src/backend && go test -v -cover ./timelapse/
+cd src/backend && go test -race -cover ./timelapse/
 cd src/backend && go test -run TestSpecificName ./timelapse/
 
 # Frontend only
@@ -42,33 +42,40 @@ cd src/frontend && npm install && npm test && npm run build
 All Go paths below are relative to `src/backend/`.
 
 **Go packages:**
-- `main.go` — Entry point, HTTP routes (goji mux), middleware, serves embedded frontend
+- `main.go` — Flags, wiring, `http.Server` (timeouts, graceful shutdown on SIGINT/SIGTERM), stdlib `http.ServeMux` routes for the embedded frontend, slog logging
 - `web/` — `//go:embed dist` of the frontend build
-- `timelapse/` — Background capture goroutine (`CapturePeriodically`), camera abstraction (rpicam-still on ARM, ffmpeg on dev), scheduling with offset support
-- `rest/` — HTTP handlers for photos, config, monitoring, admin, archive streaming
-- `conf/` — Settings model + BoltDB persistence (`timelapse-settings.db`), validation in `conf/valid/`
-- `files/` — File listing (sorted by age), ZIP/TAR streaming via `io.Pipe()`
-- `admin/` — System commands (shutdown, restart, clear photos)
+- `timelapse/` — `Scheduler.Run` (capture loop: aligned or unaligned schedule, retries within the slot, re-plans immediately on settings changes), `NextAligned`, `Camera` (one capture at a time, timeout, writes `.partial-*` then renames, never overwrites)
+- `rest/` — `Server` with the HTTP handlers, `Middleware` (CORS, `http.CrossOriginProtection`, debug request log). GET never changes state: `DELETE /file?f=`, `DELETE /photos`, `POST /admin/{shutdown,restart}`
+- `conf/` — `Settings` + `Validate`/`Normalized`; `Store` keeps bbolt (`timelapse-settings.db`) open, serves settings from memory, notifies subscribers, recovers from a corrupt file
+- `files/` — Listing (oldest first, skips hidden/partial files), streaming ZIP/TAR, `RemoveFile` and `Reclaim` (delete oldest photos when free space < `-minFreeDiskMB`, ring buffer) via `os.Root`
+- `logfile/` — Size-capped rotating log (`timelapse.log` → `.1` at 10 MB) and `Tail` for `/logs`
 
-**Key data flow:** HTTP config changes are sent via a Go channel to the background timelapse goroutine, which adjusts its capture schedule without restart.
+**Key data flow:** `POST /configuration` → `conf.Store.Update` (validates, persists, notifies). The scheduler and the debug log level subscribe to the store and read the latest settings with `Get()`; nothing is passed through buffered channels that could drop updates.
 
-**Platform abstraction:** `timelapse/camera.go` uses build-time architecture detection — `rpicam-still` on ARM (production Pi), `ffmpeg` webcam capture on x86/macOS (development).
+**Schedule rules:** `SecondsBetweenCaptures` must divide 3600 and be 60..3600; `OffsetWithinHour` is -1 (unaligned, every N seconds from start-up) or 0..interval-1. Anything else is a 400. Settings saved by older versions are repaired on load by `Settings.Normalized` (same capture times where possible).
 
-**Frontend:** React 19 + TypeScript + Vite, no UI framework (plain CSS, `fetch`), built into `src/backend/web/dist/` and embedded into the Go binary. Hash-based navigation; API types in `src/frontend/src/api.ts` mirror the Go models. `src/frontend/src/schedule.ts` ports `getSecondsToFirstCapture`, so keep both in sync.
+**Platform abstraction:** `timelapse.DetectBackend` uses `rpicam-still` when it is on `PATH` (the Pi), otherwise `ffmpeg` webcam capture (Linux v4l2 / macOS avfoundation). It does not look at GOARCH, so Apple Silicon Macs use ffmpeg.
+
+**Frontend:** React 19 + TypeScript + Vite, no UI framework (plain CSS, `fetch`), built into `src/backend/web/dist/` and embedded into the Go binary. Hash-based navigation; API types in `src/frontend/src/api.ts` mirror the Go models. `src/frontend/src/schedule.ts` ports `timelapse.NextAligned` and `conf.ValidInterval`; both sides are tested against `src/frontend/src/schedule-cases.json`, so change that file together with either implementation.
 
 ## Build Flags
 
 Version info is injected via ldflags: `-X 'main.gitCommit=...' -X 'main.builtAt=...'`
 
-CLI flags: `-port`, `-logToFile`, `-storageFolder`, `-secondsBetweenCaptures`, `-pprof`, `-version`
+If ldflags are not set, the version comes from the VCS info Go embeds (`debug.ReadBuildInfo`).
+
+CLI flags: `-port`, `-logToFile`, `-storageFolder`, `-secondsBetweenCaptures` (first-run default only; once settings are saved the database wins), `-captureRetries` (default 2), `-minFreeDiskMB` (default 256), `-pprof`, `-version`
+
+Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. Dependencies: `go.etcd.io/bbolt`, `golang.org/x/sys` only.
 
 ## Testing Conventions
 
-- Uses `facebookgo/ensure` for assertions (not `testify`)
-- Test files are colocated with source (e.g., `timelapse/timelapse_test.go`)
-- `make` / `make pi` run frontend tests, `go vet ./...` and `go test -v -cover ./...` before building
+- Plain `testing` (no assertion library). Time-dependent code is tested with `testing/synctest` (fake clock: hours of scheduling run instantly); HTTP handlers through the real mux + middleware with `httptest.NewServer`; file system code against `t.TempDir()`
+- Tests must not depend on the working directory or wall clock; use `t.TempDir()`, `t.Chdir()`, `synctest`
+- Test files are colocated with source (e.g., `timelapse/scheduler_test.go`)
+- `make` / `make pi` run frontend tests, `go vet ./...` and `go test -race -shuffle=on -cover ./...` before building
 - Frontend tests use Vitest
-- The `web` package (and thus `main`) requires the frontend build to exist (`//go:embed dist`). Running `go test ./...` in `src/backend` fails unless `make frontend` has been run first. To test only Go packages without the frontend: `cd src/backend && go test ./admin/... ./conf/... ./files/... ./rest/... ./timelapse/...`
+- The `web` package (and thus `main`) requires the frontend build to exist (`//go:embed dist`). Running `go test ./...` in `src/backend` fails unless `make frontend` has been run first. To test only Go packages without the frontend: `cd src/backend && go test -race ./conf/... ./files/... ./logfile/... ./rest/... ./timelapse/...`
 
 ## CI
 

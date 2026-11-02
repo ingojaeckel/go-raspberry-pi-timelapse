@@ -1,328 +1,324 @@
+// Package rest implements the HTTP API used by the frontend.
+//
+// GET requests never change state. Photos are deleted with DELETE, the
+// system is restarted or shut down with POST.
 package rest
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
+	"slices"
+	"time"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/admin"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf/valid"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/logfile"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
-	"goji.io/pat"
 )
 
-func MakeGetVersionFn(version string) func(w http.ResponseWriter, _ *http.Request) {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprintf(w, "Hello from %s on %s [version:%s]", runtime.GOARCH, runtime.GOOS, version)
+const (
+	maxLogBytes      = 256 << 10
+	maxSettingsBytes = 64 << 10
+)
+
+// Settings is implemented by *conf.Store.
+type Settings interface {
+	Get() conf.Settings
+	Update(func(*conf.Settings)) (conf.Settings, error)
+}
+
+// Server holds the dependencies of the HTTP handlers.
+type Server struct {
+	Settings Settings
+	Camera   timelapse.Capturer
+	// Folder holds the photos; TempFolder the preview captures.
+	Folder, TempFolder string
+	// LogFile is served by /logs.
+	LogFile string
+	// ThermalFile holds the CPU temperature in millidegrees Celsius.
+	ThermalFile string
+	Version     string
+	// Run executes system commands (monitoring, shutdown, restart).
+	Run func(ctx context.Context, name string, args ...string) ([]byte, error)
+}
+
+// Register adds the API routes to mux.
+func (s *Server) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /version", s.version)
+	mux.HandleFunc("GET /configuration", s.getConfiguration)
+	mux.HandleFunc("POST /configuration", s.updateConfiguration)
+	mux.HandleFunc("GET /capture", s.preview)
+	mux.HandleFunc("GET /photos", s.photos)
+	mux.HandleFunc("DELETE /photos", s.deleteAllPhotos)
+	mux.HandleFunc("GET /file", s.listFiles)
+	mux.HandleFunc("DELETE /file", s.deleteFiles)
+	mux.HandleFunc("GET /file/last", s.mostRecentFile)
+	mux.HandleFunc("GET /file/{fileName}", s.file)
+	mux.HandleFunc("GET /archive/zip", s.archive("archive.zip", "application/zip", files.WriteZip))
+	mux.HandleFunc("GET /archive/tar", s.archive("archive.tar", "application/tar", files.WriteTar))
+	mux.HandleFunc("GET /monitoring", s.monitoring)
+	mux.HandleFunc("GET /logs", s.logs)
+	mux.HandleFunc("POST /admin/shutdown", s.command("/usr/bin/sudo", "/sbin/shutdown", "-h", "now"))
+	mux.HandleFunc("POST /admin/restart", s.command("/usr/bin/sudo", "/sbin/shutdown", "-r", "now"))
+}
+
+func (s *Server) version(w http.ResponseWriter, _ *http.Request) {
+	fmt.Fprintf(w, "Hello from %s on %s [version:%s]", runtime.GOARCH, runtime.GOOS, s.Version)
+}
+
+func (s *Server) getConfiguration(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, s.Settings.Get())
+}
+
+// updateConfiguration applies the schedule and photo fields of the request.
+// Preview size is not editable through the API.
+func (s *Server) updateConfiguration(w http.ResponseWriter, r *http.Request) {
+	var req conf.Settings
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxSettingsBytes)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	updated, err := s.Settings.Update(func(c *conf.Settings) {
+		c.SecondsBetweenCaptures = req.SecondsBetweenCaptures
+		c.OffsetWithinHour = req.OffsetWithinHour
+		c.Quality = req.Quality
+		c.RotateBy = req.RotateBy
+		c.ResolutionSetting = req.ResolutionSetting
+		c.DebugEnabled = req.DebugEnabled
+	})
+	switch {
+	case errors.Is(err, conf.ErrInvalid):
+		writeError(w, http.StatusBadRequest, err)
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, err)
+	default:
+		writeJSON(w, http.StatusOK, updated)
 	}
 }
 
-func GetConfiguration(w http.ResponseWriter, _ *http.Request) {
-	c, _ := conf.LoadConfiguration()
-	writeJSON(w, 200, c)
-}
-
-func MakeUpdateConfigurationFn(configUpdatedChan chan<- conf.Settings) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var request UpdateConfigurationRequest
-		if err := parseJSON(r.Body, &request); err != nil {
-			writeJSON(w, 400, err.Error())
-			return
-		}
-		// Validate configuration before updating it.
-		if err := valid.New().Validate(request.Settings); err != nil {
-			writeJSON(w, 400, err.Error())
-			return
-		}
-		updatedSettings, err := updatePartialConfiguration(request)
-		if err != nil {
-			writeJSON(w, 400, err.Error())
-			return
-		}
-		writeJSON(w, 200, updatedSettings)
-
-		// Non-blocking send — drop update if channel is full (previous update not yet consumed).
-		select {
-		case configUpdatedChan <- *updatedSettings:
-		default:
-			log.Println("Config update channel full, skipping notification")
-		}
-	}
-}
-
-func GetFile(w http.ResponseWriter, r *http.Request) {
-	name := pat.Param(r, "fileName")
-	fullyQualifiedPath, err := safeFilePath(conf.StorageFolder, name)
+// preview takes a photo with the preview size and serves it without keeping it.
+func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
+	set := s.Settings.Get()
+	path, err := s.Camera.Capture(r.Context(), s.TempFolder, timelapse.Options{
+		Width:   set.PreviewResolutionWidth,
+		Height:  set.PreviewResolutionHeight,
+		Quality: set.Quality,
+		Rotate:  set.RotateBy == 180,
+	})
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, err.Error())
+		http.Error(w, "Failed to take capture: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	canServe, e := files.CanServeFile(fullyQualifiedPath, conf.MaxFileSizeBytes)
-	if !canServe {
-		w.WriteHeader(http.StatusNotFound)
-		if e != nil {
-			fmt.Fprint(w, e.Error())
-		}
-		return
-	}
-
-	serveFileContent(w, fullyQualifiedPath)
-}
-
-func GetMostRecentFile(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles(conf.StorageFolder, true)
-	if len(f) == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	mostRecentFile := f[len(f)-1]
-	serveFileContent(w, filepath.Join(conf.StorageFolder, mostRecentFile.Name))
-}
-
-func GetFiles(w http.ResponseWriter, _ *http.Request) {
-	f, _ := files.ListFiles(conf.StorageFolder, true)
-	resp := ListFilesResponse{f}
-
-	b, _ := json.Marshal(resp)
-	w.Header().Add(conf.HeaderContentType, conf.HeaderContentTypeJSON)
-	w.Write(b)
-}
-
-// MakeCaptureFn returns the preview handler. It reads the saved settings on
-// every request, so rotation and preview size changes apply without a restart.
-func MakeCaptureFn(fallback *conf.Settings) func(w http.ResponseWriter, _ *http.Request) {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		Capture(w, currentSettings(fallback))
-	}
-}
-
-// currentSettings returns the persisted settings, or fallback if they can't be read.
-func currentSettings(fallback *conf.Settings) *conf.Settings {
-	s, err := conf.LoadConfiguration()
-	if err != nil || s == nil {
-		log.Printf("Using startup settings for capture; failed to load configuration: %v\n", err)
-		return fallback
-	}
-	return s
-}
-
-func Capture(w http.ResponseWriter, s *conf.Settings) {
-	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight)
-	c, err := timelapse.NewCamera(conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight, s.RotateBy == 180, s.Quality)
+	defer os.Remove(path)
+	f, err := os.Open(path)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed to instantiate camera: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer f.Close()
+	serveFile(w, r, f)
+}
 
-	path, err := c.Capture()
-
+func (s *Server) photos(w http.ResponseWriter, _ *http.Request) {
+	list, err := files.ListFiles(s.Folder)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed to take capture: %s", err.Error())
+		slog.Warn("listing photos", "err", err)
+	}
+	photos := make([]Photo, len(list))
+	for i, f := range list {
+		photos[i] = Photo{Name: f.Name, ModTime: f.ModTime, Size: humanReadableSize(f.Bytes)}
+	}
+	writeJSON(w, http.StatusOK, GetPhotosResponse{Photos: photos})
+}
+
+func (s *Server) listFiles(w http.ResponseWriter, _ *http.Request) {
+	list, err := files.ListFiles(s.Folder)
+	if err != nil {
+		slog.Warn("listing photos", "err", err)
+	}
+	writeJSON(w, http.StatusOK, ListFilesResponse{Files: list})
+}
+
+func (s *Server) file(w http.ResponseWriter, r *http.Request) {
+	s.serveFromFolder(w, r, r.PathValue("fileName"))
+}
+
+func (s *Server) mostRecentFile(w http.ResponseWriter, r *http.Request) {
+	list, _ := files.ListFiles(s.Folder)
+	if len(list) == 0 {
+		http.NotFound(w, r)
 		return
 	}
-
-	serveFileContent(w, path)
-
-	// Remove the temporary file
-	os.Remove(path)
+	s.serveFromFolder(w, r, list[len(list)-1].Name)
 }
 
-// GetArchiveZip Reply with ZIP file containing all timelapse pictures
-func GetArchiveZip(w http.ResponseWriter, r *http.Request) {
-	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"])
-
-	pr, pw := io.Pipe()
-	go func() {
-		defer pw.Close()
-		if err := files.ZipWithPipes(strFiles, pw); err != nil {
-			log.Println("failed to create archive", err.Error())
-		}
-	}()
-
-	w.Header().Add(conf.HeaderContentType, "application/zip")
-	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.zip")
-
-	writePipeContent(w, pr)
-}
-
-// GetArchiveTar Reply with TAR file containing all timelapse pictures
-func GetArchiveTar(w http.ResponseWriter, r *http.Request) {
-	strFiles, _ := requestedFilesToRelativePaths(r.URL.Query()["f"])
-
-	pr, pw := io.Pipe()
-	go func() {
-		defer pw.Close()
-		if err := files.TarWithPipes(strFiles, pw); err != nil {
-			log.Println("failed to create archive", err.Error())
-		}
-	}()
-
-	w.Header().Add(conf.HeaderContentType, "application/tar")
-	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename=archive.tar")
-
-	writePipeContent(w, pr)
-}
-
-func DeleteFiles(w http.ResponseWriter, r *http.Request) {
-	filesToDelete := r.URL.Query()["f"]
-	filesToDeleteAreProvided := len(filesToDelete) > 0
-
-	if !filesToDeleteAreProvided {
-		writeJSON(w, http.StatusBadRequest, "no files to delete provided.")
+// serveFromFolder serves name from the photo folder; os.Root rejects names
+// that would leave it.
+func (s *Server) serveFromFolder(w http.ResponseWriter, r *http.Request, name string) {
+	f, err := os.OpenInRoot(s.Folder, name)
+	if err != nil {
+		http.NotFound(w, r)
 		return
 	}
+	defer f.Close()
+	serveFile(w, r, f)
+}
 
-	log.Printf("Files to delete: %v\n", filesToDelete)
+func serveFile(w http.ResponseWriter, r *http.Request, f *os.File) {
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() > conf.MaxFileSizeBytes {
+		http.NotFound(w, r)
+		return
+	}
+	name := filepath.Base(f.Name())
+	w.Header().Set(conf.HeaderContentDisposition, mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	http.ServeContent(w, r, name, info.ModTime(), f)
+}
 
-	for _, name := range filesToDelete {
-		path, err := safeFilePath(conf.StorageFolder, name)
-		if err != nil {
-			log.Printf("Skipping invalid path %s: %v\n", name, err)
+func (s *Server) deleteFiles(w http.ResponseWriter, r *http.Request) {
+	names := r.URL.Query()["f"]
+	if len(names) == 0 {
+		writeError(w, http.StatusBadRequest, errors.New("no files to delete provided"))
+		return
+	}
+	writeJSON(w, http.StatusOK, s.remove(names))
+}
+
+func (s *Server) deleteAllPhotos(w http.ResponseWriter, _ *http.Request) {
+	list, err := files.ListFiles(s.Folder)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	names := make([]string, len(list))
+	for i, f := range list {
+		names[i] = f.Name
+	}
+	writeJSON(w, http.StatusOK, s.remove(names))
+}
+
+// remove deletes the named photos and returns how many were deleted.
+func (s *Server) remove(names []string) int {
+	deleted := 0
+	for _, name := range names {
+		if err := files.RemoveFile(s.Folder, name); err != nil {
+			slog.Warn("not deleting photo", "name", name, "err", err)
 			continue
 		}
-		if err := files.RemoveFile(path); err != nil {
-			log.Printf("Failed to delete %s: %v\n", path, err)
-		}
+		deleted++
 	}
-	writeJSON(w, http.StatusOK, len(filesToDelete))
+	slog.Info("deleted photos", "count", deleted, "requested", len(names))
+	return deleted
 }
 
-func Admin(_ http.ResponseWriter, r *http.Request) {
-	command := pat.Param(r, "command")
-	admin.HandleCommand(command)
-}
-
-func serveFileContent(w http.ResponseWriter, path string) {
-	content, err := files.GetFile(path)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Print(err.Error())
-		return
-	}
-
-	w.Header().Add(conf.HeaderContentType, http.DetectContentType(content))
-	w.Header().Set(conf.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s", getBasename(path)))
-	w.Write(content)
-}
-
-func getBasename(path string) string {
-	i := strings.LastIndex(path, "/")
-	if i == -1 {
-		return path
-	}
-	return path[i+1:]
-}
-
-func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf.Settings, error) {
-	log.Printf("Received new configuration: %v\n", updateRequest)
-
-	s, err := conf.LoadConfiguration()
-	log.Printf("Updating old configuration (%v)\nwith new configuration (%v)\n", s, updateRequest)
-
-	if err != nil {
-		return nil, err
-	}
-
-	s.Quality = updateRequest.Quality
-	s.RotateBy = updateRequest.RotateBy
-	s.OffsetWithinHour = updateRequest.OffsetWithinHour
-	s.ResolutionSetting = updateRequest.ResolutionSetting
-	s.SecondsBetweenCaptures = updateRequest.SecondsBetweenCaptures
-	switch s.ResolutionSetting {
-	case 2:
-		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232
-	case 1:
-		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 2186, 1642
-	default: // 0, and any unknown value
-
-		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 3280, 2464
-	}
-
-	log.Printf("New configuration: %v\n", s)
-	return conf.WriteConfiguration(*s)
-}
-
-func writePipeContent(w http.ResponseWriter, pr *io.PipeReader) {
-	buf := make([]byte, 1024*1024)
-
-	for {
-		n, err := pr.Read(buf)
-		if n > 0 {
-			w.Write(buf[0:n])
-		}
-		if err == io.EOF {
-			break
-		}
+// archive streams the photos named by the f query parameters, or all photos
+// if there are none.
+func (s *Server) archive(filename, contentType string, write func(io.Writer, string, []string) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		list, err := files.ListFiles(s.Folder)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Println("Error: ", err.Error())
-			break
+			writeError(w, http.StatusInternalServerError, err)
+			return
 		}
-	}
-}
-
-// safeFilePath joins baseDir and fileName, ensuring the result stays within baseDir.
-func safeFilePath(baseDir, fileName string) (string, error) {
-	joined := filepath.Join(baseDir, fileName)
-	absBase, err := filepath.Abs(baseDir)
-	if err != nil {
-		return "", err
-	}
-	absJoined, err := filepath.Abs(joined)
-	if err != nil {
-		return "", err
-	}
-	if !strings.HasPrefix(absJoined, absBase+string(filepath.Separator)) && absJoined != absBase {
-		return "", fmt.Errorf("invalid file path: %s", fileName)
-	}
-	return joined, nil
-}
-
-// Converts the front-end requested file names (provided via query param) to paths relative to the storage folder. If no filter was provided, assume all files are requested.
-func requestedFilesToRelativePaths(filteredFiles []string) ([]string, error) {
-	filterProvided := len(filteredFiles) > 0
-	fileNamesIncluded := make(map[string]bool)
-
-	if filterProvided {
-		log.Printf("Limit archive to files: %v\n", filteredFiles)
-
-		for _, name := range filteredFiles {
-			fileNamesIncluded[name] = true
-		}
-	}
-
-	filesToArchive, err := files.ListFiles(conf.StorageFolder, true)
-	if err != nil {
-		return nil, err
-	}
-	if filterProvided {
-		var filteredFileList []files.File
-		for _, file := range filesToArchive {
-			if fileNamesIncluded[file.Name] {
-				filteredFileList = append(filteredFileList, file)
+		wanted := r.URL.Query()["f"]
+		var names []string
+		for _, f := range list {
+			if len(wanted) == 0 || slices.Contains(wanted, f.Name) {
+				names = append(names, f.Name)
 			}
 		}
-		log.Printf("Reduced number of files in archive from %d to %d based on user provided filter.\n", len(filesToArchive), len(filteredFileList))
-		filesToArchive = filteredFileList
+		streamArchive(w, filename, contentType, func(w io.Writer) error { return write(w, s.Folder, names) })
 	}
+}
 
-	// Convert []File to []string
-	strFiles := make([]string, len(filesToArchive))
-	for i, file := range filesToArchive {
-		strFiles[i] = filepath.Join(conf.StorageFolder, file.Name)
+// streamArchive writes the archive straight to the client. Once streaming has
+// started the status can no longer change, so a failure aborts the
+// connection: the client sees a failed download instead of a truncated file.
+func streamArchive(w http.ResponseWriter, filename, contentType string, write func(io.Writer) error) {
+	w.Header().Set(conf.HeaderContentType, contentType)
+	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename="+filename)
+	if err := write(w); err != nil {
+		slog.Warn("archive download aborted", "err", err)
+		panic(http.ErrAbortHandler)
 	}
+}
 
-	return strFiles, nil
+func (s *Server) monitoring(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	run := func(name string, args ...string) string {
+		out, err := s.Run(ctx, name, args...)
+		if err != nil {
+			return err.Error()
+		}
+		return string(out)
+	}
+	cpu, err := os.ReadFile(s.ThermalFile)
+	if err != nil {
+		cpu = []byte(err.Error())
+	}
+	writeJSON(w, http.StatusOK, MonitoringResponse{
+		Time:           run("/bin/date"),
+		GpuTemperature: run(vcgencmdPath(), "measure_temp"),
+		CpuTemperature: string(cpu),
+		Uptime:         run("/usr/bin/uptime"),
+		FreeDiskSpace:  run("/bin/df", "-h"),
+	})
+}
+
+func (s *Server) logs(w http.ResponseWriter, _ *http.Request) {
+	if s.LogFile == "" {
+		writeError(w, http.StatusInternalServerError, errors.New("no log file configured"))
+		return
+	}
+	text, err := logfile.Tail(s.LogFile, maxLogBytes)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, LogResponse{Logs: text})
+}
+
+func (s *Server) command(name string, args ...string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("running system command", "command", name, "args", args)
+		if out, err := s.Run(r.Context(), name, args...); err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Errorf("%w: %s", err, out))
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		slog.Warn("writing response", "err", err)
+	}
+}
+
+// writeError sends err as a JSON string, which the frontend shows to the user.
+func writeError(w http.ResponseWriter, status int, err error) {
+	writeJSON(w, status, err.Error())
+}
+
+func humanReadableSize(n int64) string {
+	switch {
+	case n >= 1<<20:
+		return fmt.Sprintf("%d MB", n>>20)
+	case n >= 1<<10:
+		return fmt.Sprintf("%d KB", n>>10)
+	default:
+		return fmt.Sprintf("%d bytes", n)
+	}
 }

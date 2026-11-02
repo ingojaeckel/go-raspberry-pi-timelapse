@@ -5,14 +5,15 @@
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? '';
 
 export interface Settings {
+  /** Between 60 and 3600 and divides an hour evenly (see schedule.ts). */
   SecondsBetweenCaptures: number;
-  /** Seconds into each hour of the first capture, or -1 to disable alignment. */
+  /** Seconds into each hour of the first capture (below SecondsBetweenCaptures), or -1 to disable alignment. */
   OffsetWithinHour: number;
   PhotoResolutionWidth: number;
   PhotoResolutionHeight: number;
   PreviewResolutionWidth: number;
   PreviewResolutionHeight: number;
-  /** Only 0 and 180 have an effect on the camera. */
+  /** 0 or 180. */
   RotateBy: number;
   /** 0: 3280x2464, 1: 2186x1642, 2: 1640x1232 */
   ResolutionSetting: number;
@@ -125,10 +126,14 @@ export const api = {
   },
   async deletePhotos(names: readonly string[]): Promise<void> {
     if (names.length === 0) return;
-    await request('/file/delete' + filesQuery(names));
+    await request('/file' + filesQuery(names), { method: 'DELETE' });
   },
   async admin(command: AdminCommand): Promise<void> {
-    await request('/admin/' + command);
+    if (command === 'clear') {
+      await request('/photos', { method: 'DELETE' });
+    } else {
+      await request('/admin/' + command, { method: 'POST' });
+    }
   },
 };
 

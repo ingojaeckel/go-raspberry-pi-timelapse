@@ -1,0 +1,25 @@
+{
+  "description": "Shared by src/frontend/src/schedule.test.ts and src/backend/timelapse/schedule_test.go so the UI predicts exactly what the camera does. 'wait' is the number of seconds from minute:second past the hour until the next capture; 0 means capture now.",
+  "validIntervals": [60, 72, 75, 80, 90, 100, 120, 144, 150, 180, 200, 225, 240, 300, 360, 400, 450, 600, 720, 900, 1200, 1800, 3600],
+  "invalidIntervals": [0, 1, 59, 61, 1000, 3599, 3601, 7200],
+  "cases": [
+    { "interval": 1800, "offset": 900, "minute": 9, "second": 13, "wait": 347 },
+    { "interval": 1800, "offset": 900, "minute": 8, "second": 0, "wait": 420 },
+    { "interval": 1800, "offset": 900, "minute": 16, "second": 0, "wait": 1740 },
+    { "interval": 1800, "offset": 900, "minute": 30, "second": 59, "wait": 841 },
+    { "interval": 1800, "offset": 900, "minute": 46, "second": 1, "wait": 1739 },
+    { "interval": 1800, "offset": 900, "minute": 32, "second": 1, "wait": 779 },
+    { "interval": 1800, "offset": 900, "minute": 16, "second": 1, "wait": 1739 },
+    { "interval": 1800, "offset": 900, "minute": 8, "second": 1, "wait": 419 },
+    { "interval": 1800, "offset": 900, "minute": 15, "second": 0, "wait": 0 },
+    { "interval": 1800, "offset": 900, "minute": 59, "second": 59, "wait": 901 },
+    { "interval": 600, "offset": 0, "minute": 0, "second": 0, "wait": 0 },
+    { "interval": 600, "offset": 0, "minute": 0, "second": 1, "wait": 599 },
+    { "interval": 600, "offset": 0, "minute": 59, "second": 59, "wait": 1 },
+    { "interval": 3600, "offset": 0, "minute": 30, "second": 0, "wait": 1800 },
+    { "interval": 3600, "offset": 3599, "minute": 0, "second": 0, "wait": 3599 },
+    { "interval": 60, "offset": 30, "minute": 10, "second": 45, "wait": 45 },
+    { "interval": 900, "offset": 899, "minute": 14, "second": 59, "wait": 0 },
+    { "interval": 900, "offset": 899, "minute": 15, "second": 0, "wait": 899 }
+  ]
+}

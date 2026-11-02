@@ -1,90 +1,125 @@
 package conf
 
 import (
-	"os"
+	"errors"
+	"slices"
 	"testing"
-
-	"github.com/facebookgo/ensure"
 )
 
-func TestAreSettingsMissing(t *testing.T) {
-	ensure.True(t, areSettingsMissing("non-existing-file"))
-	ensure.False(t, areSettingsMissing("settings_test.go"))
-}
-
-func TestSettingsToString(t *testing.T) {
-	expected := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"ResolutionSetting":0,"Quality":0,"DebugEnabled":false}`
-	ensure.DeepEqual(t, expected, Settings{}.String())
-}
-
-func TestWriteAndLoadConfiguration(t *testing.T) {
-	// Use a temp file for the settings DB to avoid polluting the working directory
-	origSettingsFile := settingsFile
-	defer func() {
-		// We can't reassign the const, so we clean up the temp file
-		os.Remove("test-settings.db")
-	}()
-
-	// Remove any leftover test DB
-	os.Remove("test-settings.db")
-
-	s := Settings{
-		SecondsBetweenCaptures:  120,
-		OffsetWithinHour:        300,
-		PhotoResolutionWidth:    1920,
-		PhotoResolutionHeight:   1080,
-		PreviewResolutionWidth:  640,
-		PreviewResolutionHeight: 480,
-		RotateBy:                180,
-		ResolutionSetting:       1,
-		Quality:                 85,
-		DebugEnabled:            true,
+func TestValidIntervalsDivideAnHourEvenly(t *testing.T) {
+	got := ValidIntervals()
+	want := []int{60, 72, 75, 80, 90, 100, 120, 144, 150, 180, 200, 225, 240, 300, 360, 400, 450, 600, 720, 900, 1200, 1800, 3600}
+	if !slices.Equal(got, want) {
+		t.Fatalf("ValidIntervals() = %v, want %v", got, want)
 	}
-
-	// settingsFile is a const so we test via the public API which uses it
-	// Write then load to verify round-trip
-	_ = origSettingsFile // acknowledge we can't change the const
-
-	written, err := WriteConfiguration(s)
-	ensure.Nil(t, err)
-	ensure.DeepEqual(t, s.Quality, written.Quality)
-	ensure.DeepEqual(t, s.SecondsBetweenCaptures, written.SecondsBetweenCaptures)
-
-	loaded, err := LoadConfiguration()
-	ensure.Nil(t, err)
-	ensure.DeepEqual(t, s.Quality, loaded.Quality)
-	ensure.DeepEqual(t, s.SecondsBetweenCaptures, loaded.SecondsBetweenCaptures)
-	ensure.DeepEqual(t, s.OffsetWithinHour, loaded.OffsetWithinHour)
-	ensure.DeepEqual(t, s.PhotoResolutionWidth, loaded.PhotoResolutionWidth)
-	ensure.DeepEqual(t, s.RotateBy, loaded.RotateBy)
-	ensure.DeepEqual(t, s.DebugEnabled, loaded.DebugEnabled)
 }
 
-func TestLoadConfigurationEnforcesMinInterval(t *testing.T) {
-	// Remove any leftover DB to trigger fresh creation
-	os.Remove(settingsFile)
-	defer os.Remove(settingsFile)
+func valid() Settings {
+	s := Default(1800)
+	return s
+}
 
-	// Write with a very short interval
-	s := Settings{
-		SecondsBetweenCaptures: 10, // Below minimum of 60
-		Quality:                100,
+func TestDefaultIsValid(t *testing.T) {
+	if err := valid().Validate(); err != nil {
+		t.Fatalf("default settings must be valid: %v", err)
 	}
-	_, err := WriteConfiguration(s)
-	ensure.Nil(t, err)
-
-	// Load should enforce the minimum
-	loaded, err := LoadConfiguration()
-	ensure.Nil(t, err)
-	ensure.True(t, loaded.SecondsBetweenCaptures >= minSecondsBetweenCaptures)
 }
 
-func TestLoadConfigurationCreatesInitialSettings(t *testing.T) {
-	os.Remove(settingsFile)
-	defer os.Remove(settingsFile)
+func TestValidateAcceptsDisabledOffset(t *testing.T) {
+	s := valid()
+	s.OffsetWithinHour = OffsetDisabled
+	if err := s.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
 
-	loaded, err := LoadConfiguration()
-	ensure.Nil(t, err)
-	ensure.DeepEqual(t, initialConfiguration.Quality, loaded.Quality)
-	ensure.DeepEqual(t, initialConfiguration.PhotoResolutionWidth, loaded.PhotoResolutionWidth)
+func TestValidateRejects(t *testing.T) {
+	cases := map[string]func(*Settings){
+		"interval below minute":       func(s *Settings) { s.SecondsBetweenCaptures = 1 },
+		"interval zero":               func(s *Settings) { s.SecondsBetweenCaptures = 0 },
+		"interval not dividing hour":  func(s *Settings) { s.SecondsBetweenCaptures = 1000 },
+		"interval above hour":         func(s *Settings) { s.SecondsBetweenCaptures = 7200 },
+		"offset equal to interval":    func(s *Settings) { s.SecondsBetweenCaptures = 600; s.OffsetWithinHour = 600 },
+		"offset beyond interval":      func(s *Settings) { s.SecondsBetweenCaptures = 600; s.OffsetWithinHour = 900 },
+		"offset below -1":             func(s *Settings) { s.OffsetWithinHour = -2 },
+		"quality zero":                func(s *Settings) { s.Quality = 0 },
+		"quality above 100":           func(s *Settings) { s.Quality = 101 },
+		"rotation not 0 or 180":       func(s *Settings) { s.RotateBy = 90 },
+		"unknown resolution setting":  func(s *Settings) { s.ResolutionSetting = 99 },
+		"negative resolution setting": func(s *Settings) { s.ResolutionSetting = -1 },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			s := valid()
+			mutate(&s)
+			err := s.Validate()
+			if !errors.Is(err, ErrInvalid) {
+				t.Fatalf("Validate() = %v, want ErrInvalid", err)
+			}
+		})
+	}
+}
+
+func TestNormalizedRepairsSettingsFromOlderVersions(t *testing.T) {
+	cases := []struct {
+		name                 string
+		interval, offset     int
+		wantInterval, wantOf int
+	}{
+		{"too short is raised to the minimum", 10, -1, 60, -1},
+		{"non-divisor rounds up to the next valid interval", 1000, 100, 1200, 100},
+		{"longer than an hour was hourly before, stays hourly", 7200, 600, 3600, 600},
+		{"offset beyond interval keeps the same slots", 1800, 2700, 1800, 900},
+		{"offset beyond the hour wraps", 3600, 3700, 3600, 100},
+		{"valid settings are untouched", 900, 300, 900, 300},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := valid()
+			s.SecondsBetweenCaptures, s.OffsetWithinHour = c.interval, c.offset
+			n := s.Normalized()
+			if n.SecondsBetweenCaptures != c.wantInterval || n.OffsetWithinHour != c.wantOf {
+				t.Fatalf("got interval=%d offset=%d, want %d %d", n.SecondsBetweenCaptures, n.OffsetWithinHour, c.wantInterval, c.wantOf)
+			}
+			if err := n.Validate(); err != nil {
+				t.Fatalf("normalized settings must be valid: %v", err)
+			}
+		})
+	}
+}
+
+func TestNormalizedRepairsPhotoFields(t *testing.T) {
+	s := valid()
+	s.Quality, s.RotateBy, s.ResolutionSetting = 0, 90, 99
+	n := s.Normalized()
+	if n.Quality != 1 || n.RotateBy != 0 || n.ResolutionSetting != 0 {
+		t.Fatalf("got quality=%d rotate=%d resolution=%d", n.Quality, n.RotateBy, n.ResolutionSetting)
+	}
+	if n.PhotoResolutionWidth != 3280 || n.PhotoResolutionHeight != 2464 {
+		t.Fatalf("resolution 0 must be 3280x2464, got %dx%d", n.PhotoResolutionWidth, n.PhotoResolutionHeight)
+	}
+}
+
+func TestWithResolutionDerivesPhotoSize(t *testing.T) {
+	for setting, want := range map[int][2]int{0: {3280, 2464}, 1: {2186, 1642}, 2: {1640, 1232}} {
+		s := valid()
+		s.ResolutionSetting = setting
+		s = s.withResolution()
+		if s.PhotoResolutionWidth != want[0] || s.PhotoResolutionHeight != want[1] {
+			t.Errorf("setting %d: got %dx%d, want %v", setting, s.PhotoResolutionWidth, s.PhotoResolutionHeight, want)
+		}
+	}
+}
+
+func TestDefaultUsesGivenInterval(t *testing.T) {
+	if got := Default(600).SecondsBetweenCaptures; got != 600 {
+		t.Fatalf("Default(600) interval = %d", got)
+	}
+}
+
+func TestSettingsStringIsJSON(t *testing.T) {
+	want := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"ResolutionSetting":0,"Quality":0,"DebugEnabled":false}`
+	if got := (Settings{}).String(); got != want {
+		t.Fatalf("got %s", got)
+	}
 }
