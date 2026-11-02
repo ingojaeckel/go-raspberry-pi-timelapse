@@ -1,18 +1,28 @@
 #!/bin/sh
-set -e -x
+set -e
 
-# Load nvm and use the version specified in .nvmrc
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-if [ -s "$NVM_DIR/nvm.sh" ]; then
-    . "$NVM_DIR/nvm.sh"
-    nvm use
-else
-    echo "Warning: nvm not found, using system Node/npm"
+cd "$(dirname "$0")"
+
+# Use the Node version from .nvmrc. If the active Node already matches (e.g. in
+# CI, where actions/setup-node installs it outside nvm), leave it alone: nvm
+# would report the version as "not installed" and fail the build.
+WANT="v$(cat .nvmrc)"
+HAVE="$(node --version 2>/dev/null || true)"
+if [ "$HAVE" != "$WANT" ]; then
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        . "$NVM_DIR/nvm.sh"
+        nvm use >/dev/null || echo "Warning: nvm could not switch to $WANT (run 'nvm install'); using ${HAVE:-system Node}"
+    else
+        echo "Warning: Node $WANT wanted, using ${HAVE:-system Node} (nvm not found)"
+    fi
 fi
+echo "Node $(node --version)"
 
-COMMIT=`git rev-parse HEAD`
-COMMIT_ABBREV=`git rev-parse --short HEAD`
-COMMIT_TIME=`git log -1 --format=%cd`
+set -x
+COMMIT=$(git rev-parse HEAD)
+COMMIT_ABBREV=$(git rev-parse --short HEAD)
+COMMIT_TIME=$(git log -1 --format=%cd)
 CI=true \
     REACT_APP_GIT_SHA=${COMMIT} \
     REACT_APP_GIT_SHA_ABBREV=${COMMIT_ABBREV} \
