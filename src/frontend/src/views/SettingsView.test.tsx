@@ -77,7 +77,7 @@ describe('SettingsView', () => {
   });
 
   it('warns when the camera did not apply the chosen resolution', async () => {
-    // rest.updatePartialConfiguration ignores ResolutionSetting 0 and keeps the previous size.
+    // Safety net: if the server ever keeps a different size than requested, say so.
     mockServer({ 'POST /configuration': (_u, init) => json({ ...JSON.parse(String(init?.body)) }) });
     renderSettings();
     const user = userEvent.setup();

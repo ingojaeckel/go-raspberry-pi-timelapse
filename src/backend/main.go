@@ -70,14 +70,12 @@ func main() {
 	})
 
 	// Frontend APIs
-	mux.Handle(pat.Get(frontendPath+"*"), http.StripPrefix(frontendPath, http.FileServer(http.FS(web.Dist()))))
+	mux.Handle(pat.Get(frontendPath+"*"), web.WithCacheHeaders(http.StripPrefix(frontendPath, http.FileServer(http.FS(web.Dist())))))
 	// Redirect to frontend. Ideally this could be built in a way it can be hosted on or closer to /.
 	mux.Handle(pat.Get("/"), http.RedirectHandler(frontendPath+"index.html", http.StatusMovedPermanently))
 
 	// Backend APIs (should only be called by frontend code)
-	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {
-		rest.Capture(w, initialSettings)
-	})
+	mux.HandleFunc(pat.Get("/capture"), rest.MakeCaptureFn(initialSettings))
 
 	configUpdatedChan := make(chan conf.Settings, 1)
 

@@ -168,7 +168,29 @@ func TestUpdatePartialConfigurationResolutionMapping(t *testing.T) {
 	ensure.DeepEqual(t, 2186, s.PhotoResolutionWidth)
 	ensure.DeepEqual(t, 1642, s.PhotoResolutionHeight)
 
-	// Test resolution setting 0 (default) → 3280x2464
+	// Test resolution setting 0 → 3280x2464, switching from a previous setting
+	s, err = updatePartialConfiguration(UpdateConfigurationRequest{
+		Settings: conf.Settings{
+			SecondsBetweenCaptures: 1800,
+			OffsetWithinHour:       900,
+			Quality:                100,
+			ResolutionSetting:      0,
+		},
+	})
+	ensure.Nil(t, err)
+	ensure.DeepEqual(t, 3280, s.PhotoResolutionWidth)
+	ensure.DeepEqual(t, 2464, s.PhotoResolutionHeight)
+
+	// Test unknown resolution setting → falls back to 3280x2464
+	s, err = updatePartialConfiguration(UpdateConfigurationRequest{
+		Settings: conf.Settings{
+			SecondsBetweenCaptures: 1800,
+			OffsetWithinHour:       900,
+			Quality:                100,
+			ResolutionSetting:      1,
+		},
+	})
+	ensure.Nil(t, err)
 	s, err = updatePartialConfiguration(UpdateConfigurationRequest{
 		Settings: conf.Settings{
 			SecondsBetweenCaptures: 1800,
@@ -180,4 +202,24 @@ func TestUpdatePartialConfigurationResolutionMapping(t *testing.T) {
 	ensure.Nil(t, err)
 	ensure.DeepEqual(t, 3280, s.PhotoResolutionWidth)
 	ensure.DeepEqual(t, 2464, s.PhotoResolutionHeight)
+}
+
+func TestCurrentSettingsReflectsSavedConfiguration(t *testing.T) {
+	os.Remove("timelapse-settings.db")
+	defer os.Remove("timelapse-settings.db")
+
+	startup, err := conf.LoadConfiguration()
+	ensure.Nil(t, err)
+	ensure.DeepEqual(t, 0, startup.RotateBy)
+
+	// Saving new settings after startup must be visible to the preview capture.
+	saved := *startup
+	saved.RotateBy = 180
+	saved.PreviewResolutionWidth = 320
+	_, err = conf.WriteConfiguration(saved)
+	ensure.Nil(t, err)
+
+	current := currentSettings(startup)
+	ensure.DeepEqual(t, 180, current.RotateBy)
+	ensure.DeepEqual(t, 320, current.PreviewResolutionWidth)
 }

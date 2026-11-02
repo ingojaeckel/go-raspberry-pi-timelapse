@@ -98,6 +98,24 @@ func GetFiles(w http.ResponseWriter, _ *http.Request) {
 	w.Write(b)
 }
 
+// MakeCaptureFn returns the preview handler. It reads the saved settings on
+// every request, so rotation and preview size changes apply without a restart.
+func MakeCaptureFn(fallback *conf.Settings) func(w http.ResponseWriter, _ *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		Capture(w, currentSettings(fallback))
+	}
+}
+
+// currentSettings returns the persisted settings, or fallback if they can't be read.
+func currentSettings(fallback *conf.Settings) *conf.Settings {
+	s, err := conf.LoadConfiguration()
+	if err != nil || s == nil {
+		log.Printf("Using startup settings for capture; failed to load configuration: %v\n", err)
+		return fallback
+	}
+	return s
+}
+
 func Capture(w http.ResponseWriter, s *conf.Settings) {
 	log.Printf("Capturing preview picture inside of %s at resolution: %d x %d\n", conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight)
 	c, err := timelapse.NewCamera(conf.TempFilesFolder, s.PreviewResolutionWidth, s.PreviewResolutionHeight, s.RotateBy == 180, s.Quality)
@@ -227,8 +245,8 @@ func updatePartialConfiguration(updateRequest UpdateConfigurationRequest) (*conf
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 1640, 1232
 	case 1:
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 2186, 1642
-	case 0:
-	default:
+	default: // 0, and any unknown value
+
 		s.PhotoResolutionWidth, s.PhotoResolutionHeight = 3280, 2464
 	}
 
