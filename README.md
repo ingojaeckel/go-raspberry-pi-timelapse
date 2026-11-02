@@ -28,50 +28,9 @@ graph TD
 4. 🌐 Built-in web interface for camera control, preview, and image downloads
 5. ⏰ Automated scheduling for hands-free operation
 
-## Parts List
+![The build](docs/images/build.JPG "Build overview")
 
-<details>
-<summary><b>Click to expand Parts List</b></summary>
-
-This project was created for a timelapse system consisting of the following core components: a Pi Zero W with a camera board, a case, and an SD card. The following sections describe the components in more detail.
-
-### Core parts for regular deployment (about $65)
-
-* [Raspberry Pi Zero W](https://www.adafruit.com/product/3400) ($10)
-* [Raspberry Pi Camera Board v2](https://www.adafruit.com/product/3099) ($30)
-* [Raspberry Pi Zero Camera Cable](https://www.adafruit.com/product/3157) ($6)
-* [C4Labs Zebra Zero Case](https://www.adafruit.com/product/3003) ($7)
-* [microSDHC Card](https://www.adafruit.com/product/2767) ($12)
-
-### Additional parts to include a battery backed clock (about $8)
-
-* [Break-away 0.1" 2x20-pin Strip Dual Male Header](https://www.adafruit.com/product/2822) ($1)
-* [CR1220 12mm Diameter - 3V Lithium Coin Cell Battery](https://www.adafruit.com/product/380) ($1)
-* [Adafruit PiRTC - PCF8523 Real Time Clock for Raspberry Pi](https://www.adafruit.com/product/3386) ($6)
-
-### Additional Parts for Development (about $6)
-
-* [USB OTG Host Cable - MicroB OTG male to A female](https://www.adafruit.com/product/1099) ($3)
-* [Mini HDMI Plug to Standard HDMI Jack Adapter](https://www.adafruit.com/product/2819) ($3)
-
-</details>
-
-## Build overview
-
-![The build](https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/master/docs/build.JPG "Build overview")
-
-<details>
-<summary><b>Click to expand Build Steps</b></summary>
-
-### Build steps
-
-#### Step 1: Initial Build
-
-1. Optional: If you want to use the battery backed clocked start by soldering the 2x20-pin strip on Pi Zero W board ([instructions](https://learn.adafruit.com/adding-a-real-time-clock-to-raspberry-pi/wiring-the-rtc)). After the soldering, attach the RTC to the 2x20-pin strip. Don't forget to insert the CR1220 battery into the RTC. 
-2. Connect the Pi Zero W and the Pi Camera Board v2 via the Pi Zero Camera cable.
-3. Insert the Pi Zero W into the C4Labs Zerbra Zero Case.
-
-#### Step 2: Install disk image and access web interface
+## Quick start
 
 1. From another computer, download, and decompress the `.img` file of the [most recent go-raspberry-pi-timelapse release](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/releases).
 2. Install the `.img` file to an empty SD card using the [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
@@ -80,72 +39,35 @@ This project was created for a timelapse system consisting of the following core
 5. The Pi Zero W will act as a Wifi access point. Connect to the Pi's Wifi named `timelapse-raspberry-pi`, passphrase: `InsertTheRealPassword`.
 6. Open the Pi's web interface in a browser: `http://192.168.50.1:8080/`. This interface will allow you to align the camera, download photos, shutdown the Pi, etc.
 
-</details>
+For the parts list and assembly steps, see [docs/hardware.md](docs/hardware.md).
 
-<details>
-<summary><b>Misc resources</b></summary>
+## Development
 
-## PiTFT
-* https://learn.adafruit.com/adafruit-pitft-28-inch-resistive-touchscreen-display-raspberry-pi/easy-install-2 - Follow steps and `PiTFT as HDMI Mirror (Best for Raspberry Pi OS with Desktop)`
-* https://learn.adafruit.com/running-opengl-based-games-and-emulators-on-adafruit-pitft-displays/tuning-performance
-* https://willhaley.com/blog/power-off-raspberry-pi-adafruit-tft-screen-shutdown/
-* Streaming raspivid output via network. (1) on the receiving device: `vlc -vvv udp://@:1234 :demux=h264`. (2) on the Pi: `raspivid -t 60000 -o udp://192.168.0.123:1234`.
-
-</details>
-
----
-
-## 🔬 Performance Testing & Profiling
-
-<details>
-<summary><b>Click to expand Load Testing details</b></summary>
-
-This repository includes k6 load testing infrastructure to validate API performance and robustness.
-
-### Quick Start
+Requires Go (see `src/backend/go.mod`), Node (see `src/frontend/.nvmrc`), and `make`.
 
 ```bash
-# Install k6 (one-time setup)
-brew install k6  # macOS
-# For Linux/Windows, see k6/README.md
-
-# Run load test with profiling
-./scripts/run-load-test.sh --collect-profiles
+make            # frontend build + tests, Go vet + tests, development build
+make pi         # same, then cross-compile to src/backend/bin/arm/ for the Pi Zero W
+make run        # build the frontend and run the server on http://localhost:8080
+make loadtest   # k6 load test against a local build (requires k6)
 ```
 
-### What Gets Tested
+The Go binary embeds the frontend. Vite writes its build into `src/backend/web/dist`, which `src/backend/web` embeds via `//go:embed`. Every Go target in the `Makefile` therefore builds the frontend first.
 
-The load test validates read-only API endpoints:
-- `/version` - Version information
-- `/monitoring` - System metrics
-- `/photos` - Photo listing
-- `/configuration` - Current settings
-- `/logs` - Application logs
+## Repository layout
 
-### Success Criteria
-
-- ✅ **100% Success Rate**: All requests return 2xx status codes
-- ✅ **P95 Latency < 100ms**: 95th percentile response time under 100ms
-- 📊 **Additional Metrics**: P50 < 50ms, P99 < 200ms
-
-### Profiling Support
-
-The Go application includes built-in pprof profiling:
-
-```bash
-# Start with profiling enabled
-go run . -pprof
-
-# Collect CPU profile (30 seconds)
-curl http://localhost:8080/debug/pprof/profile?seconds=30 -o cpu.prof
-
-# Analyze with pprof
-go tool pprof -http=:8081 cpu.prof
+```
+docs/                    documentation and images
+src/backend/             Go server (go.mod lives here)
+src/frontend/            React + Vite web UI, built into src/backend/web/dist
+src/installer/           CustomPiOS image build (custompios/) and on-device scripts (device/)
+src/perf-testing/k6/     k6 load tests and runner script
 ```
 
-For detailed documentation, see [k6/README.md](k6/README.md).
+## Documentation
 
-</details>
-
----
-
+- [Hardware: parts and build](docs/hardware.md)
+- [Installer: building the Pi disk image](docs/installer.md)
+- [Frontend](src/frontend/README.md)
+- [Load testing and profiling](docs/load-testing.md) ([implementation notes](docs/load-testing-implementation.md))
+- [Go benchmarks](docs/benchmarks.md)

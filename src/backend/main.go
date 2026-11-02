@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"fmt"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/web"
 	"goji.io"
 	"goji.io/pat"
 )
@@ -21,8 +21,10 @@ var gitCommit string
 var builtAt string
 var version string
 
-//go:embed frontend/build
-var content embed.FS
+// frontendPath is the URL prefix the frontend is served under. It must match
+// BASE in src/frontend/vite.config.ts. It is independent of where the files
+// live on disk (see package web).
+const frontendPath = "/static/frontend/build/"
 
 func main() {
 	initVersion()
@@ -68,9 +70,9 @@ func main() {
 	})
 
 	// Frontend APIs
-	mux.Handle(pat.Get("/static/*"), http.StripPrefix("/static/", http.FileServer(http.FS(content))))
+	mux.Handle(pat.Get(frontendPath+"*"), http.StripPrefix(frontendPath, http.FileServer(http.FS(web.Dist()))))
 	// Redirect to frontend. Ideally this could be built in a way it can be hosted on or closer to /.
-	mux.Handle(pat.Get("/"), http.RedirectHandler("/static/frontend/build/index.html", http.StatusMovedPermanently))
+	mux.Handle(pat.Get("/"), http.RedirectHandler(frontendPath+"index.html", http.StatusMovedPermanently))
 
 	// Backend APIs (should only be called by frontend code)
 	mux.HandleFunc(pat.Get("/capture"), func(w http.ResponseWriter, _ *http.Request) {

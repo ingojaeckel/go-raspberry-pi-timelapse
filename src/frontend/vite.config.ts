@@ -2,10 +2,12 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// The Go server embeds `frontend/build` (//go:embed) and serves it under
-// /static/frontend/build/. Both values below are part of that contract.
+// The Go server embeds the build output (src/backend/web, //go:embed dist) and
+// serves it under /static/frontend/build/ (frontendPath in src/backend/main.go).
+// //go:embed cannot reach outside its package, so the build is written straight
+// into the backend. Both values below are part of that contract.
 const BASE = '/static/frontend/build/';
-const OUT_DIR = 'build';
+const OUT_DIR = '../backend/web/dist';
 
 // Backend endpoints, proxied to a locally running Go server during `npm start`.
 const API_PATHS = ['/photos', '/file', '/archive', '/capture', '/configuration', '/monitoring', '/logs', '/admin', '/version'];

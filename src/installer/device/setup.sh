@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # You might want to download & execute this to start the installation via:
-# wget -O - https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/master/setup.sh | bash
+# wget -O - https://raw.githubusercontent.com/ingojaeckel/go-raspberry-pi-timelapse/main/src/installer/device/setup.sh | bash
 #
 set -e -x
 

@@ -12,12 +12,19 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Paths are resolved relative to this script, so it can be run from anywhere.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+BACKEND_DIR="${REPO_ROOT}/src/backend"
+# Build output, log file and profiles go into the current directory.
+APP_BIN="$(pwd)/timelapse-app"
+
 # Configuration
 APP_PORT="${APP_PORT:-8080}"
 APP_URL="http://localhost:${APP_PORT}"
 PROFILE_DIR="${PROFILE_DIR:-./profiles}"
 COLLECT_PROFILES="${COLLECT_PROFILES:-false}"
-K6_SCRIPT="${K6_SCRIPT:-./k6/load-test.js}"
+K6_SCRIPT="${K6_SCRIPT:-${SCRIPT_DIR}/load-test.js}"
 
 # Print colored message
 print_info() {
@@ -45,7 +52,7 @@ check_k6() {
         echo ""
         echo "Quick install options:"
         echo "  macOS:   brew install k6"
-        echo "  Linux:   See k6/README.md for apt instructions"
+        echo "  Linux:   See docs/load-testing.md for apt instructions"
         echo "  Windows: choco install k6"
         exit 1
     fi
@@ -67,7 +74,9 @@ build_app() {
     GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
     BUILT_AT=$(date)
     
-    go build -v -ldflags="-X 'main.gitCommit=${GIT_COMMIT}' -X 'main.builtAt=${BUILT_AT}'" -o ./timelapse-app
+    # The binary embeds the frontend; build it first (make frontend) for a full UI.
+    # The read-only APIs under test work either way, as long as web/dist exists.
+    go -C "${BACKEND_DIR}" build -v -ldflags="-X 'main.gitCommit=${GIT_COMMIT}' -X 'main.builtAt=${BUILT_AT}'" -o "${APP_BIN}" .
     
     if [ $? -eq 0 ]; then
         print_success "Application built successfully"
@@ -84,7 +93,7 @@ start_app() {
     # Create log file if it doesn't exist (required for /logs endpoint)
     touch timelapse.log
     
-    ./timelapse-app -port ":${APP_PORT}" -pprof &
+    "${APP_BIN}" -port ":${APP_PORT}" -pprof &
     APP_PID=$!
     
     # Wait for app to start
@@ -291,7 +300,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --collect-profiles    Collect CPU and memory profiles during test"
             echo "  --port PORT          Application port (default: 8080)"
             echo "  --profile-dir DIR    Directory for profile output (default: ./profiles)"
-            echo "  --k6-script PATH     Path to k6 test script (default: ./k6/load-test.js)"
+            echo "  --k6-script PATH     Path to k6 test script (default: load-test.js next to this script)"
             echo "  --help               Show this help message"
             echo ""
             echo "Environment variables:"

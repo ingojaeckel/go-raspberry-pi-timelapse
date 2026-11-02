@@ -20,7 +20,7 @@ This directory contains k6 load test scripts for the Go Raspberry Pi Timelapse A
 
 ```bash
 # From the repository root, run the load test script
-./scripts/run-load-test.sh
+src/perf-testing/k6/run-load-test.sh
 ```
 
 This script will:
@@ -40,16 +40,16 @@ This script will:
 2. **Run the load test**:
    ```bash
    # Basic load test
-   k6 run k6/load-test.js
+   k6 run src/perf-testing/k6/load-test.js
    
    # Smoke test (quick validation of all endpoints)
-   k6 run k6/smoke-test.js
+   k6 run src/perf-testing/k6/smoke-test.js
    
    # Test against a different URL
-   K6_BASE_URL=http://192.168.50.1:8080 k6 run k6/load-test.js
+   K6_BASE_URL=http://192.168.50.1:8080 k6 run src/perf-testing/k6/load-test.js
    
    # Run with custom duration
-   k6 run --duration 5m k6/load-test.js
+   k6 run --duration 5m src/perf-testing/k6/load-test.js
    ```
 
 ## Success Criteria
@@ -203,7 +203,7 @@ For long-running tests:
 
 ```bash
 # 1 hour continuous test with 25 users
-k6 run --vus 25 --duration 1h k6/load-test.js
+k6 run --vus 25 --duration 1h src/perf-testing/k6/load-test.js
 ```
 
 ### Results Export
@@ -212,10 +212,10 @@ Export results for analysis:
 
 ```bash
 # JSON output
-k6 run --out json=results.json k6/load-test.js
+k6 run --out json=results.json src/perf-testing/k6/load-test.js
 
 # CSV output (requires xk6-output-prometheus-remote or similar)
-k6 run --out csv=results.csv k6/load-test.js
+k6 run --out csv=results.csv src/perf-testing/k6/load-test.js
 ```
 
 ## References

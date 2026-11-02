@@ -4,6 +4,8 @@ This document describes the micro-benchmarks created for performance-sensitive p
 
 ## Running Benchmarks
 
+Run these from `src/backend/` (the Go module root). The frontend must have been built first (`make frontend` from the repo root), because the main package embeds it.
+
 ### Run All Benchmarks
 
 To run all benchmarks in the project:

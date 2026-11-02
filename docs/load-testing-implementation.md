@@ -8,7 +8,7 @@ This document summarizes the k6 load testing infrastructure added to the Go Rasp
 
 ### 1. k6 Load Test Scripts
 
-#### `k6/load-test.js` - Full Load Test
+#### `src/perf-testing/k6/load-test.js` - Full Load Test
 - Tests all read-only API endpoints: `/version`, `/monitoring`, `/photos`, `/configuration`, `/logs`
 - Implements realistic load patterns with 5 stages (ramp-up, steady, scale-up, peak, ramp-down)
 - Total duration: ~4.5 minutes
@@ -18,7 +18,7 @@ This document summarizes the k6 load testing infrastructure added to the Go Rasp
   - ✅ P95 latency < 100ms
   - ✅ P50 < 50ms, P99 < 200ms
 
-#### `k6/smoke-test.js` - Quick Validation
+#### `src/perf-testing/k6/smoke-test.js` - Quick Validation
 - Single iteration test for all endpoints
 - Validates 200 status codes and correct content types
 - Executes in < 1 second
@@ -42,7 +42,7 @@ This document summarizes the k6 load testing infrastructure added to the Go Rasp
 
 ### 3. Automation Script
 
-#### `scripts/run-load-test.sh`
+#### `src/perf-testing/k6/run-load-test.sh`
 - Fully automated load test execution
 - Features:
   - Builds Go application with proper version info
@@ -58,7 +58,7 @@ This document summarizes the k6 load testing infrastructure added to the Go Rasp
 
 ### 4. Documentation
 
-#### `k6/README.md`
+#### `docs/load-testing.md`
 - Comprehensive guide for k6 load testing
 - Installation instructions for k6
 - Usage examples for manual and automated testing
@@ -103,22 +103,22 @@ http_req_duration: p(95)=6.32ms
 
 ### Quick Start
 ```bash
-./scripts/run-load-test.sh
+src/perf-testing/k6/run-load-test.sh
 ```
 
 ### With Profile Collection
 ```bash
-./scripts/run-load-test.sh --collect-profiles
+src/perf-testing/k6/run-load-test.sh --collect-profiles
 ```
 
 ### Custom Port
 ```bash
-./scripts/run-load-test.sh --port 9999
+src/perf-testing/k6/run-load-test.sh --port 9999
 ```
 
 ### Smoke Test
 ```bash
-./scripts/run-load-test.sh --k6-script ./k6/smoke-test.js
+src/perf-testing/k6/run-load-test.sh --k6-script src/perf-testing/k6/smoke-test.js
 ```
 
 ### Manual Profiling During Test
@@ -127,7 +127,7 @@ http_req_duration: p(95)=6.32ms
 go run . -pprof
 
 # Terminal 2: Run load test
-k6 run k6/load-test.js
+k6 run src/perf-testing/k6/load-test.js
 
 # Terminal 3: Collect CPU profile
 curl http://localhost:8080/debug/pprof/profile?seconds=30 -o cpu.prof

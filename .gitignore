@@ -1,27 +1,23 @@
 .idea/
 *.iml
 *.log
+.DS_Store
 
-go-raspberry-pi-timelapse
+# Local dev build output (the committed Pi binary lives in src/backend/bin/arm/)
+src/backend/go-raspberry-pi-timelapse
 timelapse-pictures/
 timelapse-settings.db
+
+# Frontend build output, written by Vite and embedded by src/backend/web
+src/backend/web/dist/
 
 # Benchmark results
 benchmark_results.txt
 *.prof
 
-# C++ build artifacts
-cpp-object-detection/build/
-cpp-object-detection/build-*/
-cpp-object-detection/_codeql_build_dir/
-cpp-object-detection/models/*.onnx
-cpp-object-detection/models/*.pt
-cpp-object-detection/models/*.weights
-cpp-object-detection/models/*.yaml
-cpp-object-detection/detections/
-_codeql_detected_source_root
-
 # Load testing artifacts
 profiles/
-*.prof
 timelapse-app
+
+# CustomPiOS image build output
+src/installer/custompios/workspace/
