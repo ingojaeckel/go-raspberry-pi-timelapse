@@ -119,12 +119,11 @@ func NewCamera(backend Backend, timeout time.Duration) *Camera {
 // Capture takes a photo into dir (created if missing) and returns its path.
 // It waits while another capture is using the camera.
 func (c *Camera) Capture(ctx context.Context, dir string, o Options) (string, error) {
-	select {
-	case c.lock <- struct{}{}:
-		defer func() { <-c.lock }()
-	case <-ctx.Done():
-		return "", fmt.Errorf("waiting for the camera: %w", ctx.Err())
+	release, err := c.acquire(ctx)
+	if err != nil {
+		return "", err
 	}
+	defer release()
 
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
@@ -133,19 +132,36 @@ func (c *Camera) Capture(ctx context.Context, dir string, o Options) (string, er
 	if err != nil {
 		return "", err
 	}
-	partial := filepath.Join(dir, ".partial-"+filepath.Base(final))
-
-	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
-	if err := c.backend.Capture(ctx, partial, o); err != nil {
-		os.Remove(partial)
-		return "", err
-	}
-	if err := os.Rename(partial, final); err != nil {
-		os.Remove(partial)
+	if err := c.captureTo(ctx, final, o); err != nil {
 		return "", err
 	}
 	return final, nil
+}
+
+// acquire waits for exclusive use of the camera.
+func (c *Camera) acquire(ctx context.Context) (release func(), err error) {
+	select {
+	case c.lock <- struct{}{}:
+		return func() { <-c.lock }, nil
+	case <-ctx.Done():
+		return nil, fmt.Errorf("waiting for the camera: %w", ctx.Err())
+	}
+}
+
+// captureTo has the backend write a hidden file next to final, then renames
+// it. Nothing is left behind on failure.
+func (c *Camera) captureTo(ctx context.Context, final string, o Options) error {
+	partial := filepath.Join(filepath.Dir(final), ".partial-"+filepath.Base(final))
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	err := c.backend.Capture(ctx, partial, o)
+	if err == nil {
+		err = os.Rename(partial, final)
+	}
+	if err != nil {
+		os.Remove(partial)
+	}
+	return err
 }
 
 // freePath returns the path for a photo taken at t that does not exist yet.

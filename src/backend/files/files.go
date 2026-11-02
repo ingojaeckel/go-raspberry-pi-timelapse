@@ -38,7 +38,7 @@ func ListFiles(dir string) ([]File, error) {
 	}
 	files := make([]File, 0, len(entries))
 	for _, e := range entries {
-		if !e.Type().IsRegular() || strings.HasPrefix(e.Name(), ".") {
+		if !isPhoto(e) {
 			continue
 		}
 		info, err := e.Info()
@@ -48,17 +48,38 @@ func ListFiles(dir string) ([]File, error) {
 		if err != nil {
 			return nil, err
 		}
-		files = append(files, File{
-			Name:         e.Name(),
-			ModTime:      info.ModTime().String(),
-			ModTimeEpoch: info.ModTime().Unix(),
-			Bytes:        info.Size(),
-		})
+		files = append(files, newFile(info))
 	}
-	slices.SortFunc(files, func(a, b File) int {
-		return cmp.Or(cmp.Compare(a.ModTimeEpoch, b.ModTimeEpoch), cmp.Compare(a.Name, b.Name))
-	})
+	slices.SortFunc(files, oldestFirst)
 	return files, nil
+}
+
+// isPhoto skips directories and hidden files such as photos still being written.
+func isPhoto(e fs.DirEntry) bool {
+	return e.Type().IsRegular() && !strings.HasPrefix(e.Name(), ".")
+}
+
+func newFile(info fs.FileInfo) File {
+	return File{
+		Name:         info.Name(),
+		ModTime:      info.ModTime().String(),
+		ModTimeEpoch: info.ModTime().Unix(),
+		Bytes:        info.Size(),
+	}
+}
+
+// oldestFirst orders by modification time, then name.
+func oldestFirst(a, b File) int {
+	return cmp.Or(cmp.Compare(a.ModTimeEpoch, b.ModTimeEpoch), cmp.Compare(a.Name, b.Name))
+}
+
+// Names returns the names of files in order.
+func Names(files []File) []string {
+	names := make([]string, len(files))
+	for i, f := range files {
+		names[i] = f.Name
+	}
+	return names
 }
 
 // RemoveFile deletes the regular file name inside dir.

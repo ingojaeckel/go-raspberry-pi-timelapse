@@ -92,9 +92,15 @@ func Tail(path string, n int64) (string, error) {
 		return "", err
 	}
 	if start > 0 {
-		if i := bytes.IndexByte(b, '\n'); i >= 0 {
-			b = b[i+1:]
-		}
+		b = afterFirstLine(b)
 	}
 	return string(b), nil
+}
+
+// afterFirstLine drops everything up to and including the first newline.
+func afterFirstLine(b []byte) []byte {
+	if i := bytes.IndexByte(b, '\n'); i >= 0 {
+		return b[i+1:]
+	}
+	return b
 }

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -38,25 +39,25 @@ func Middleware(next http.Handler, allowedHosts ...string) http.Handler {
 }
 
 func allowedHost(hostport string, extra []string) bool {
+	host := hostName(hostport)
+	return isLocalName(host) || slices.ContainsFunc(extra, func(h string) bool { return strings.EqualFold(host, h) })
+}
+
+// hostName strips the port, IPv6 brackets and a trailing dot, and lowercases.
+func hostName(hostport string) string {
 	host := hostport
 	if h, _, err := net.SplitHostPort(hostport); err == nil {
 		host = h
 	}
-	host = strings.ToLower(strings.TrimSuffix(strings.Trim(host, "[]"), "."))
+	return strings.ToLower(strings.TrimSuffix(strings.Trim(host, "[]"), "."))
+}
+
+// isLocalName reports whether host can only refer to the local network.
+func isLocalName(host string) bool {
 	if net.ParseIP(host) != nil || host == "localhost" || !strings.Contains(host, ".") {
 		return true
 	}
-	for _, suffix := range localSuffixes {
-		if strings.HasSuffix(host, suffix) {
-			return true
-		}
-	}
-	for _, h := range extra {
-		if strings.EqualFold(host, h) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(localSuffixes, func(s string) bool { return strings.HasSuffix(host, s) })
 }
 
 type statusRecorder struct {

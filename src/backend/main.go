@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,8 +11,6 @@ import (
 	_ "net/http/pprof" // registers on http.DefaultServeMux, mounted only with -pprof
 	"os"
 	"os/signal"
-	"runtime/debug"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -26,9 +23,6 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/web"
 )
 
-// Set by the Makefile via -ldflags; see versionString for the fallback.
-var gitCommit, builtAt string
-
 // frontendPath is the URL prefix the frontend is served under. It must match
 // BASE in src/frontend/vite.config.ts. It is independent of where the files
 // live on disk (see package web).
@@ -38,30 +32,8 @@ const (
 	captureTimeout  = time.Minute
 	retryDelay      = time.Second
 	shutdownTimeout = 10 * time.Second
+	thermalFile     = "/sys/class/thermal/thermal_zone0/temp"
 )
-
-type options struct {
-	listen                 string
-	logToFile              bool
-	storageFolder          string
-	secondsBetweenCaptures int
-	captureRetries         int
-	minFreeDiskMB          int
-	pprof                  bool
-	version                bool
-	allowedHosts           string
-}
-
-// allowedHostList splits -allowedHosts into host names.
-func (o options) allowedHostList() []string {
-	var hosts []string
-	for h := range strings.SplitSeq(o.allowedHosts, ",") {
-		if h = strings.TrimSpace(h); h != "" {
-			hosts = append(hosts, h)
-		}
-	}
-	return hosts
-}
 
 func main() {
 	opts, err := parseFlags(os.Args[1:])
@@ -81,32 +53,6 @@ func main() {
 	}
 }
 
-func parseFlags(args []string) (options, error) {
-	var o options
-	fs := flag.NewFlagSet("go-raspberry-pi-timelapse", flag.ContinueOnError)
-	fs.BoolVar(&o.version, "version", false, "Print version and exit.")
-	fs.StringVar(&o.listen, "port", conf.DefaultListenAddress, "HTTP address to listen on.")
-	fs.BoolVar(&o.logToFile, "logToFile", conf.DefaultLogToFile, "Log to "+conf.LogFile+" (rotated at 10 MB) instead of stdout. Recommended for long term operation.")
-	fs.StringVar(&o.storageFolder, "storageFolder", conf.DefaultStorageFolder, "Folder for storage of timelapse pictures.")
-	fs.IntVar(&o.secondsBetweenCaptures, "secondsBetweenCaptures", conf.DefaultSecondsBetweenCaptures, "Seconds between captures used until settings are saved in the UI. Must divide an hour evenly, between 60 and 3600.")
-	fs.IntVar(&o.captureRetries, "captureRetries", conf.DefaultCaptureRetries, "Additional attempts within the same slot when a capture fails.")
-	fs.IntVar(&o.minFreeDiskMB, "minFreeDiskMB", conf.DefaultMinFreeDiskMB, "Free disk space to keep. The oldest photos are deleted before a capture to keep at least this much free.")
-	fs.BoolVar(&o.pprof, "pprof", false, "Enable pprof profiling endpoints at /debug/pprof/")
-	fs.StringVar(&o.allowedHosts, "allowedHosts", "", "Comma-separated public host names the UI may be reached under. IP addresses, localhost, single-label names and .local/.lan/.home.arpa/.internal names are always allowed; anything else is rejected to block DNS rebinding.")
-	if err := fs.Parse(args); err != nil {
-		return o, err
-	}
-	switch {
-	case !conf.ValidInterval(o.secondsBetweenCaptures):
-		return o, fmt.Errorf("-secondsBetweenCaptures must divide an hour evenly and be between %d and %d, got %d", conf.MinSecondsBetweenCaptures, conf.MaxSecondsBetweenCaptures, o.secondsBetweenCaptures)
-	case o.captureRetries < 0:
-		return o, fmt.Errorf("-captureRetries must not be negative")
-	case o.minFreeDiskMB < 0:
-		return o, fmt.Errorf("-minFreeDiskMB must not be negative")
-	}
-	return o, nil
-}
-
 // run starts the scheduler and the HTTP server and blocks until ctx is
 // cancelled. ready, if set, receives the address the server listens on.
 func run(ctx context.Context, opts options, backend timelapse.Backend, ready func(addr string)) error {
@@ -119,51 +65,75 @@ func run(ctx context.Context, opts options, backend timelapse.Backend, ready fun
 	version := versionString(gitCommit, builtAt)
 	slog.Info("starting", "version", version, "options", fmt.Sprintf("%+v", opts))
 
-	store, err := conf.OpenStore(conf.SettingsFile, conf.Default(opts.secondsBetweenCaptures))
+	store, err := openStore(opts)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
-	slog.Info("settings loaded", "settings", store.Get())
-
 	if err := os.MkdirAll(opts.storageFolder, 0o700); err != nil {
 		return fmt.Errorf("create storage folder: %w", err)
 	}
-
 	listener, err := net.Listen("tcp", opts.listen)
 	if err != nil {
 		return err
 	}
 
 	camera := timelapse.NewCamera(backend, captureTimeout)
-	minFree := uint64(opts.minFreeDiskMB) << 20
-	scheduler := &timelapse.Scheduler{
-		Settings:   store,
-		Camera:     camera,
-		Folder:     opts.storageFolder,
-		Retries:    opts.captureRetries,
-		RetryDelay: retryDelay,
-		BeforeCapture: func() {
-			removed, err := files.Reclaim(opts.storageFolder, minFree)
-			if len(removed) > 0 {
-				slog.Warn("disk almost full, deleted the oldest photos", "count", len(removed), "first", removed[0], "last", removed[len(removed)-1])
-			}
-			if err != nil {
-				slog.Error("freeing disk space", "err", err)
-			}
-		},
-	}
+	server := newHTTPServer(newHandler(opts, newAPI(opts, store, camera, version)))
+	var wg sync.WaitGroup
+	wg.Go(func() { followDebugSetting(ctx, store, level) })
+	wg.Go(func() { newScheduler(opts, store, camera).Run(ctx) })
+	err = serve(ctx, server, listener, ready)
+	wg.Wait()
+	return err
+}
 
-	api := &rest.Server{
+func openStore(opts options) (*conf.Store, error) {
+	store, err := conf.OpenStore(conf.SettingsFile, conf.Default(opts.secondsBetweenCaptures))
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("settings loaded", "settings", store.Get())
+	return store, nil
+}
+
+func newScheduler(opts options, store *conf.Store, camera *timelapse.Camera) *timelapse.Scheduler {
+	return &timelapse.Scheduler{
+		Settings:      store,
+		Camera:        camera,
+		Folder:        opts.storageFolder,
+		Retries:       opts.captureRetries,
+		RetryDelay:    retryDelay,
+		BeforeCapture: func() { reclaimDiskSpace(opts.storageFolder, uint64(opts.minFreeDiskMB)<<20) },
+	}
+}
+
+// reclaimDiskSpace deletes the oldest photos while less than minFree bytes are free.
+func reclaimDiskSpace(folder string, minFree uint64) {
+	removed, err := files.Reclaim(folder, minFree)
+	if len(removed) > 0 {
+		slog.Warn("disk almost full, deleted the oldest photos", "count", len(removed), "first", removed[0], "last", removed[len(removed)-1])
+	}
+	if err != nil {
+		slog.Error("freeing disk space", "err", err)
+	}
+}
+
+func newAPI(opts options, store *conf.Store, camera *timelapse.Camera, version string) *rest.Server {
+	return &rest.Server{
 		Settings:    store,
 		Camera:      camera,
 		Folder:      opts.storageFolder,
 		TempFolder:  conf.TempFilesFolder,
-		LogFile:     conf.LogFile, // served whenever it exists, as before
-		ThermalFile: "/sys/class/thermal/thermal_zone0/temp",
+		LogFile:     conf.LogFile, // served whenever it exists
+		ThermalFile: thermalFile,
 		Version:     version,
 		Run:         rest.RunCommand,
 	}
+}
+
+// newHandler routes the frontend, the API and optionally pprof.
+func newHandler(opts options, api *rest.Server) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET "+frontendPath, web.WithCacheHeaders(http.StripPrefix(frontendPath, http.FileServerFS(web.Dist()))))
 	mux.Handle("GET /{$}", http.RedirectHandler(frontendPath+"index.html", http.StatusMovedPermanently))
@@ -172,40 +142,50 @@ func run(ctx context.Context, opts options, backend timelapse.Backend, ready fun
 		slog.Info("profiling enabled at /debug/pprof/")
 		mux.Handle("GET /debug/pprof/", http.DefaultServeMux)
 	}
-	server := &http.Server{
-		Handler:           rest.Middleware(mux, opts.allowedHostList()...),
+	return rest.Middleware(mux, opts.allowedHostList()...)
+}
+
+func newHTTPServer(handler http.Handler) *http.Server {
+	return &http.Server{
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 		ErrorLog:          slog.NewLogLogger(slog.Default().Handler(), slog.LevelWarn),
 		// No WriteTimeout: archive downloads of many photos take minutes.
 	}
+}
 
-	var wg sync.WaitGroup
-	wg.Go(func() { followDebugSetting(ctx, store, level) })
-	wg.Go(func() { scheduler.Run(ctx) })
+// serve runs server on listener until ctx is cancelled or serving fails,
+// then shuts it down gracefully.
+func serve(ctx context.Context, server *http.Server, listener net.Listener, ready func(addr string)) error {
 	serveErr := make(chan error, 1)
-	wg.Go(func() { serveErr <- server.Serve(listener) })
-
+	go func() { serveErr <- server.Serve(listener) }()
 	slog.Info("listening", "address", listener.Addr().String())
 	if ready != nil {
 		ready(listener.Addr().String())
 	}
 
+	var err error
 	select {
 	case <-ctx.Done():
 		slog.Info("shutting down")
+		shutdown(ctx, server)
+		err = <-serveErr
 	case err = <-serveErr:
+		shutdown(ctx, server)
 	}
-	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
-	defer cancel()
-	if serr := server.Shutdown(shutdownCtx); serr != nil {
-		slog.Warn("http shutdown", "err", serr)
-	}
-	wg.Wait()
 	if errors.Is(err, http.ErrServerClosed) {
-		err = nil
+		return nil
 	}
 	return err
+}
+
+func shutdown(ctx context.Context, server *http.Server) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Warn("http shutdown", "err", err)
+	}
 }
 
 // setupLogging routes slog (and the standard log package) to stdout or a
@@ -228,11 +208,7 @@ func setupLogging(toFile bool, level *slog.LevelVar) (func(), error) {
 func followDebugSetting(ctx context.Context, store *conf.Store, level *slog.LevelVar) {
 	changed := store.Subscribe()
 	for {
-		if store.Get().DebugEnabled {
-			level.Set(slog.LevelDebug)
-		} else {
-			level.Set(slog.LevelInfo)
-		}
+		level.Set(logLevel(store.Get().DebugEnabled))
 		select {
 		case <-ctx.Done():
 			return
@@ -241,29 +217,9 @@ func followDebugSetting(ctx context.Context, store *conf.Store, level *slog.Leve
 	}
 }
 
-// versionString prefers the values injected by the Makefile and falls back
-// to the VCS information Go embeds in every build.
-func versionString(commit, built string) string {
-	if commit != "" && built != "" {
-		return fmt.Sprintf("%s built at %s", commit, built)
+func logLevel(debug bool) slog.Level {
+	if debug {
+		return slog.LevelDebug
 	}
-	if info, ok := debug.ReadBuildInfo(); ok {
-		var rev, at, dirty string
-		for _, s := range info.Settings {
-			switch s.Key {
-			case "vcs.revision":
-				rev = s.Value
-			case "vcs.time":
-				at = s.Value
-			case "vcs.modified":
-				if s.Value == "true" {
-					dirty = "-dirty"
-				}
-			}
-		}
-		if rev != "" {
-			return fmt.Sprintf("%.7s%s built at %s", rev, dirty, at)
-		}
-	}
-	return "1"
+	return slog.LevelInfo
 }

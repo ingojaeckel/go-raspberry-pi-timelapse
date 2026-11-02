@@ -60,19 +60,10 @@ func (s *Scheduler) Run(ctx context.Context) {
 	anchor, lastSlot := started, started.Add(-time.Second)
 
 	for {
-		set := s.Settings.Get()
-		next := s.next(set, time.Now(), anchor, lastSlot)
+		next := s.next(s.Settings.Get(), time.Now(), anchor, lastSlot)
 		if wait := time.Until(next); wait > 0 {
-			slog.Debug("waiting for next capture", "at", next, "in", wait.Round(time.Second))
-			timer := time.NewTimer(min(wait, maxSleep))
-			select {
-			case <-ctx.Done():
-				timer.Stop()
+			if !s.sleep(ctx, changed, next, wait) {
 				return
-			case <-changed:
-				timer.Stop()
-				slog.Info("schedule changed", "secondsBetweenCaptures", s.Settings.Get().SecondsBetweenCaptures, "offsetWithinHour", s.Settings.Get().OffsetWithinHour)
-			case <-timer.C:
 			}
 			continue // re-evaluate with the latest settings and clock
 		}
@@ -84,20 +75,51 @@ func (s *Scheduler) Run(ctx context.Context) {
 	}
 }
 
+// sleep waits until next, but at most maxSleep and only until the settings
+// change. It returns false when ctx is cancelled.
+func (s *Scheduler) sleep(ctx context.Context, changed <-chan struct{}, next time.Time, wait time.Duration) bool {
+	slog.Debug("waiting for next capture", "at", next, "in", wait.Round(time.Second))
+	timer := time.NewTimer(min(wait, maxSleep))
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-changed:
+		set := s.Settings.Get()
+		slog.Info("schedule changed", "secondsBetweenCaptures", set.SecondsBetweenCaptures, "offsetWithinHour", set.OffsetWithinHour)
+	case <-timer.C:
+	}
+	return true
+}
+
 func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) time.Time {
 	interval := time.Duration(set.SecondsBetweenCaptures) * time.Second
 	if set.OffsetWithinHour == conf.OffsetDisabled {
-		next := anchor.Add(interval)
-		if limit := now.Add(interval); next.After(limit) {
-			next = limit // the clock moved backwards: wait at most one interval
-		}
-		return next
+		return nextUnaligned(now, anchor, interval)
 	}
+	from := alignedSearchStart(now, lastSlot, interval)
+	return NextAligned(from.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour)
+}
+
+// nextUnaligned is one interval after anchor. If the clock moved backwards,
+// it waits at most one interval from now.
+func nextUnaligned(now, anchor time.Time, interval time.Duration) time.Time {
+	next := anchor.Add(interval)
+	if limit := now.Add(interval); next.After(limit) {
+		return limit
+	}
+	return next
+}
+
+// alignedSearchStart is where to look for the next aligned slot: slightly in
+// the past to tolerate late wake-ups, but after the slot captured last
+// (unless the clock moved backwards by more than an interval).
+func alignedSearchStart(now, lastSlot time.Time, interval time.Duration) time.Time {
 	from := now.Add(-lateTolerance)
 	if !from.After(lastSlot) && lastSlot.Sub(now) < interval {
-		from = lastSlot.Add(time.Second)
+		return lastSlot.Add(time.Second)
 	}
-	return NextAligned(from.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour)
+	return from
 }
 
 func (s *Scheduler) location() *time.Location {
@@ -107,33 +129,41 @@ func (s *Scheduler) location() *time.Location {
 	return time.Local
 }
 
+// captureWithRetries tries up to 1+Retries times, RetryDelay apart.
 func (s *Scheduler) captureWithRetries(ctx context.Context) {
 	for attempt := range s.Retries + 1 {
-		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(s.RetryDelay):
-			}
+		if attempt > 0 && !sleepCtx(ctx, s.RetryDelay) {
+			return
 		}
-		if s.BeforeCapture != nil {
-			s.BeforeCapture()
-		}
-		set := s.Settings.Get()
-		started := time.Now()
-		path, err := s.Camera.Capture(ctx, s.Folder, Options{
-			Width:   set.PhotoResolutionWidth,
-			Height:  set.PhotoResolutionHeight,
-			Quality: set.Quality,
-			Rotate:  set.RotateBy == 180,
-		})
+		err := s.captureOnce(ctx)
 		if err == nil {
-			slog.Info("photo stored", "path", path, "took", time.Since(started).Round(time.Millisecond))
 			return
 		}
 		slog.Error("capture failed", "attempt", attempt+1, "of", s.Retries+1, "err", err)
 		if ctx.Err() != nil {
 			return
 		}
+	}
+}
+
+func (s *Scheduler) captureOnce(ctx context.Context) error {
+	if s.BeforeCapture != nil {
+		s.BeforeCapture()
+	}
+	started := time.Now()
+	path, err := s.Camera.Capture(ctx, s.Folder, PhotoOptions(s.Settings.Get()))
+	if err == nil {
+		slog.Info("photo stored", "path", path, "took", time.Since(started).Round(time.Millisecond))
+	}
+	return err
+}
+
+// sleepCtx sleeps for d and returns false if ctx is cancelled first.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(d):
+		return true
 	}
 }

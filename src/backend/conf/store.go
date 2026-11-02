@@ -36,37 +36,51 @@ type Store struct {
 // after a power cut, is moved aside to path.corrupt-<unix time> and replaced
 // so the camera keeps working.
 func OpenStore(path string, defaults Settings) (*Store, error) {
-	db, err := openDB(path)
-	if err != nil && !errors.Is(err, berrors.ErrTimeout) {
-		aside := fmt.Sprintf("%s.corrupt-%d", path, time.Now().Unix())
-		slog.Error("settings database is unreadable, starting with defaults", "path", path, "movedTo", aside, "err", err)
-		if rerr := os.Rename(path, aside); rerr != nil {
-			return nil, fmt.Errorf("open settings: %w (and moving it aside failed: %v)", err, rerr)
-		}
-		db, err = openDB(path)
-	}
+	db, err := openOrReplaceDB(path)
 	if err != nil {
 		return nil, fmt.Errorf("open settings: %w", err)
 	}
-
 	s := &Store{db: db}
+	current, err := s.initialSettings(defaults)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("save settings: %w", err)
+	}
+	s.current.Store(&current)
+	return s, nil
+}
+
+// openOrReplaceDB opens the database, moving an unreadable file aside and
+// starting a new one. A lock timeout (another process has it open) is
+// returned as is.
+func openOrReplaceDB(path string) (*bolt.DB, error) {
+	db, err := openDB(path)
+	if err == nil || errors.Is(err, berrors.ErrTimeout) {
+		return db, err
+	}
+	aside := fmt.Sprintf("%s.corrupt-%d", path, time.Now().Unix())
+	slog.Error("settings database is unreadable, starting with defaults", "path", path, "movedTo", aside, "err", err)
+	if rerr := os.Rename(path, aside); rerr != nil {
+		return nil, fmt.Errorf("%w (and moving it aside failed: %v)", err, rerr)
+	}
+	return openDB(path)
+}
+
+// initialSettings loads the saved settings, or defaults if there are none,
+// and saves them back if they had to be repaired.
+func (s *Store) initialSettings(defaults Settings) (Settings, error) {
 	loaded, err := s.load()
 	if err != nil {
 		slog.Warn("no usable saved settings, using defaults", "err", err)
-		loaded = defaults
+		normalized := defaults.Normalized()
+		return normalized, s.put(normalized)
 	}
 	normalized := loaded.Normalized()
-	if normalized != loaded || err != nil {
-		if normalized != loaded && err == nil {
-			slog.Warn("saved settings were invalid and have been adjusted", "from", loaded, "to", normalized)
-		}
-		if err := s.put(normalized); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("save settings: %w", err)
-		}
+	if normalized == loaded {
+		return loaded, nil
 	}
-	s.current.Store(&normalized)
-	return s, nil
+	slog.Warn("saved settings were invalid and have been adjusted", "from", loaded, "to", normalized)
+	return normalized, s.put(normalized)
 }
 
 func openDB(path string) (*bolt.DB, error) {
@@ -109,16 +123,20 @@ func (s *Store) Update(change func(*Settings)) (Settings, error) {
 	}
 	s.current.Store(&next)
 	slog.Info("settings updated", "settings", next)
+	s.notify()
+	return next, nil
+}
 
+// notify signals every subscriber without blocking.
+func (s *Store) notify() {
 	s.subsMu.Lock()
+	defer s.subsMu.Unlock()
 	for _, ch := range s.subs {
 		select {
 		case ch <- struct{}{}:
 		default: // a signal is already pending
 		}
 	}
-	s.subsMu.Unlock()
-	return next, nil
 }
 
 func (s *Store) put(v Settings) error {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 )
 
 const (
@@ -87,7 +88,7 @@ func (s Settings) Validate() error {
 		return invalid("SecondsBetweenCaptures must be between %d and %d and divide an hour evenly, got %d",
 			MinSecondsBetweenCaptures, MaxSecondsBetweenCaptures, s.SecondsBetweenCaptures)
 	}
-	if s.OffsetWithinHour != OffsetDisabled && (s.OffsetWithinHour < 0 || s.OffsetWithinHour >= s.SecondsBetweenCaptures) {
+	if !validOffset(s.OffsetWithinHour, s.SecondsBetweenCaptures) {
 		return invalid("OffsetWithinHour must be %d or between 0 and %d, got %d",
 			OffsetDisabled, s.SecondsBetweenCaptures-1, s.OffsetWithinHour)
 	}
@@ -97,7 +98,7 @@ func (s Settings) Validate() error {
 	if s.RotateBy != 0 && s.RotateBy != 180 {
 		return invalid("RotateBy must be 0 or 180, got %d", s.RotateBy)
 	}
-	if s.ResolutionSetting < 0 || s.ResolutionSetting >= len(resolutions) {
+	if !validResolution(s.ResolutionSetting) {
 		return invalid("ResolutionSetting must be between 0 and %d, got %d", len(resolutions)-1, s.ResolutionSetting)
 	}
 	return nil
@@ -111,16 +112,7 @@ func (s Settings) Validate() error {
 //   - an offset at or beyond the interval is reduced modulo the interval,
 //     which yields the same capture times every hour.
 func (s Settings) Normalized() Settings {
-	if !ValidInterval(s.SecondsBetweenCaptures) {
-		next := MaxSecondsBetweenCaptures
-		for _, v := range ValidIntervals() {
-			if v >= s.SecondsBetweenCaptures {
-				next = v
-				break
-			}
-		}
-		s.SecondsBetweenCaptures = next
-	}
+	s.SecondsBetweenCaptures = roundUpInterval(s.SecondsBetweenCaptures)
 	if s.OffsetWithinHour < 0 {
 		s.OffsetWithinHour = OffsetDisabled
 	} else {
@@ -130,10 +122,28 @@ func (s Settings) Normalized() Settings {
 	if s.RotateBy != 180 {
 		s.RotateBy = 0 // only 180 ever had an effect on the camera
 	}
-	if s.ResolutionSetting < 0 || s.ResolutionSetting >= len(resolutions) {
+	if !validResolution(s.ResolutionSetting) {
 		s.ResolutionSetting = 0 // unknown values always meant 3280x2464
 	}
 	return s.withResolution()
+}
+
+// roundUpInterval returns the smallest valid interval >= seconds, or the
+// longest one.
+func roundUpInterval(seconds int) int {
+	valid := ValidIntervals()
+	if i := slices.IndexFunc(valid, func(v int) bool { return v >= seconds }); i >= 0 {
+		return valid[i]
+	}
+	return MaxSecondsBetweenCaptures
+}
+
+func validOffset(offset, interval int) bool {
+	return offset == OffsetDisabled || (offset >= 0 && offset < interval)
+}
+
+func validResolution(setting int) bool {
+	return setting >= 0 && setting < len(resolutions)
 }
 
 // withResolution sets the photo size from ResolutionSetting, which must be valid.
