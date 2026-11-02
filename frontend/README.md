@@ -1,67 +1,52 @@
-# Timelapse Frontend
+# Timelapse frontend
 
-This project is built with [Vite](https://vitejs.dev/) and React 18.
+The control panel served by the Go binary. People open it on a phone or laptop
+joined to the Pi's own WiFi, usually outdoors and offline. It shows the latest
+frame and when the next one will be taken, lets you download or delete photos,
+take a framing preview, check temperatures and storage, adjust the schedule, and
+read logs.
 
-## Prerequisites
+React 19, TypeScript, Vite. No UI framework: the whole app is about 80 KB of
+gzipped JS plus two locally bundled font files, because it is embedded in the
+Pi binary and served over a weak WiFi link. Nothing is loaded from the internet.
 
-This project uses Node.js 22.20.0 LTS (as specified in `.nvmrc`).
+## Contract with the Go server
 
-If you have [nvm](https://github.com/nvm-sh/nvm) installed, you can use the correct Node version by running:
+These must not change without changing `main.go`:
 
-```bash
-nvm use
-```
+- Output goes to `build/`, embedded via `//go:embed frontend/build`.
+- Assets are served under `/static/frontend/build/` (Vite `base`).
+- `GET /` redirects to `/static/frontend/build/index.html`.
+- API calls are same-origin: `/photos`, `/file/:name`, `/file/last`,
+  `/file/delete?f=…`, `/archive/{zip,tar}?f=…`, `/capture`, `/configuration`
+  (GET/POST), `/monitoring`, `/logs`, `/admin/{restart,shutdown,clear}`, `/version`.
+  Payload types live in `src/api.ts` and mirror `rest/model.go` and `conf/model.go`.
+- Navigation uses the URL hash (`#/settings`), so the server only ever serves `index.html`.
 
-## Available Scripts
+## Development
 
-In the project directory, you can run:
-
-### `npm start`
-
-Runs the app in development mode using Vite dev server.<br />
-Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
-
-The page will automatically reload when you make changes.<br />
-You will see build errors and lint warnings in the console.
-
-### `npm test`
-
-Runs the test suite using [Vitest](https://vitest.dev/).<br />
-Tests run in watch mode by default.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for best performance.
-
-The build is minified and the filenames include content hashes.<br />
-Your app is ready to be deployed!
-
-### `npm run preview`
-
-Preview the production build locally.<br />
-This serves the built files from the `build` folder.
-
-### `npm run analyze`
-
-Analyzes the bundle size using source-map-explorer.<br />
-This helps identify large dependencies in your bundle.
-
-## Building for Production
-
-Use the `build.sh` script to build with proper git metadata:
+Requires Node 22.22+ or 24 LTS (see `.nvmrc`).
 
 ```bash
-./build.sh
+npm install
+go run .. -port :8080   # in another terminal, from the repo root
+npm start               # http://localhost:5173/static/frontend/build/
 ```
 
-This script:
-- Automatically loads the correct Node version via nvm (if available)
-- Sets git commit information as environment variables
-- Runs the production build
+The dev server proxies API calls to `http://localhost:8080`. Point it at a real
+Pi with `VITE_BACKEND=http://192.168.4.1:8080 npm start`.
 
-## Learn More
+| Command             | What it does                                          |
+| ------------------- | ----------------------------------------------------- |
+| `npm test`          | Runs the Vitest suite once (`npm run test:watch` to watch) |
+| `npm run typecheck` | Type-checks without building                          |
+| `npm run build`     | Type-checks, then builds into `build/`                |
+| `./build.sh`        | Same as build, with the git commit shown in Settings  |
 
-- [Vite Documentation](https://vitejs.dev/)
-- [React Documentation](https://reactjs.org/)
-- [Vitest Documentation](https://vitest.dev/)
+## Layout
+
+- `src/api.ts`: typed client and URL builders for every backend endpoint
+- `src/schedule.ts`: a port of the Go capture scheduler, used for the countdown and dial
+- `src/format.ts`: parsers for raw Pi output (`df -h`, `uptime`, temperatures, Go timestamps)
+- `src/views/`: one component per section (Photos, Preview, Status, Settings, Logs)
+- `src/components/`: the hour dial, photo viewer, dialogs and icons

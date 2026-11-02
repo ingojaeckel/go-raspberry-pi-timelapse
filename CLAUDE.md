@@ -44,7 +44,7 @@ go run . -port :8080
 
 **Platform abstraction:** `timelapse/camera.go` uses build-time architecture detection — `rpicam-still` on ARM (production Pi), `ffmpeg` webcam capture on x86/macOS (development).
 
-**Frontend:** React 18 + TypeScript + Vite + MUI, built into `frontend/build/` and embedded into the Go binary.
+**Frontend:** React 19 + TypeScript + Vite, no UI framework (plain CSS, `fetch`), built into `frontend/build/` and embedded into the Go binary. Hash-based navigation; API types in `frontend/src/api.ts` mirror the Go models. `frontend/src/schedule.ts` ports `getSecondsToFirstCapture`, so keep both in sync.
 
 ## Build Flags
 

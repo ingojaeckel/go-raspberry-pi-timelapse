@@ -1,130 +1,62 @@
-import React from 'react';
-import axios from 'axios';
-import { Box, Container, CssBaseline, Grid, Tab, Tabs, Typography, ThemeProvider, createTheme, useMediaQuery } from '@mui/material';
-import { Home, PhotoCamera, Timeline, Settings, Description } from '@mui/icons-material'
-import PhotoComponent from './components/PhotoComponent';
-import MonitoringComponent from './components/MonitoringComponent';
-import SetupComponent from './components/SetupComponent';
-import PreviewComponent from './components/PreviewComponent';
-import LogComponent from './components/LogComponent';
+import { api } from './api';
+import { Icon, type IconName } from './components/Icon';
+import { formatCountdown } from './format';
+import { useNow, useResource, useRoute, type Route } from './hooks';
+import { secondsToNextCapture } from './schedule';
+import { LogsView } from './views/LogsView';
+import { PhotosView } from './views/PhotosView';
+import { PreviewView } from './views/PreviewView';
+import { SettingsView } from './views/SettingsView';
+import { StatusView } from './views/StatusView';
 
-// Register default request interceptors
-axios.interceptors.request.use(request => {
-  console.log('Starting Request', JSON.stringify(request, null, 2))
-  return request
-})
+const NAV: { route: Route; label: string; icon: IconName }[] = [
+  { route: 'photos', label: 'Photos', icon: 'photos' },
+  { route: 'preview', label: 'Preview', icon: 'camera' },
+  { route: 'status', label: 'Status', icon: 'status' },
+  { route: 'settings', label: 'Settings', icon: 'settings' },
+  { route: 'logs', label: 'Logs', icon: 'logs' },
+];
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+export function App() {
+  const route = useRoute();
+  const settings = useResource((signal) => api.settings(signal));
+  const now = useNow();
+  const wait = settings.data ? secondsToNextCapture(settings.data, now) : null;
 
   return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: { xs: 1, sm: 3 } }}>
-          <Typography component={'span'}>{children}</Typography>
-        </Box>
-      )}
+    <div className="shell">
+      <header className="topbar">
+        <a className="brand" href="#/photos">
+          <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+            <circle cx="16" cy="16" r="14" className="brand-face" />
+            <circle cx="16" cy="16" r="10" className="brand-ring" />
+            <path d="M16 16V8" className="brand-hand" />
+          </svg>
+          Timelapse
+        </a>
+        {wait !== null && (
+          <span className="next-pill" aria-live="off">
+            Next shot <strong>{wait === 0 ? 'now' : formatCountdown(wait)}</strong>
+          </span>
+        )}
+      </header>
+
+      <nav className="nav" aria-label="Sections">
+        {NAV.map((n) => (
+          <a key={n.route} href={`#/${n.route}`} aria-current={route === n.route ? 'page' : undefined}>
+            <Icon name={n.icon} size={22} />
+            <span>{n.label}</span>
+          </a>
+        ))}
+      </nav>
+
+      <main className="main">
+        {route === 'photos' && <PhotosView settings={settings.data} />}
+        {route === 'preview' && <PreviewView settings={settings.data} />}
+        {route === 'status' && <StatusView settings={settings.data} />}
+        {route === 'settings' && <SettingsView settings={settings.data} error={settings.error} onSaved={settings.set} />}
+        {route === 'logs' && <LogsView />}
+      </main>
     </div>
   );
 }
-
-function App() {
-  const [value, setValue] = React.useState(0);
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-  
-  // Detect user's preferred color scheme
-  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  
-  // Create theme based on user preference with improved colors for legibility
-  const theme = React.useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: prefersDarkMode ? 'dark' : 'light',
-          primary: {
-            main: prefersDarkMode ? '#90caf9' : '#1976d2',
-          },
-          // Ensure links have good contrast
-          text: {
-            primary: prefersDarkMode ? '#fff' : 'rgba(0, 0, 0, 0.87)',
-            secondary: prefersDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
-          },
-        },
-        components: {
-          MuiLink: {
-            styleOverrides: {
-              root: {
-                color: prefersDarkMode ? '#90caf9' : '#1976d2',
-                '&:visited': {
-                  color: prefersDarkMode ? '#ce93d8' : '#7b1fa2',
-                },
-              },
-            },
-          },
-        },
-      }),
-    [prefersDarkMode],
-  );
-  
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Container 
-        sx={{ 
-          padding: { xs: '0', sm: '16px' },
-          maxWidth: { xs: '100%', sm: 'lg' }
-        }}
-      >
-        <Grid container spacing={0}>
-          <Grid size={12}>
-            <Tabs 
-              value={value} 
-              onChange={handleChange} 
-              variant="fullWidth" 
-              aria-label="navigation tabs"
-              sx={{
-                minHeight: { xs: '32px', sm: '64px' },
-                '& .MuiTab-root': {
-                  minHeight: { xs: '32px', sm: '64px' },
-                  padding: { xs: '4px 2px', sm: '12px 16px' },
-                  fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                  minWidth: { xs: '0', sm: '90px' },
-                  '& .MuiSvgIcon-root': {
-                    fontSize: { xs: '1rem', sm: '1.5rem' },
-                  },
-                },
-              }}
-            >
-              <Tab label="home" icon={<Home />} />
-              <Tab label="preview" icon={<PhotoCamera />} />
-              <Tab label="monitor" icon={<Timeline />} />
-              <Tab label="settings" icon={<Settings />} />
-              <Tab label="logs" icon={<Description />} />
-            </Tabs>
-            <TabPanel value={value} index={0}><PhotoComponent /></TabPanel>
-            <TabPanel value={value} index={1}><PreviewComponent /></TabPanel>
-            <TabPanel value={value} index={2}><MonitoringComponent /></TabPanel>
-            <TabPanel value={value} index={3}><SetupComponent /></TabPanel>
-            <TabPanel value={value} index={4}><LogComponent /></TabPanel>
-          </Grid>
-        </Grid>
-      </Container>
-    </ThemeProvider>
-  );
-}
-
-export default App;
