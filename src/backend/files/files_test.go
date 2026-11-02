@@ -269,3 +269,69 @@ func BenchmarkListFiles(b *testing.B) {
 		ListFiles(dir)
 	}
 }
+
+func TestNames(t *testing.T) {
+	got := Names([]File{{Name: "a.jpg"}, {Name: "b.jpg"}})
+	if !slices.Equal(got, []string{"a.jpg", "b.jpg"}) {
+		t.Fatalf("got %v", got)
+	}
+	if got := Names(nil); len(got) != 0 {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestRemoveFileMissing(t *testing.T) {
+	if err := RemoveFile(t.TempDir(), "nope.jpg"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("err = %v", err)
+	}
+	if err := RemoveFile(filepath.Join(t.TempDir(), "no-dir"), "a.jpg"); err == nil {
+		t.Fatal("expected an error for a missing folder")
+	}
+}
+
+func TestWriteArchiveFromMissingFolder(t *testing.T) {
+	if err := WriteTar(io.Discard, filepath.Join(t.TempDir(), "nope"), []string{"a.jpg"}); err == nil {
+		t.Fatal("expected an error")
+	}
+}
+
+func TestWriteArchiveRejectsDirectoriesAsEntries(t *testing.T) {
+	dir := t.TempDir()
+	os.Mkdir(filepath.Join(dir, "sub"), 0o700)
+	if err := WriteZip(io.Discard, dir, []string{"sub"}); err == nil {
+		t.Fatal("expected an error when an entry is a directory")
+	}
+}
+
+func TestReclaimUsesRealFreeSpace(t *testing.T) {
+	dir := photoDir(t, "1.jpg", "2.jpg")
+	if removed, err := Reclaim(dir, 0); err != nil || len(removed) != 0 {
+		t.Fatalf("nothing to do: removed %v err %v", removed, err)
+	}
+	removed, err := Reclaim(dir, 1<<62) // more than any disk
+	if !errors.Is(err, ErrDiskFull) || len(removed) != 2 {
+		t.Fatalf("removed %v err %v", removed, err)
+	}
+}
+
+func TestReclaimReportsErrors(t *testing.T) {
+	dir := photoDir(t, "1.jpg")
+	boom := errors.New("boom")
+	full := func() (uint64, error) { return 0, nil }
+
+	if _, err := reclaim(dir, 1, func() (uint64, error) { return 0, boom }, nil); err != boom {
+		t.Errorf("free space error: %v", err)
+	}
+	if _, err := reclaim(filepath.Join(dir, "nope"), 1, full, nil); err == nil {
+		t.Error("listing error expected")
+	}
+	if _, err := reclaim(dir, 1, full, func(string) error { return boom }); err != boom {
+		t.Errorf("remove error: %v", err)
+	}
+}
+
+func TestFreeBytesMissingDir(t *testing.T) {
+	if _, err := FreeBytes(filepath.Join(t.TempDir(), "nope")); err == nil {
+		t.Fatal("expected an error")
+	}
+}

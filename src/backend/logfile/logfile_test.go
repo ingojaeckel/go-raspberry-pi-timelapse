@@ -79,3 +79,44 @@ func TestTailMissingFile(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 }
+
+func TestOpenFailsInMissingDirectory(t *testing.T) {
+	if _, err := Open(filepath.Join(t.TempDir(), "nope", "app.log"), 10); err == nil {
+		t.Fatal("expected an error")
+	}
+}
+
+func TestWriteFailsWhenRotationFails(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app.log")
+	w, err := Open(path, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	w.Write([]byte("1234\n"))
+	os.Mkdir(path+".1", 0o700)                              // the backup name is taken by a directory
+	os.WriteFile(filepath.Join(path+".1", "x"), nil, 0o600) // and it is not empty, so rename fails
+	if _, err := w.Write([]byte("more\n")); err == nil {
+		t.Fatal("expected the rotation error")
+	}
+}
+
+func TestTailWithoutNewlineInTheWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
+	os.WriteFile(path, []byte(strings.Repeat("x", 100)), 0o644)
+	got, err := Tail(path, 10)
+	if err != nil || got != strings.Repeat("x", 10) {
+		t.Fatalf("got %q err %v", got, err)
+	}
+}
+
+func TestWriteAfterCloseFails(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app.log")
+	w, _ := Open(path, 5)
+	w.Write([]byte("1234\n"))
+	w.Close()
+	if _, err := w.Write([]byte("rotate now\n")); err == nil {
+		t.Fatal("expected an error writing to a closed log")
+	}
+}

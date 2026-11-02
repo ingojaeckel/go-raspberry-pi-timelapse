@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	bolt "go.etcd.io/bbolt"
+	berrors "go.etcd.io/bbolt/errors"
 )
 
 func openTestStore(t *testing.T, path string) *Store {
@@ -127,5 +130,55 @@ func TestStoreRecoversFromCorruptFile(t *testing.T) {
 	matches, _ := filepath.Glob(filepath.Join(dir, "settings.db.corrupt-*"))
 	if len(matches) != 1 {
 		t.Fatalf("corrupt file should be kept aside for inspection, found %v", matches)
+	}
+}
+
+func TestStoreUsesDefaultsWhenTheSavedValueIsNotJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.db")
+	s := openTestStore(t, path)
+	s.db.Update(func(tx *bolt.Tx) error { return tx.Bucket(bucketName).Put(settingsKey, []byte("{not json")) })
+	s.Close()
+
+	again := openTestStore(t, path)
+	if again.Get() != Default(1800) {
+		t.Fatalf("got %s", again.Get())
+	}
+}
+
+func TestStoreUpdateReportsStorageErrors(t *testing.T) {
+	s := openTestStore(t, filepath.Join(t.TempDir(), "settings.db"))
+	before := s.Get()
+	s.db.Close() // the SD card went away
+	_, err := s.Update(func(c *Settings) { c.Quality = 50 })
+	if err == nil || errors.Is(err, ErrInvalid) {
+		t.Fatalf("err = %v, want a storage error", err)
+	}
+	if s.Get() != before {
+		t.Fatal("settings changed although they were not saved")
+	}
+}
+
+func TestOpenStoreFailsWhileAnotherProcessHoldsTheFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.db")
+	openTestStore(t, path)
+	if _, err := OpenStore(path, Default(1800)); !errors.Is(err, berrors.ErrTimeout) {
+		t.Fatalf("err = %v, want a lock timeout (and the file must not be treated as corrupt)", err)
+	}
+	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 0 {
+		t.Fatal("a locked file was moved aside")
+	}
+}
+
+func TestOpenStoreFailsWhenACorruptFileCannotBeMovedAside(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.db")
+	os.WriteFile(path, []byte(strings.Repeat("garbage", 1000)), 0o600)
+	os.Chmod(dir, 0o500)
+	defer os.Chmod(dir, 0o700)
+	if _, err := OpenStore(path, Default(1800)); err == nil {
+		t.Fatal("expected an error")
 	}
 }
