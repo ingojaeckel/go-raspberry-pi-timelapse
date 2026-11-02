@@ -54,42 +54,35 @@ type Scheduler struct {
 // not shift later captures.
 func (s *Scheduler) Run(ctx context.Context) {
 	changed := s.Settings.Subscribe()
-	started := time.Now()
 	// anchor is the last capture slot, or start-up: unaligned captures are
 	// anchor + interval. lastSlot prevents capturing an aligned slot twice.
-	anchor, lastSlot := started, started.Add(-time.Second)
+	anchor := time.Now()
+	lastSlot := anchor.Add(-time.Second)
 
-	for {
+	for ctx.Err() == nil {
 		next := s.next(s.Settings.Get(), time.Now(), anchor, lastSlot)
 		if wait := time.Until(next); wait > 0 {
-			if !s.sleep(ctx, changed, next, wait) {
-				return
-			}
-			continue // re-evaluate with the latest settings and clock
+			s.sleep(ctx, changed, next, wait) // then re-evaluate settings and clock
+			continue
 		}
 		anchor, lastSlot = next, next
 		s.captureWithRetries(ctx)
-		if ctx.Err() != nil {
-			return
-		}
 	}
 }
 
 // sleep waits until next, but at most maxSleep and only until the settings
-// change. It returns false when ctx is cancelled.
-func (s *Scheduler) sleep(ctx context.Context, changed <-chan struct{}, next time.Time, wait time.Duration) bool {
+// change or ctx is cancelled.
+func (s *Scheduler) sleep(ctx context.Context, changed <-chan struct{}, next time.Time, wait time.Duration) {
 	slog.Debug("waiting for next capture", "at", next, "in", wait.Round(time.Second))
 	timer := time.NewTimer(min(wait, maxSleep))
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():
-		return false
 	case <-changed:
 		set := s.Settings.Get()
 		slog.Info("schedule changed", "secondsBetweenCaptures", set.SecondsBetweenCaptures, "offsetWithinHour", set.OffsetWithinHour)
 	case <-timer.C:
 	}
-	return true
 }
 
 func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) time.Time {

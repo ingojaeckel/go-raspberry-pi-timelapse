@@ -125,17 +125,23 @@ func (c *Camera) Capture(ctx context.Context, dir string, o Options) (string, er
 	}
 	defer release()
 
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+	final, err := newPhotoPath(dir)
+	if err == nil {
+		err = c.captureTo(ctx, final, o)
 	}
-	final, err := freePath(dir, time.Now())
 	if err != nil {
 		return "", err
 	}
-	if err := c.captureTo(ctx, final, o); err != nil {
+	return final, nil
+}
+
+// newPhotoPath creates dir if needed and returns an unused path for a photo
+// taken now.
+func newPhotoPath(dir string) (string, error) {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
-	return final, nil
+	return freePath(dir, time.Now())
 }
 
 // acquire waits for exclusive use of the camera.

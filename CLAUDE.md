@@ -42,7 +42,9 @@ cd src/frontend && npm install && npm test && npm run build
 All Go paths below are relative to `src/backend/`.
 
 **Go packages:**
-- `main.go` — Wiring (`run`), `http.Server` (timeouts, graceful shutdown on SIGINT/SIGTERM), stdlib `http.ServeMux` routes for the embedded frontend, slog logging; `flags.go` — CLI options; `version.go` — version string
+- `main.go` — Entrypoint: flags, signal handling, `run` (= `newApp` + `app.run`)
+- `app.go` — `app` owns the resources (log, settings store, camera, listener) and releases them in reverse order; wires scheduler, API, `http.ServeMux` (frontend, API, pprof) and `http.Server` (timeouts, graceful shutdown on SIGINT/SIGTERM)
+- `flags.go` — CLI options; `logging.go` — slog setup and debug level; `version.go` — version string
 - `web/` — `//go:embed dist` of the frontend build
 - `timelapse/` — `Scheduler.Run` (capture loop: aligned or unaligned schedule, retries within the slot, re-plans immediately on settings changes), `NextAligned`, `Camera` (one capture at a time, timeout, writes `.partial-*` then renames, never overwrites)
 - `rest/` — `Server` with the HTTP handlers (`config.go`, `photos.go`, `system.go`), `Middleware` (Host allowlist against DNS rebinding, `http.CrossOriginProtection`, no CORS headers, debug request log). GET never changes state: `DELETE /file?f=`, `DELETE /photos`, `POST /admin/{shutdown,restart}`
