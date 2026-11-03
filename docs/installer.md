@@ -25,7 +25,7 @@ Local settings that should not be committed go into `src/installer/custompios/co
 
 ### In CI
 
-[`.github/workflows/image.yml`](../.github/workflows/image.yml) runs `make image` on an `ubuntu-24.04-arm` runner when started by hand ("Run workflow") and for every pushed tag. The zipped image is a workflow artifact. For a tag, a second job, the only one with write access to the repository, attaches it to the GitHub release of that tag (creating the release if needed).
+[`.github/workflows/image.yml`](../.github/workflows/image.yml) runs `make image` on an `ubuntu-24.04-arm` runner when started by hand ("Run workflow") and for every pushed tag. The zipped image is a workflow artifact, kept for one day (it is larger than the 500 MB of artifact storage on GitHub Free). For a tag, a second job, the only one with write access to the repository, attaches it to the GitHub release of that tag (creating the release if needed).
 
 ## How the app gets into the image
 

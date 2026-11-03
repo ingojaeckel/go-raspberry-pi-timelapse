@@ -45,6 +45,9 @@ jobs:
         name: timelapsepi-image
         path: src/installer/custompios/workspace/*.zip
         compression-level: 0 # already zipped
+        # ~0.9 GB; the release job picks it up right away. Keeps Actions
+        # storage (500 MB on GitHub Free) from filling up with old images.
+        retention-days: 1
 
   release:
     name: Attach to release
