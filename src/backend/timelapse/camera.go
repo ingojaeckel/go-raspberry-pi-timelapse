@@ -18,6 +18,10 @@ import (
 	"time"
 )
 
+// KillDelay is how long a capture command may take to exit, or its pipes to
+// close, after its timeout.
+const KillDelay = 2 * time.Second
+
 const (
 	commandRpicamStill = "rpicam-still"
 	commandFfmpeg      = "ffmpeg"
@@ -89,7 +93,7 @@ func ffmpegArgs(goos, path string, o Options) []string {
 func runCommand(ctx context.Context, name string, args ...string) error {
 	slog.Debug("running command", "command", name, "args", args)
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.WaitDelay = 2 * time.Second // don't wait forever for orphaned pipes
+	cmd.WaitDelay = KillDelay // do not wait forever for orphaned pipes
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	if err := cmd.Run(); err != nil {
@@ -154,20 +158,63 @@ func (c *Camera) acquire(ctx context.Context) (release func(), err error) {
 	}
 }
 
+// partialPrefix marks photos that are still being written. They are hidden,
+// so they are never listed or served.
+const partialPrefix = ".partial-"
+
 // captureTo has the backend write a hidden file next to final, then renames
-// it. Nothing is left behind on failure.
+// it. Nothing is left behind on failure. The photo is flushed to the SD card
+// before and after the rename, so after a power cut it is either complete
+// or absent: never empty or truncated (ext4 may otherwise persist the rename
+// before the data).
 func (c *Camera) captureTo(ctx context.Context, final string, o Options) error {
-	partial := filepath.Join(filepath.Dir(final), ".partial-"+filepath.Base(final))
+	partial := filepath.Join(filepath.Dir(final), partialPrefix+filepath.Base(final))
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	err := c.backend.Capture(ctx, partial, o)
+	if err == nil {
+		err = syncPath(partial)
+	}
 	if err == nil {
 		err = os.Rename(partial, final)
 	}
 	if err != nil {
 		os.Remove(partial)
+		return err
 	}
-	return err
+	return syncPath(filepath.Dir(final))
+}
+
+// syncPath flushes a file, or a directory's entries, to disk.
+func syncPath(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return f.Sync()
+}
+
+// RemovePartials deletes photos in dir that were still being written when
+// the process stopped, e.g. at a power cut. They are hidden, so nothing else
+// would ever delete them and the disk would slowly fill up. It must not run
+// while a capture is in progress.
+func RemovePartials(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var removed []string
+	for _, e := range entries {
+		if !e.Type().IsRegular() || !strings.HasPrefix(e.Name(), partialPrefix) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return removed, err
+		}
+		removed = append(removed, e.Name())
+	}
+	return removed, nil
 }
 
 // freePath returns the path for a photo taken at t that does not exist yet.

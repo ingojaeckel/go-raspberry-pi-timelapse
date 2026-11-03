@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -29,6 +30,10 @@ func Middleware(next http.Handler, allowedHosts ...string) http.Handler {
 		if !allowedHost(r.Host, allowedHosts) {
 			slog.Warn("rejected request for unknown host", "host", r.Host, "uri", r.RequestURI, "remote", r.RemoteAddr)
 			http.Error(w, "unknown host name; start the camera with -allowedHosts to allow it", http.StatusForbidden)
+			return
+		}
+		if !slog.Default().Enabled(r.Context(), slog.LevelDebug) {
+			protected.ServeHTTP(w, r) // no per-request cost unless debugging
 			return
 		}
 		start := time.Now()
@@ -68,6 +73,13 @@ type statusRecorder struct {
 func (r *statusRecorder) WriteHeader(status int) {
 	r.status = status
 	r.ResponseWriter.WriteHeader(status)
+}
+
+// ReadFrom keeps the wrapped writer's io.ReaderFrom reachable, which lets
+// net/http send files with sendfile(2) instead of copying them through user
+// space.
+func (r *statusRecorder) ReadFrom(src io.Reader) (int64, error) {
+	return io.Copy(r.ResponseWriter, src)
 }
 
 // Unwrap lets http.ResponseController reach the underlying writer.

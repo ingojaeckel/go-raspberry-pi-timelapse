@@ -350,3 +350,23 @@ func TestNextFollowsTheClockBackwards(t *testing.T) {
 		t.Fatalf("unaligned: got %v", got)
 	}
 }
+
+func TestHeartbeatAtLeastEveryMaxSleep(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var beats []time.Duration
+		began := time.Now()
+		h := start(t, 3600, 0, func(h *harness) {
+			h.sched.Heartbeat = func() { beats = append(beats, time.Since(began)) }
+		})
+		advance(h, 10*time.Minute)
+		h.stop()
+		for i := 1; i < len(beats); i++ {
+			if gap := beats[i] - beats[i-1]; gap > maxSleep+10*time.Second {
+				t.Fatalf("no heartbeat for %v", gap)
+			}
+		}
+		if len(beats) < 10 {
+			t.Fatalf("only %d heartbeats in 10 minutes", len(beats))
+		}
+	})
+}

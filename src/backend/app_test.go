@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"log/slog"
 	"net"
 	"net/http"
@@ -13,28 +14,37 @@ import (
 	"time"
 )
 
-func TestReclaimDiskSpaceKeepsPhotosWhenThereIsRoom(t *testing.T) {
+// diskApp is an app whose photo folder pretends to be on a disk with free
+// bytes available.
+func diskApp(t *testing.T, minFreeMB int, free uint64) (*app, string) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "a.jpg"), nil, 0o600)
-	reclaimDiskSpace(dir, 0)
+	a := &app{
+		opts:      options{storageFolder: dir, minFreeDiskMB: minFreeMB, captureRetries: 3},
+		photos:    files.NewIndex(dir),
+		freeBytes: func(string) (uint64, error) { return free, nil },
+	}
+	return a, dir
+}
+
+func TestReclaimDiskSpaceKeepsPhotosWhenThereIsRoom(t *testing.T) {
+	a, dir := diskApp(t, 1, 1<<20)
+	a.reclaimDiskSpace()
 	if _, err := os.Stat(filepath.Join(dir, "a.jpg")); err != nil {
 		t.Fatal("photo deleted although there was enough space")
 	}
 }
 
 func TestReclaimDiskSpaceDeletesOldestWhenFull(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "a.jpg"), nil, 0o600)
-	reclaimDiskSpace(dir, 1<<62) // more than any disk: delete everything, then give up
+	a, dir := diskApp(t, 1, 0) // never enough: delete everything, then give up
+	a.reclaimDiskSpace()
 	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
 		t.Fatalf("left %v", entries)
 	}
 }
 
 func TestSchedulerReclaimsDiskSpaceBeforeCaptures(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "a.jpg"), nil, 0o600)
-	a := &app{opts: options{storageFolder: dir, minFreeDiskMB: 1 << 40, captureRetries: 3}}
+	a, dir := diskApp(t, 1, 0)
 	s := a.scheduler()
 	if s.Retries != 3 || s.Folder != dir {
 		t.Fatalf("scheduler %+v", s)

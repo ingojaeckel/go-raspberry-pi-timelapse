@@ -17,6 +17,11 @@ RestartSec=5
 # SIGTERM lets the app finish its HTTP responses and abort a running capture
 # cleanly before systemd kills it.
 TimeoutStopSec=20
+# The app pings systemd (WATCHDOG=1) every minute while its capture loop is
+# alive; when it hangs or stops taking photos, systemd restarts it. The
+# binary must be built from the same commit as this file (src/backend/watchdog.go).
+WatchdogSec=2min
+NotifyAccess=main
 
 [Install]
 WantedBy=multi-user.target

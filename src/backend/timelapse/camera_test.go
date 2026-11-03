@@ -226,3 +226,28 @@ func TestRunCommandIncludesOutputInError(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestRemovePartialsDeletesOnlyUnfinishedPhotos(t *testing.T) {
+	dir := t.TempDir()
+	for _, n := range []string{".partial-20260101-000000.jpg", "20260101-000100.jpg", ".hidden"} {
+		os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o600)
+	}
+	os.Mkdir(filepath.Join(dir, ".partial-dir"), 0o700)
+	removed, err := RemovePartials(dir)
+	if err != nil || len(removed) != 1 || removed[0] != ".partial-20260101-000000.jpg" {
+		t.Fatalf("removed %v, %v", removed, err)
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 3 {
+		t.Fatalf("left %v", entries)
+	}
+	if _, err := RemovePartials(filepath.Join(dir, "nope")); err == nil {
+		t.Fatal("expected an error for a missing folder")
+	}
+}
+
+func TestCaptureFailsWhenTheBackendWroteNothing(t *testing.T) {
+	c := NewCamera(backendFunc(func(context.Context, string, Options) error { return nil }), time.Second)
+	if _, err := c.Capture(t.Context(), t.TempDir(), Options{}); err == nil {
+		t.Fatal("expected an error when there is no photo to flush")
+	}
+}

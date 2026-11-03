@@ -43,6 +43,9 @@ type Scheduler struct {
 	BeforeCapture func()
 	// Location defines the hours captures are aligned to; nil means time.Local.
 	Location *time.Location
+	// Heartbeat, if set, runs every time the loop wakes up: at least every
+	// maxSleep while waiting, and after every capture (with its retries).
+	Heartbeat func()
 }
 
 // Run captures photos until ctx is cancelled. Settings changes take effect
@@ -60,6 +63,9 @@ func (s *Scheduler) Run(ctx context.Context) {
 	lastSlot := anchor.Add(-time.Second)
 
 	for ctx.Err() == nil {
+		if s.Heartbeat != nil {
+			s.Heartbeat()
+		}
 		next := s.next(s.Settings.Get(), time.Now(), anchor, lastSlot)
 		if wait := time.Until(next); wait > 0 {
 			s.sleep(ctx, changed, next, wait) // then re-evaluate settings and clock

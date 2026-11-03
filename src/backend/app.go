@@ -29,7 +29,10 @@ const (
 	captureTimeout  = time.Minute
 	retryDelay      = time.Second
 	shutdownTimeout = 10 * time.Second
-	thermalFile     = "/sys/class/thermal/thermal_zone0/temp"
+	// writeTimeout bounds every response; downloads extend it while they
+	// make progress (see rest.deadlineWriter).
+	writeTimeout = 2 * time.Minute
+	thermalFile  = "/sys/class/thermal/thermal_zone0/temp"
 )
 
 // app owns the resources of a running camera: log, settings, camera and the
@@ -40,14 +43,18 @@ type app struct {
 	level    *slog.LevelVar
 	store    *conf.Store
 	camera   *timelapse.Camera
+	photos   *files.Index // shared by the API and disk space reclaiming
 	listener net.Listener
 	closers  []func()
+	// freeBytes reports the free space of the photo folder's file system;
+	// tests simulate a disk.
+	freeBytes func(dir string) (uint64, error)
 }
 
 // newApp acquires all resources in order. On failure, those acquired so far
 // are released again.
 func newApp(opts options, backend timelapse.Backend) (*app, error) {
-	a := &app{opts: opts, version: versionString(gitCommit, builtAt), level: new(slog.LevelVar)}
+	a := &app{opts: opts, version: versionString(gitCommit, builtAt), level: new(slog.LevelVar), freeBytes: files.FreeBytes}
 	for _, step := range []func() error{a.startLogging, a.openSettings, a.createStorageFolder, a.listen} {
 		if err := step(); err != nil {
 			a.close()
@@ -79,10 +86,20 @@ func (a *app) openSettings() error {
 	return nil
 }
 
+// createStorageFolder creates the photo folder if needed and deletes photos
+// that were still being written when the camera last stopped (power cut).
 func (a *app) createStorageFolder() error {
 	if err := os.MkdirAll(a.opts.storageFolder, 0o700); err != nil {
 		return fmt.Errorf("create storage folder: %w", err)
 	}
+	for _, dir := range []string{a.opts.storageFolder, conf.TempFilesFolder} {
+		if removed, err := timelapse.RemovePartials(dir); err != nil {
+			slog.Warn("removing unfinished photos", "folder", dir, "err", err)
+		} else if len(removed) > 0 {
+			slog.Warn("removed unfinished photos from before the last stop", "folder", dir, "count", len(removed))
+		}
+	}
+	a.photos = files.NewIndex(a.opts.storageFolder)
 	return nil
 }
 
@@ -104,13 +121,32 @@ func (a *app) run(ctx context.Context, ready func(addr string)) error {
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()
 	server := a.httpServer()
+	sched := a.scheduler()
 	var wg sync.WaitGroup
 	wg.Go(func() { followDebugSetting(ctx, a.store, a.level) })
-	wg.Go(func() { a.scheduler().Run(ctx) })
-	err := serve(ctx, server, a.listener, ready)
+	if interval, ok := watchdogInterval(); ok {
+		w := newWatchdog(a.maxStall())
+		sched.Heartbeat = w.beat
+		wg.Go(func() { w.run(ctx, interval) })
+		slog.Info("systemd watchdog enabled", "interval", interval, "maxStall", w.maxStall)
+	}
+	wg.Go(func() { sched.Run(ctx) })
+	err := serve(ctx, server, a.listener, func(addr string) {
+		sdNotify("READY=1") // fails harmlessly when not run by systemd
+		if ready != nil {
+			ready(addr)
+		}
+	})
 	stop()
 	wg.Wait()
 	return err
+}
+
+// maxStall is the longest the scheduler loop may go without waking up: all
+// attempts of one capture timing out, plus time to free disk space.
+func (a *app) maxStall() time.Duration {
+	attempts := time.Duration(a.opts.captureRetries + 1)
+	return attempts*(captureTimeout+retryDelay+timelapse.KillDelay) + 5*time.Minute
 }
 
 func (a *app) scheduler() *timelapse.Scheduler {
@@ -120,13 +156,16 @@ func (a *app) scheduler() *timelapse.Scheduler {
 		Folder:        a.opts.storageFolder,
 		Retries:       a.opts.captureRetries,
 		RetryDelay:    retryDelay,
-		BeforeCapture: func() { reclaimDiskSpace(a.opts.storageFolder, uint64(a.opts.minFreeDiskMB)<<20) },
+		BeforeCapture: a.reclaimDiskSpace,
 	}
 }
 
-// reclaimDiskSpace deletes the oldest photos while less than minFree bytes are free.
-func reclaimDiskSpace(folder string, minFree uint64) {
-	removed, err := files.Reclaim(folder, minFree)
+// reclaimDiskSpace deletes the oldest photos while less than -minFreeDiskMB
+// are free.
+func (a *app) reclaimDiskSpace() {
+	removed, err := a.photos.Reclaim(uint64(a.opts.minFreeDiskMB)<<20, func() (uint64, error) {
+		return a.freeBytes(a.photos.Dir())
+	})
 	if len(removed) > 0 {
 		slog.Warn("disk almost full, deleted the oldest photos", "count", len(removed), "first", removed[0], "last", removed[len(removed)-1])
 	}
@@ -139,9 +178,9 @@ func (a *app) httpServer() *http.Server {
 	return &http.Server{
 		Handler:           a.handler(),
 		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      writeTimeout,
 		IdleTimeout:       2 * time.Minute,
 		ErrorLog:          slog.NewLogLogger(slog.Default().Handler(), slog.LevelWarn),
-		// No WriteTimeout: archive downloads of many photos take minutes.
 	}
 }
 
@@ -162,7 +201,7 @@ func (a *app) api() *rest.Server {
 	return &rest.Server{
 		Settings:    a.store,
 		Camera:      a.camera,
-		Folder:      a.opts.storageFolder,
+		Photos:      a.photos,
 		TempFolder:  conf.TempFilesFolder,
 		LogFile:     conf.LogFile, // served whenever it exists
 		ThermalFile: thermalFile,

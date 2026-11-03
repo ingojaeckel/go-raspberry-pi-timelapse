@@ -44,13 +44,14 @@ All Go paths below are relative to `src/backend/`.
 
 **Go packages:**
 - `main.go` — Entrypoint: flags, signal handling, `run` (= `newApp` + `app.run`)
-- `app.go` — `app` owns the resources (log, settings store, camera, listener) and releases them in reverse order; wires scheduler, API, `http.ServeMux` (frontend, API, pprof) and `http.Server` (timeouts, graceful shutdown on SIGINT/SIGTERM)
+- `app.go` — `app` owns the resources (log, settings store, camera, photo index, listener) and releases them in reverse order; at start-up deletes `.partial-*` files left by a power cut; wires scheduler, API, `http.ServeMux` (frontend, API, pprof) and `http.Server` (timeouts incl. `WriteTimeout`, graceful shutdown on SIGINT/SIGTERM)
+- `watchdog.go` — systemd notify (`READY=1`, `WATCHDOG=1` every `WatchdogSec/2` while the scheduler heartbeat is fresh), so systemd restarts a hung camera (`WatchdogSec=` in `timelapse.service`)
 - `flags.go` — CLI options; `logging.go` — slog setup and debug level; `version.go` — version string
 - `web/` — `//go:embed dist` of the frontend build
-- `timelapse/` — `Scheduler.Run` (capture loop: aligned or unaligned schedule, retries within the slot, re-plans immediately on settings changes), `NextAligned`, `Camera` (one capture at a time, timeout, writes `.partial-*` then renames, never overwrites)
-- `rest/` — `Server` with the HTTP handlers (`config.go`, `photos.go`, `system.go`), `Middleware` (Host allowlist against DNS rebinding, `http.CrossOriginProtection`, no CORS headers, debug request log). GET never changes state: `DELETE /file?f=`, `DELETE /photos`, `POST /admin/{shutdown,restart}`
+- `timelapse/` — `Scheduler.Run` (capture loop: aligned or unaligned schedule, retries within the slot, re-plans immediately on settings changes), `NextAligned`, `Camera` (one capture at a time, timeout, writes `.partial-*`, fsyncs, renames, fsyncs the folder, never overwrites), `RemovePartials`
+- `rest/` — `Server` with the HTTP handlers (`config.go`, `photos.go`, `system.go`), `Middleware` (Host allowlist against DNS rebinding, `http.CrossOriginProtection`, no CORS headers, debug request log only when debug is on; forwards `ReadFrom` so sendfile works). `/photos` is cached per index generation (JSON + gzip, ETag/304). Downloads go through `deadlineWriter` (write deadline extended while making progress, 256 KB sendfile chunks). GET never changes state: `DELETE /file?f=`, `DELETE /photos`, `POST /admin/{shutdown,restart}`
 - `conf/` — `Settings` + `Validate`/`Normalized`; `Store` keeps bbolt (`timelapse-settings.db`) open, serves settings from memory, notifies subscribers, recovers from a corrupt file
-- `files/` — Listing (oldest first, skips hidden/partial files), streaming ZIP/TAR, `RemoveFile` and `Reclaim` (delete oldest photos when free space < `-minFreeDiskMB`, ring buffer) via `os.Root`
+- `files/` — `Index` (cached listing, oldest first, skips hidden/partial files; re-reads the folder only when its mtime changed and stats only new names, so it relies on photos never being modified in place), streaming ZIP/TAR with exact `TarSize`/`ZipSize` for `Content-Length` (tar content via sendfile; zip single pass with CRC in a data descriptor; byte-identical to `archive/tar`/`archive/zip`), `RemoveFile(s)` and `Index.Reclaim` (delete oldest photos when free space < `-minFreeDiskMB`, ring buffer) via `os.Root`
 - `logfile/` — Size-capped rotating log (`timelapse.log` → `.1` at 10 MB) and `Tail` for `/logs`
 
 **Key data flow:** `POST /configuration` → `conf.Store.Update` (validates, persists, notifies). The scheduler and the debug log level subscribe to the store and read the latest settings with `Get()`; nothing is passed through buffered channels that could drop updates.
@@ -78,6 +79,7 @@ Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. Dependencies: `go.
 - Test files are colocated with source (e.g., `timelapse/scheduler_test.go`)
 - `make` / `make pi` run frontend tests, `go vet ./...` and `go test -race -shuffle=on -cover ./...` before building
 - Frontend tests use Vitest
+- Long-run checks (skipped with `-short`): `TestUnattendedOperation` (`soak_test.go`) simulates days of operation in a synctest bubble (`-soak-days=35` for a month; default 2) and asserts every slot is captured and goroutines/fds/heap stay flat; `TestRestartsAndTrafficReleaseEverything` restarts the app 30× under traffic. See `docs/benchmarks.md`
 - The `web` package (and thus `main`) requires the frontend build to exist (`//go:embed dist`). Running `go test ./...` in `src/backend` fails unless `make frontend` has been run first. To test only Go packages without the frontend: `cd src/backend && go test -race ./conf/... ./files/... ./logfile/... ./rest/... ./timelapse/...`
 
 ## Pi image

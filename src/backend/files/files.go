@@ -4,16 +4,11 @@
 package files
 
 import (
-	"archive/tar"
-	"archive/zip"
 	"cmp"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
-	"slices"
-	"strings"
 )
 
 var (
@@ -31,32 +26,9 @@ type File struct {
 
 // ListFiles returns the regular files in dir, oldest first. Hidden files
 // (such as photos still being written, see timelapse.Camera) are skipped.
+// Use an Index to list the same folder repeatedly.
 func ListFiles(dir string) ([]File, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-	files := make([]File, 0, len(entries))
-	for _, e := range entries {
-		if !isPhoto(e) {
-			continue
-		}
-		info, err := e.Info()
-		if errors.Is(err, fs.ErrNotExist) {
-			continue // deleted since ReadDir
-		}
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, newFile(info))
-	}
-	slices.SortFunc(files, oldestFirst)
-	return files, nil
-}
-
-// isPhoto skips directories and hidden files such as photos still being written.
-func isPhoto(e fs.DirEntry) bool {
-	return e.Type().IsRegular() && !strings.HasPrefix(e.Name(), ".")
+	return NewIndex(dir).List()
 }
 
 func newFile(info fs.FileInfo) File {
@@ -89,6 +61,29 @@ func RemoveFile(dir, name string) error {
 		return err
 	}
 	defer root.Close()
+	return removeIn(root, name)
+}
+
+// RemoveFiles deletes the named regular files inside dir and returns how
+// many it deleted. failed is called for each name that could not be deleted.
+func RemoveFiles(dir string, names []string, failed func(name string, err error)) (int, error) {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return 0, err
+	}
+	defer root.Close()
+	removed := 0
+	for _, name := range names {
+		if err := removeIn(root, name); err != nil {
+			failed(name, err)
+			continue
+		}
+		removed++
+	}
+	return removed, nil
+}
+
+func removeIn(root *os.Root, name string) error {
 	info, err := root.Lstat(name)
 	if err != nil {
 		return err
@@ -99,80 +94,21 @@ func RemoveFile(dir, name string) error {
 	return root.Remove(name)
 }
 
-// WriteTar streams a tar archive of the named files in dir to w.
-func WriteTar(w io.Writer, dir string, names []string) error {
-	tw := tar.NewWriter(w)
-	err := eachFile(dir, names, func(name string, info fs.FileInfo, f io.Reader) error {
-		hdr := &tar.Header{Name: name, Size: info.Size(), Mode: int64(info.Mode().Perm()), ModTime: info.ModTime()}
-		if err := tw.WriteHeader(hdr); err != nil {
-			return err
-		}
-		_, err := io.Copy(tw, f)
-		return err
-	})
-	return errors.Join(err, tw.Close())
+// Reclaim deletes the oldest photos in the folder until at least minFree
+// bytes are free on its file system, so the camera keeps the most recent
+// photos like a ring buffer. It returns the names of the deleted files, and
+// ErrDiskFull if deleting every photo was not enough.
+// free reports the free bytes, normally FreeBytes of the folder.
+func (x *Index) Reclaim(minFree uint64, free func() (uint64, error)) ([]string, error) {
+	return reclaim(x.List, minFree, free, func(name string) error { return RemoveFile(x.dir, name) })
 }
 
-// WriteZip streams an uncompressed zip archive of the named files in dir to w.
-// JPEGs do not compress, so storing them saves CPU on the Pi.
-func WriteZip(w io.Writer, dir string, names []string) error {
-	zw := zip.NewWriter(w)
-	err := eachFile(dir, names, func(name string, info fs.FileInfo, f io.Reader) error {
-		entry, err := zw.CreateHeader(&zip.FileHeader{Name: name, Modified: info.ModTime(), Method: zip.Store})
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(entry, f)
-		return err
-	})
-	return errors.Join(err, zw.Close())
-}
-
-// eachFile opens each named file inside dir in turn and closes it before
-// moving on to the next one.
-func eachFile(dir string, names []string, fn func(name string, info fs.FileInfo, f io.Reader) error) error {
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return err
-	}
-	defer root.Close()
-	for _, name := range names {
-		if err := withFile(root, name, fn); err != nil {
-			return fmt.Errorf("%s: %w", name, err)
-		}
-	}
-	return nil
-}
-
-func withFile(root *os.Root, name string, fn func(string, fs.FileInfo, io.Reader) error) error {
-	f, err := root.Open(name)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	info, err := f.Stat()
-	if err != nil {
-		return err
-	}
-	return fn(name, info, f)
-}
-
-// Reclaim deletes the oldest photos in dir until at least minFree bytes are
-// free on its file system, so the camera keeps the most recent photos like a
-// ring buffer. It returns the names of the deleted files, and ErrDiskFull if
-// deleting every photo was not enough.
-func Reclaim(dir string, minFree uint64) ([]string, error) {
-	return reclaim(dir, minFree,
-		func() (uint64, error) { return FreeBytes(dir) },
-		func(name string) error { return RemoveFile(dir, name) })
-}
-
-func reclaim(dir string, minFree uint64, free func() (uint64, error), remove func(string) error) ([]string, error) {
+func reclaim(list func() ([]File, error), minFree uint64, free func() (uint64, error), remove func(string) error) ([]string, error) {
 	avail, err := free()
 	if err != nil || avail >= minFree {
 		return nil, err
 	}
-	photos, err := ListFiles(dir)
+	photos, err := list()
 	if err != nil {
 		return nil, err
 	}

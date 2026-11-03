@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 )
 
@@ -58,9 +59,10 @@ type env struct {
 	store    *conf.Store
 	camera   *fakeCamera
 	commands *commands
+	handler  http.Handler // mux + middleware, as served at url
 }
 
-func newEnv(t *testing.T) *env {
+func newEnv(t testing.TB) *env {
 	t.Helper()
 	dir := t.TempDir()
 	store, err := conf.OpenStore(filepath.Join(dir, "settings.db"), conf.Default(1800))
@@ -74,7 +76,7 @@ func newEnv(t *testing.T) *env {
 	e.srv = &Server{
 		Settings:    store,
 		Camera:      e.camera,
-		Folder:      e.folder,
+		Photos:      files.NewIndex(e.folder),
 		TempFolder:  filepath.Join(dir, "tmp"),
 		LogFile:     filepath.Join(dir, "app.log"),
 		ThermalFile: filepath.Join(dir, "temp"),
@@ -83,13 +85,14 @@ func newEnv(t *testing.T) *env {
 	}
 	mux := http.NewServeMux()
 	e.srv.Register(mux)
-	ts := httptest.NewServer(Middleware(mux, "camera.example.org"))
+	e.handler = Middleware(mux, "camera.example.org")
+	ts := httptest.NewServer(e.handler)
 	t.Cleanup(ts.Close)
 	e.url = ts.URL
 	return e
 }
 
-func (e *env) photo(t *testing.T, name, content string, age time.Duration) {
+func (e *env) photo(t testing.TB, name, content string, age time.Duration) {
 	t.Helper()
 	p := filepath.Join(e.folder, name)
 	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
@@ -428,7 +431,7 @@ func TestArchiveTarContainsAllPhotosByDefault(t *testing.T) {
 func TestArchiveFailureAbortsTheDownload(t *testing.T) {
 	// A truncated archive must not look like a successful download.
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		streamArchive(w, "archive.zip", "application/zip", func(w io.Writer) error {
+		streamArchive(w, func(w io.Writer) error {
 			w.Write(bytes.Repeat([]byte("x"), 64<<10))
 			return errors.New("disk read error")
 		})

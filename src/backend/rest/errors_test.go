@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"errors"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -108,11 +109,11 @@ func TestVcgencmdPath(t *testing.T) {
 }
 
 func TestSelected(t *testing.T) {
-	all := []string{"a", "b", "c"}
-	if got := selected([]string{"a", "b", "c"}, nil); strings.Join(got, ",") != "a,b,c" {
+	all := []files.File{{Name: "a"}, {Name: "b"}, {Name: "c"}}
+	if got := files.Names(selected(all, nil)); strings.Join(got, ",") != "a,b,c" {
 		t.Errorf("no filter: %v", got)
 	}
-	if got := selected(all, []string{"c", "a", "x"}); strings.Join(got, ",") != "a,c" {
+	if got := files.Names(selected(all, []string{"c", "a", "x"})); strings.Join(got, ",") != "a,c" {
 		t.Errorf("filter keeps listing order: %v", got)
 	}
 }

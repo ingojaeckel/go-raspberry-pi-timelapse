@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime"
+	"sync"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
@@ -27,8 +28,9 @@ type Settings interface {
 type Server struct {
 	Settings Settings
 	Camera   timelapse.Capturer
-	// Folder holds the photos; TempFolder the preview captures.
-	Folder, TempFolder string
+	// Photos lists the photo folder; TempFolder holds the preview captures.
+	Photos     *files.Index
+	TempFolder string
 	// LogFile is served by /logs.
 	LogFile string
 	// ThermalFile holds the CPU temperature in millidegrees Celsius.
@@ -36,6 +38,9 @@ type Server struct {
 	Version     string
 	// Run executes system commands (monitoring, shutdown, restart).
 	Run func(ctx context.Context, name string, args ...string) ([]byte, error)
+
+	photosMu    sync.Mutex
+	photosCache *cachedPhotos
 }
 
 // Register adds the API routes to mux.
@@ -50,8 +55,8 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /file", s.deleteFiles)
 	mux.HandleFunc("GET /file/last", s.mostRecentFile)
 	mux.HandleFunc("GET /file/{fileName}", s.file)
-	mux.HandleFunc("GET /archive/zip", s.archive("archive.zip", "application/zip", files.WriteZip))
-	mux.HandleFunc("GET /archive/tar", s.archive("archive.tar", "application/tar", files.WriteTar))
+	mux.HandleFunc("GET /archive/zip", s.archive("archive.zip", "application/zip", files.ZipSize, files.WriteZip))
+	mux.HandleFunc("GET /archive/tar", s.archive("archive.tar", "application/tar", files.TarSize, files.WriteTar))
 	mux.HandleFunc("GET /monitoring", s.monitoring)
 	mux.HandleFunc("GET /logs", s.logs)
 	mux.HandleFunc("POST /admin/shutdown", s.command("/usr/bin/sudo", "/sbin/shutdown", "-h", "now"))

@@ -1,15 +1,20 @@
 package rest
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
@@ -33,8 +38,85 @@ func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
 	serveFile(w, r, f)
 }
 
-func (s *Server) photos(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, GetPhotosResponse{Photos: toPhotos(s.listOrWarn())})
+// photos serves the gallery listing, which the frontend polls. The encoded
+// (and gzipped) response is kept until the listing changes, and its ETag
+// lets browsers revalidate with a 304 instead of downloading it again: for
+// a month of photos at one per minute it is 4 MB of JSON.
+func (s *Server) photos(w http.ResponseWriter, r *http.Request) {
+	body, err := s.photosBody()
+	if err != nil {
+		slog.Warn("listing photos", "err", err)
+		writeJSON(w, http.StatusOK, GetPhotosResponse{Photos: []Photo{}})
+		return
+	}
+	h := w.Header()
+	h.Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
+	h.Set("Cache-Control", "no-cache") // always revalidate
+	h.Set("Vary", "Accept-Encoding")
+	data, etag := body.plain, body.etag
+	if acceptsGzip(r) {
+		data, etag = body.gzipped, body.etag+"-gz"
+		h.Set("Content-Encoding", "gzip")
+	}
+	h.Set("ETag", `"`+etag+`"`)
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
+}
+
+// cachedPhotos is the /photos response for one generation of the listing.
+type cachedPhotos struct {
+	gen            uint64
+	etag           string
+	plain, gzipped []byte
+}
+
+// processID distinguishes ETags of different runs, whose index generations
+// start at the same number.
+var processID = strconv.FormatInt(time.Now().UnixNano(), 36)
+
+// gzipWriters keeps compressors, which hold about 1 MB of state each.
+var gzipWriters = sync.Pool{New: func() any {
+	zw, _ := gzip.NewWriterLevel(nil, gzip.BestSpeed) // valid level
+	return zw
+}}
+
+// photosBody returns the cached /photos response, encoding it again if the
+// listing changed.
+func (s *Server) photosBody() (*cachedPhotos, error) {
+	s.photosMu.Lock()
+	defer s.photosMu.Unlock()
+	list, gen, err := s.Photos.Generation()
+	if err != nil {
+		return nil, err
+	}
+	if c := s.photosCache; c != nil && c.gen == gen {
+		return c, nil
+	}
+	plain, err := json.Marshal(GetPhotosResponse{Photos: toPhotos(list)})
+	if err != nil {
+		return nil, err
+	}
+	var gz bytes.Buffer
+	zw := gzipWriters.Get().(*gzip.Writer)
+	zw.Reset(&gz)
+	zw.Write(plain)
+	zw.Close()
+	gzipWriters.Put(zw)
+	s.photosCache = &cachedPhotos{gen: gen, etag: processID + "-" + strconv.FormatUint(gen, 36), plain: plain, gzipped: gz.Bytes()}
+	return s.photosCache, nil
+}
+
+// acceptsGzip reports whether the client accepts gzip, ignoring q-values
+// other than q=0.
+func acceptsGzip(r *http.Request) bool {
+	for _, v := range r.Header.Values("Accept-Encoding") {
+		for part := range strings.SplitSeq(v, ",") {
+			coding, params, _ := strings.Cut(strings.TrimSpace(part), ";")
+			if strings.EqualFold(strings.TrimSpace(coding), "gzip") && strings.ReplaceAll(params, " ", "") != "q=0" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *Server) listFiles(w http.ResponseWriter, _ *http.Request) {
@@ -43,7 +125,7 @@ func (s *Server) listFiles(w http.ResponseWriter, _ *http.Request) {
 
 // listOrWarn lists the photos; on failure it logs and returns what it has.
 func (s *Server) listOrWarn() []files.File {
-	list, err := files.ListFiles(s.Folder)
+	list, err := s.Photos.List()
 	if err != nil {
 		slog.Warn("listing photos", "err", err)
 	}
@@ -61,11 +143,11 @@ func toPhotos(list []files.File) []Photo {
 func humanReadableSize(n int64) string {
 	switch {
 	case n >= 1<<20:
-		return fmt.Sprintf("%d MB", n>>20)
+		return strconv.FormatInt(n>>20, 10) + " MB"
 	case n >= 1<<10:
-		return fmt.Sprintf("%d KB", n>>10)
+		return strconv.FormatInt(n>>10, 10) + " KB"
 	default:
-		return fmt.Sprintf("%d bytes", n)
+		return strconv.FormatInt(n, 10) + " bytes"
 	}
 }
 
@@ -74,7 +156,7 @@ func (s *Server) file(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) mostRecentFile(w http.ResponseWriter, r *http.Request) {
-	list, _ := files.ListFiles(s.Folder)
+	list, _ := s.Photos.List()
 	if len(list) == 0 {
 		http.NotFound(w, r)
 		return
@@ -85,7 +167,7 @@ func (s *Server) mostRecentFile(w http.ResponseWriter, r *http.Request) {
 // serveFromFolder serves name from the photo folder; os.Root rejects names
 // that would leave it.
 func (s *Server) serveFromFolder(w http.ResponseWriter, r *http.Request, name string) {
-	f, err := os.OpenInRoot(s.Folder, name)
+	f, err := os.OpenInRoot(s.Photos.Dir(), name)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -103,7 +185,7 @@ func serveFile(w http.ResponseWriter, r *http.Request, f *os.File) {
 	}
 	name := filepath.Base(f.Name())
 	w.Header().Set(conf.HeaderContentDisposition, mime.FormatMediaType("attachment", map[string]string{"filename": name}))
-	http.ServeContent(w, r, name, info.ModTime(), f)
+	http.ServeContent(newDeadlineWriter(w), r, name, info.ModTime(), f)
 }
 
 func (s *Server) deleteFiles(w http.ResponseWriter, r *http.Request) {
@@ -112,60 +194,80 @@ func (s *Server) deleteFiles(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("no files to delete provided"))
 		return
 	}
-	writeJSON(w, http.StatusOK, s.remove(names))
+	s.remove(w, names)
 }
 
 func (s *Server) deleteAllPhotos(w http.ResponseWriter, _ *http.Request) {
-	list, err := files.ListFiles(s.Folder)
+	list, err := s.Photos.List()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, s.remove(files.Names(list)))
+	s.remove(w, files.Names(list))
 }
 
-// remove deletes the named photos and returns how many were deleted.
-func (s *Server) remove(names []string) int {
-	deleted := 0
-	for _, name := range names {
-		if err := files.RemoveFile(s.Folder, name); err != nil {
-			slog.Warn("not deleting photo", "name", name, "err", err)
-			continue
-		}
-		deleted++
+// remove deletes the named photos and responds with how many were deleted.
+func (s *Server) remove(w http.ResponseWriter, names []string) {
+	deleted, err := files.RemoveFiles(s.Photos.Dir(), names, func(name string, err error) {
+		slog.Warn("not deleting photo", "name", name, "err", err)
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
 	}
 	slog.Info("deleted photos", "count", deleted, "requested", len(names))
-	return deleted
+	writeJSON(w, http.StatusOK, deleted)
 }
 
 // archive streams the photos named by the f query parameters, or all photos
-// if there are none.
-func (s *Server) archive(filename, contentType string, write func(io.Writer, string, []string) error) http.HandlerFunc {
+// if there are none. size returns the exact length of what write writes.
+func (s *Server) archive(filename, contentType string, size func([]files.File) (int64, error), write func(io.Writer, string, []files.File) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := files.ListFiles(s.Folder)
+		list, err := s.Photos.List()
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
-		names := selected(files.Names(list), r.URL.Query()["f"])
-		streamArchive(w, filename, contentType, func(w io.Writer) error { return write(w, s.Folder, names) })
+		photos := selected(list, r.URL.Query()["f"])
+		n, err := size(photos)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		h := w.Header()
+		h.Set(conf.HeaderContentType, contentType)
+		h.Set(conf.HeaderContentDisposition, "attachment; filename="+filename)
+		h.Set("Content-Length", strconv.FormatInt(n, 10))
+		if r.Method == http.MethodHead {
+			return
+		}
+		streamArchive(newDeadlineWriter(w), func(w io.Writer) error { return write(w, s.Photos.Dir(), photos) })
 	}
 }
 
-// selected keeps the names that are wanted, or all of them if none are.
-func selected(names, wanted []string) []string {
+// selected keeps the photos that are wanted, in listing order, or all of
+// them if none are.
+func selected(list []files.File, wanted []string) []files.File {
 	if len(wanted) == 0 {
-		return names
+		return list
 	}
-	return slices.DeleteFunc(names, func(n string) bool { return !slices.Contains(wanted, n) })
+	want := make(map[string]bool, len(wanted))
+	for _, n := range wanted {
+		want[n] = true
+	}
+	var out []files.File
+	for _, f := range list {
+		if want[f.Name] {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // streamArchive writes the archive straight to the client. Once streaming has
 // started the status can no longer change, so a failure aborts the
 // connection: the client sees a failed download instead of a truncated file.
-func streamArchive(w http.ResponseWriter, filename, contentType string, write func(io.Writer) error) {
-	w.Header().Set(conf.HeaderContentType, contentType)
-	w.Header().Set(conf.HeaderContentDisposition, "attachment; filename="+filename)
+func streamArchive(w io.Writer, write func(io.Writer) error) {
 	if err := write(w); err != nil {
 		slog.Warn("archive download aborted", "err", err)
 		panic(http.ErrAbortHandler)
