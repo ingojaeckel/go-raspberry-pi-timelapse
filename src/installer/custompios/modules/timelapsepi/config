@@ -1,2 +1,7 @@
 # Settings of the timelapsepi module. Override them in ../../config or in a
 # gitignored ../../config.local.
+
+# Battery-backed real-time clock on I2C, e.g. pcf8523 (Adafruit PiRTC), ds3231
+# or ds1307. Empty: the image has the dtoverlay line in config.txt commented
+# out, so it can still be enabled later by editing the boot partition.
+[ -n "$TIMELAPSEPI_RTC" ] || TIMELAPSEPI_RTC=

@@ -13,7 +13,7 @@ source /common.sh
 install_cleanup_trap
 
 apt-get update
-apt-get install -y rpicam-apps-lite i2c-tools
+apt-get install -y rpicam-apps-lite i2c-tools util-linux-extra
 
 # Camera: libcamera detects the sensor (the app captures with rpicam-still).
 BOOT_CONFIG=/"${BASE_BOOT_MOUNT_PATH}"/config.txt
@@ -23,9 +23,25 @@ else
   echo 'camera_auto_detect=1' >> "${BOOT_CONFIG}"
 fi
 
+# Real-time clock: the overlay loads the driver, then the udev rule and
+# timelapse-rtc.service (filesystem/root) set the system clock from it.
+if [ -n "${TIMELAPSEPI_RTC}" ]; then
+  RTC_OVERLAY="dtoverlay=i2c-rtc,${TIMELAPSEPI_RTC}"
+else
+  RTC_OVERLAY="#dtoverlay=i2c-rtc,pcf8523"
+fi
+cat >> "${BOOT_CONFIG}" <<EOF
+
+[all]
+# Battery-backed real-time clock. The access point has no network time, so
+# without one the clock restarts from the last shutdown after a power cut.
+# Uncomment for an Adafruit PiRTC (PCF8523); other chips: ds3231, ds1307.
+${RTC_OVERLAY}
+EOF
+
 # Wi-Fi access point; the network module copies it into NetworkManager on boot.
 unpack /filesystem/boot /"${BASE_BOOT_MOUNT_PATH}"
-# App, systemd unit and sudoers rule, owned by root whoever ran the build.
+# App, systemd units, udev rule and sudoers rule, owned by root whoever ran the build.
 unpack /filesystem/root / root
 
 if [ ! -x /opt/timelapse/timelapse ]; then
@@ -33,7 +49,8 @@ if [ ! -x /opt/timelapse/timelapse ]; then
   exit 1
 fi
 chmod 755 /opt/timelapse /opt/timelapse/timelapse
-chmod 644 /etc/systemd/system/timelapse.service
+chmod 644 /etc/systemd/system/timelapse.service /etc/systemd/system/timelapse-rtc.service \
+  /etc/udev/rules.d/90-timelapse-rtc.rules
 chmod 440 /etc/sudoers.d/010_timelapse
 visudo -cf /etc/sudoers.d/010_timelapse
 systemctl enable timelapse.service

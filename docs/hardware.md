@@ -32,7 +32,7 @@ This project was created for a timelapse system consisting of the following core
 
 #### Step 1: Initial Build
 
-1. Optional: If you want to use the battery backed clocked start by soldering the 2x20-pin strip on Pi Zero W board ([instructions](https://learn.adafruit.com/adding-a-real-time-clock-to-raspberry-pi/wiring-the-rtc)). After the soldering, attach the RTC to the 2x20-pin strip. Don't forget to insert the CR1220 battery into the RTC. 
+1. Optional: If you want to use the battery backed clocked start by soldering the 2x20-pin strip on Pi Zero W board ([instructions](https://learn.adafruit.com/adding-a-real-time-clock-to-raspberry-pi/wiring-the-rtc)). After the soldering, attach the RTC to the 2x20-pin strip. Don't forget to insert the CR1220 battery into the RTC. After installing the image (step 2), enable and set the clock as described in [docs/installer.md](installer.md#real-time-clock).
 2. Connect the Pi Zero W and the Pi Camera Board v2 via the Pi Zero Camera cable.
 3. Insert the Pi Zero W into the C4Labs Zerbra Zero Case.
 

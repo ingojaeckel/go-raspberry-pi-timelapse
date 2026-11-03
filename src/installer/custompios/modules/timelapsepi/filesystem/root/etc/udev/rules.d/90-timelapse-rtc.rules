@@ -1,0 +1,5 @@
+# Sets the system clock from a battery-backed RTC as soon as its driver has
+# loaded (dtoverlay=i2c-rtc,... in /boot/firmware/config.txt). The Pi has no
+# network time in access point mode. hwclock runs as a systemd service rather
+# than from RUN+=, because udev's sandbox does not allow setting the clock.
+ACTION=="add", SUBSYSTEM=="rtc", KERNEL=="rtc0", TAG+="systemd", ENV{SYSTEMD_WANTS}+="timelapse-rtc.service"

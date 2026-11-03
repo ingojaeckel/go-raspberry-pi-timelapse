@@ -60,7 +60,7 @@ The Go binary embeds the frontend. Vite writes its build into `src/backend/web/d
 docs/                    documentation and images
 src/backend/             Go server (go.mod lives here)
 src/frontend/            React + Vite web UI, built into src/backend/web/dist
-src/installer/           CustomPiOS image build (custompios/) and on-device scripts (device/)
+src/installer/           CustomPiOS image build (custompios/, make image)
 src/perf-testing/k6/     k6 load tests and runner script
 ```
 

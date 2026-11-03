@@ -29,7 +29,7 @@ cd src/frontend && npm install && npm test && npm run build
 
 - `src/backend/` — Go module (`go.mod`, `main.go`, packages below). Committed Pi binary at `src/backend/bin/arm/` (for devices with older images only).
 - `src/frontend/` — React app; Vite builds into `src/backend/web/dist` (gitignored).
-- `src/installer/custompios/` — CustomPiOS Pi image build; `src/installer/device/` — on-device scripts (`setup.sh`, `rtc.sh`).
+- `src/installer/custompios/` — CustomPiOS Pi image build (`make image`, see "Pi image" below).
 - `src/perf-testing/k6/` — k6 load tests + `run-load-test.sh`.
 - `docs/` — hardware, installer, load-testing, benchmarks docs; images in `docs/images/`.
 
@@ -82,7 +82,7 @@ Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. Dependencies: `go.
 
 ## Pi image
 
-`make image` → `src/installer/custompios/build-image.sh`: downloads the Raspberry Pi OS Lite armhf base image pinned (URL + SHA-256) in `src/installer/custompios/config`, then runs CustomPiOS from a digest-pinned `ghcr.io/guysoft/custompios` container with `--privileged` (loop mounts, chroot via `qemu-arm-static`). Works on macOS with Docker Desktop and on Linux. Output: `src/installer/custompios/workspace/*.zip`. The `timelapsepi` module (`modules/timelapsepi/start_chroot_script`) installs `rpicam-apps-lite`, unpacks `filesystem/` (owned by root) and enables the service. See `docs/installer.md`.
+`make image` → `src/installer/custompios/build-image.sh`: downloads the Raspberry Pi OS Lite armhf base image pinned (URL + SHA-256) in `src/installer/custompios/config`, then runs CustomPiOS from a digest-pinned `ghcr.io/guysoft/custompios` container with `--privileged` (loop mounts, chroot via `qemu-arm-static`). Works on macOS with Docker Desktop and on Linux. Output: `src/installer/custompios/workspace/*.zip`. The `timelapsepi` module (`modules/timelapsepi/start_chroot_script`) installs `rpicam-apps-lite` and `hwclock`, adds the (commented-out unless `TIMELAPSEPI_RTC` is set) RTC overlay to `config.txt`, unpacks `filesystem/` (owned by root) and enables the service. See `docs/installer.md`.
 
 ## CI
 

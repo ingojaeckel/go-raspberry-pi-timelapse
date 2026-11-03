@@ -1,0 +1,10 @@
+[Unit]
+Description=Set the system clock from the real-time clock
+# Started by /etc/udev/rules.d/90-timelapse-rtc.rules when /dev/rtc0 appears;
+# without an RTC it never runs. If the app started first, its scheduler picks
+# up the new time within a minute.
+Before=timelapse.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/hwclock --rtc=/dev/rtc0 --hctosys --utc

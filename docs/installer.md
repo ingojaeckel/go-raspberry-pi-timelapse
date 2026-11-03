@@ -40,9 +40,21 @@ Images built before this change run `/home/pi/go-raspberry-pi-timelapse/src/back
 
 Images built even earlier ran the service as root without a working directory, so their settings and log are in `/`. The unit file comes from the image, not from the git clone, so `git pull` does not change it; copy the new unit to `/etc/systemd/system/` (and move `/timelapse-settings.db` to `/home/pi`, owned by `pi`) to upgrade such a device.
 
-## On-device helper scripts
+## Real-time clock
 
-[`src/installer/device/`](../src/installer/device/) contains scripts to run on an already running Pi:
+The Pi Zero W has no clock of its own, and as an access point it never reaches a time server. After a power cut its clock restarts from the time it last saved, so photo names and hour-aligned captures are off. A battery-backed RTC such as the [Adafruit PiRTC (PCF8523)](https://www.adafruit.com/product/3386) fixes this (wiring: [docs/hardware.md](hardware.md)).
 
-- `setup.sh`: installs base packages and clones the repo.
-- `rtc.sh`: guided setup of the Adafruit PCF8523 real-time clock.
+The image always contains the parts that read the RTC at boot: `util-linux-extra` (`hwclock`), `/etc/udev/rules.d/90-timelapse-rtc.rules` and `timelapse-rtc.service`. When the RTC driver loads, udev starts the service, which sets the system clock from the RTC. Without an RTC nothing runs. If the app started first, its scheduler picks up the new time within a minute.
+
+Enabling the driver:
+
+- On an SD card: open `config.txt` on the boot partition from any computer and uncomment `#dtoverlay=i2c-rtc,pcf8523` at the end (for a DS3231 or DS1307, use `ds3231` or `ds1307`).
+- When building: set `TIMELAPSEPI_RTC=pcf8523` in `src/installer/custompios/config.local` and the line is active in the image.
+
+The RTC has to be set once. Connect to the Pi's access point and run from your computer:
+
+```bash
+ssh pi@192.168.50.1 "sudo date -u -s @$(date +%s) && sudo hwclock --systohc --utc"
+```
+
+Check it with `sudo hwclock -r` on the Pi; `sudo i2cdetect -y 1` shows `UU` at address 68 once the PCF8523 driver uses it.
