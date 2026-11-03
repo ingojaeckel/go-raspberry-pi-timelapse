@@ -31,25 +31,50 @@ fetch_base_image() {
     return
   fi
   echo "Downloading $url"
-  curl -fL --retry 3 -o "$file.partial" "$url"
-  [ "$(sha256 "$file.partial")" = "$sum" ] || die "$url does not match the SHA-256 in config"
+  # -C -: resume an interrupted download of the .partial file.
+  curl -fL --retry 5 --retry-all-errors -C - -o "$file.partial" "$url"
+  if [ "$(sha256 "$file.partial")" != "$sum" ]; then
+    rm -f "$file.partial"
+    die "$url does not match the SHA-256 in config"
+  fi
   mv "$file.partial" "$file"
 }
 
-[ -x "$APP" ] || die "$APP is missing. Run 'make image', which builds it first."
+# CustomPiOS starts only the chroot's first bash through qemu-arm-static; every
+# program it runs needs the host kernel to run 32-bit ARM code (binfmt_misc).
+# Docker Desktop registers that; plain Linux arm64/amd64 hosts may not.
+check_arm32() {
+  docker run --rm -q --platform linux/arm/v6 busybox:1.36.1 true >/dev/null 2>&1 ||
+    die "this host cannot run 32-bit ARM programs. Register qemu with:
+  docker run --privileged --rm tonistiigi/binfmt --install arm"
+}
+
+[ -f "$APP" ] || die "$APP is missing. Run 'make image', which builds it first."
 docker info >/dev/null 2>&1 || die "Docker is not running. Start Docker Desktop (macOS) or the docker service."
+check_arm32
 fetch_base_image
 
 # --privileged: CustomPiOS loop-mounts the image partitions and chroots into
-# them; 32-bit ARM code runs through qemu-arm-static from the container.
-# CustomPiOS leaves a loop device attached to the image; loop devices belong to
-# the host (or Docker Desktop's VM), so detach it whether the build failed or not.
-docker run --rm --privileged \
+# them. --init with TINI_KILL_PROCESS_GROUP: Ctrl-C reaches the whole build, so
+# CustomPiOS unmounts the image and the container stops (a bare bash as PID 1
+# would ignore the signal and keep building in the background).
+# Afterwards, whether the build failed or not:
+# - detach the loop devices the build left attached to images in workspace/
+#   (they belong to the host, or Docker Desktop's VM, and would pile up),
+#   leaving any that existed before alone;
+# - hand workspace/ to the calling user (the container runs as root).
+docker run --rm --privileged --init -e TINI_KILL_PROCESS_GROUP=1 \
   -e DIST_VERSION="${DIST_VERSION:-dev}" \
+  -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
   -v "$PWD":/distro \
   "$CUSTOMPIOS_IMAGE" bash -c '
+    trap "echo Interrupted" INT TERM
+    before=$(losetup -a | cut -d: -f1)
     build; rc=$?
-    losetup -a | grep "/workspace/.*timelapsepi" | cut -d: -f1 | xargs -r losetup -d
+    for dev in $(losetup -a | grep "/workspace/[^/]*\.img" | cut -d: -f1); do
+      grep -qx "$dev" <<<"$before" || losetup -d "$dev"
+    done
+    chown -R "$HOST_UID:$HOST_GID" /distro/workspace || true
     exit $rc'
 
 ls -l workspace/*.zip

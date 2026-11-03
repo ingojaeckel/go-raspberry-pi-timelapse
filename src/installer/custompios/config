@@ -12,6 +12,10 @@ export BASE_ZIP_IMG=${DIST_PATH}/image/${TIMELAPSEPI_BASE_IMAGE_URL##*/}
 # Image name: <base image date>-timelapsepi-trixie-armhf-lite-<version>.zip
 export BASE_IGNORE_VARIANT_NAME=yes
 
+# No apt cache across builds: CustomPiOS skips "apt update" when the cache is
+# less than an hour old, so a quick rebuild would install from stale lists.
+export BASE_APT_CACHE=no
+
 export BASE_ENABLE_UART=yes
 export BASE_SSH_ENABLE=yes
 

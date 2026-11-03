@@ -38,8 +38,8 @@ This project was created for a timelapse system consisting of the following core
 
 #### Step 2: Install disk image and access web interface
 
-1. From another computer, download, and decompress the `.img` file of the [most recent go-raspberry-pi-timelapse release](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/releases).
-2. Install the `.img` file to an empty SD card using the [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
+1. From another computer, download the `.zip` image of the [most recent go-raspberry-pi-timelapse release](https://github.com/ingojaeckel/go-raspberry-pi-timelapse/releases) (or build one with `make image`, see [docs/installer.md](installer.md)).
+2. Write it to an empty SD card with the [Raspberry Pi Imager](https://www.raspberrypi.com/software/): choose "Use custom" and the `.zip`, and skip the OS customisation (the image already contains the user, SSH and Wi-Fi settings).
 3. Insert the SD card card into the Pi Zero W.
 4. Turn on the Pi Zero W plugging in a micro USB cable into the PWR IN connector (bottom right corner).
 5. The Pi Zero W will act as a Wifi access point. Connect to the Pi's Wifi named `timelapse-raspberry-pi`, passphrase: `InsertTheRealPassword`.

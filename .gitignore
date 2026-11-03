@@ -3,7 +3,7 @@
 *.log
 .DS_Store
 
-# Local dev build output (the committed Pi binary lives in src/backend/bin/arm/)
+# Local dev build output (make pi writes into the image module, see below)
 src/backend/go-raspberry-pi-timelapse
 timelapse-pictures/
 timelapse-settings.db
@@ -19,7 +19,7 @@ benchmark_results.txt
 profiles/
 timelapse-app
 
-# CustomPiOS image build: base image, the app staged by make image-app, output
+# CustomPiOS image build: base image, the app staged by make pi, output
 src/installer/custompios/image/
 src/installer/custompios/config.local
 src/installer/custompios/modules/timelapsepi/filesystem/root/opt/

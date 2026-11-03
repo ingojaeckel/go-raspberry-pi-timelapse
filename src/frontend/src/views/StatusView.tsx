@@ -204,8 +204,8 @@ function ClockWarning({ clock }: { clock: ReturnType<typeof checkClock> }) {
     return (
       <Notice tone="warn">
         The camera's clock thinks it is {clock.wrongYear}. Photos will carry the wrong date until its clock is set.
-        A Pi Zero has no battery-backed clock and can't sync time while offline. See <code>rtc.sh</code> in the
-        project for adding a clock module.
+        A Pi Zero has no battery-backed clock and can't sync time while offline. See "Real-time clock" in the
+        project's <code>docs/installer.md</code> for adding a clock module.
       </Notice>
     );
   }

@@ -2,7 +2,7 @@
 # Installs the timelapse app into the image and starts it on boot.
 # Runs as root inside the image (chroot). /filesystem is this module's
 # filesystem/ folder; the app binary was staged into
-# filesystem/root/opt/timelapse/ by `make image` before the build started.
+# filesystem/root/opt/timelapse/ by `make pi` before the build started.
 # Written by Ingo Jaeckel. GPL V3
 ########
 
@@ -33,24 +33,34 @@ fi
 cat >> "${BOOT_CONFIG}" <<EOF
 
 [all]
-# Battery-backed real-time clock. The access point has no network time, so
-# without one the clock restarts from the last shutdown after a power cut.
-# Uncomment for an Adafruit PiRTC (PCF8523); other chips: ds3231, ds1307.
+# Battery-backed real-time clock, see docs/installer.md. The access point has
+# no network time; without one, the clock restarts from the last time saved
+# before a power cut. Chips: pcf8523 (Adafruit PiRTC), ds3231, ds1307.
+# A leading # disables the line.
 ${RTC_OVERLAY}
 EOF
 
-# Wi-Fi access point; the network module copies it into NetworkManager on boot.
-unpack /filesystem/boot /"${BASE_BOOT_MOUNT_PATH}"
-# App, systemd units, udev rule and sudoers rule, owned by root whoever ran the build.
-unpack /filesystem/root / root
+# Installs every file below $1 into the same path below $2, owned by root with
+# mode 644. Missing directories are created (mode 755); existing ones such as
+# /etc or /etc/sudoers.d keep their owner and mode, which CustomPiOS's unpack
+# would overwrite with those of the build checkout.
+install_files() {
+  local from=$1 to=$2 file
+  (cd "${from}" && find . -type f) | while read -r file; do
+    install -D -o root -g root -m 644 "${from}/${file}" "${to}/${file#./}"
+  done
+}
 
-if [ ! -x /opt/timelapse/timelapse ]; then
+# Wi-Fi access point; the network module copies it into NetworkManager on boot.
+cp /filesystem/boot/wifi.nmconnection /"${BASE_BOOT_MOUNT_PATH}"/
+# App, systemd units, udev rule, kernel module list and sudoers rule.
+install_files /filesystem/root ""
+
+if [ ! -f /opt/timelapse/timelapse ]; then
   echo "Error: /opt/timelapse/timelapse is missing. Build the image with 'make image'." >&2
   exit 1
 fi
-chmod 755 /opt/timelapse /opt/timelapse/timelapse
-chmod 644 /etc/systemd/system/timelapse.service /etc/systemd/system/timelapse-rtc.service \
-  /etc/udev/rules.d/90-timelapse-rtc.rules
+chmod 755 /opt/timelapse/timelapse
 chmod 440 /etc/sudoers.d/010_timelapse
 visudo -cf /etc/sudoers.d/010_timelapse
 systemctl enable timelapse.service

@@ -13,8 +13,9 @@ make image
 This runs the tests, cross-compiles the app for the Pi and runs [`build-image.sh`](../src/installer/custompios/build-image.sh), which:
 
 1. downloads the base image pinned in [`config`](../src/installer/custompios/config) (`TIMELAPSEPI_BASE_IMAGE_URL`) into `image/` and checks it against `TIMELAPSEPI_BASE_IMAGE_SHA256`. The download happens once; later builds reuse it.
-2. runs CustomPiOS in its pinned Docker image (`ghcr.io/guysoft/custompios@sha256:…`) with `--privileged`, because it loop-mounts the image's partitions and chroots into them. On ARM64 hosts (Apple Silicon, ARM64 CI runners) the 32-bit ARM programs in the image run through `qemu-arm-static` inside the container, so the host needs nothing besides Docker.
-3. writes `src/installer/custompios/workspace/<base image date>-timelapsepi-trixie-armhf-lite-<version>.zip`, where the version comes from `git describe`.
+2. checks that Docker can run 32-bit ARM programs. The image's programs run under qemu, which the host kernel has to know about (binfmt_misc). Docker Desktop registers it; on a Linux host without it, run `docker run --privileged --rm tonistiigi/binfmt --install arm` once per boot (CI uses `docker/setup-qemu-action`).
+3. runs CustomPiOS in its pinned Docker image (`ghcr.io/guysoft/custompios@sha256:…`) with `--privileged`, because it loop-mounts the image's partitions and chroots into them. Ctrl-C stops the build and unmounts the image. Afterwards the script detaches the loop devices the build left behind and makes `workspace/` owned by you (the container runs as root).
+4. writes `src/installer/custompios/workspace/<base image date>-timelapsepi-trixie-armhf-lite-<version>.zip`, where the version comes from `git describe`.
 
 Write the image to an SD card with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) ("Use custom"), without its OS customisation, since the image already contains the user, SSH and Wi-Fi settings.
 
@@ -24,27 +25,30 @@ Local settings that should not be committed go into `src/installer/custompios/co
 
 ### In CI
 
-[`.github/workflows/image.yml`](../.github/workflows/image.yml) runs `make image` on an `ubuntu-24.04-arm` runner when started by hand ("Run workflow") and for every pushed tag. The zipped image is a workflow artifact; for a tag it is also attached to the GitHub release of that tag.
+[`.github/workflows/image.yml`](../.github/workflows/image.yml) runs `make image` on an `ubuntu-24.04-arm` runner when started by hand ("Run workflow") and for every pushed tag. The zipped image is a workflow artifact. For a tag, a second job, the only one with write access to the repository, attaches it to the GitHub release of that tag (creating the release if needed).
 
 ## How the app gets into the image
 
-`make image-app` cross-compiles the app for the Pi Zero W into `modules/timelapsepi/filesystem/root/opt/timelapse/timelapse` (gitignored). The image build copies it to `/opt/timelapse/timelapse`, and `timelapse.service` runs it from there. The image therefore contains exactly the app of your checkout; nothing is cloned from GitHub at build time, and the image has no git checkout of this repo.
+`make pi` cross-compiles the app for the Pi Zero W into `modules/timelapsepi/filesystem/root/opt/timelapse/timelapse` (gitignored). The image build copies it to `/opt/timelapse/timelapse`, and `timelapse.service` runs it from there. The image therefore contains exactly the app of your checkout; nothing is cloned from GitHub at build time, and the image has no git checkout of this repo.
 
 - The service runs as `pi` with `WorkingDirectory=/home/pi`, so `timelapse.log` (rotated at 10 MB to `timelapse.log.1`) and `timelapse-settings.db` live in `/home/pi`. It restarts automatically (`Restart=always`) after crashes and failed starts.
 - `/etc/sudoers.d/010_timelapse` lets `pi` run exactly `/sbin/shutdown -h now` and `/sbin/shutdown -r now`, which the web UI uses to shut down and restart the Pi.
-- To update the app on a running Pi, copy a new build over `/opt/timelapse/timelapse` and run `sudo systemctl restart timelapse`.
+- To update the app on a running Pi without reflashing, build it with `make pi`, connect to the Pi's access point and run:
+
+  ```bash
+  scp src/installer/custompios/modules/timelapsepi/filesystem/root/opt/timelapse/timelapse pi@192.168.50.1:/tmp/
+  ssh -t pi@192.168.50.1 "sudo install -m 755 /tmp/timelapse /opt/timelapse/timelapse && sudo systemctl restart timelapse"
+  ```
 
 ### Devices with older images
 
-Images built before this change run `/home/pi/go-raspberry-pi-timelapse/src/backend/bin/arm/go-raspberry-pi-timelapse` from a git clone and update with `git pull`. `make pi` still builds that committed binary for them.
-
-Images built even earlier ran the service as root without a working directory, so their settings and log are in `/`. The unit file comes from the image, not from the git clone, so `git pull` does not change it; copy the new unit to `/etc/systemd/system/` (and move `/timelapse-settings.db` to `/home/pi`, owned by `pi`) to upgrade such a device.
+Images up to release 0.5.0 (and those built from the main branch before the app was baked in) ran the app from a git clone of this repository, partly as root and with the legacy camera stack configured. The repository no longer contains a prebuilt binary, so `git pull` on such a device removes the binary its service runs. Reflash these devices with a new image. Download the photos first (web UI, or `/archive/zip`); the settings have to be entered again.
 
 ## Real-time clock
 
 The Pi Zero W has no clock of its own, and as an access point it never reaches a time server. After a power cut its clock restarts from the time it last saved, so photo names and hour-aligned captures are off. A battery-backed RTC such as the [Adafruit PiRTC (PCF8523)](https://www.adafruit.com/product/3386) fixes this (wiring: [docs/hardware.md](hardware.md)).
 
-The image always contains the parts that read the RTC at boot: `util-linux-extra` (`hwclock`), `/etc/udev/rules.d/90-timelapse-rtc.rules` and `timelapse-rtc.service`. When the RTC driver loads, udev starts the service, which sets the system clock from the RTC. Without an RTC nothing runs. If the app started first, its scheduler picks up the new time within a minute.
+The image always contains the parts that read the RTC at boot: `util-linux-extra` (`hwclock`), `/etc/udev/rules.d/90-timelapse-rtc.rules` and `timelapse-rtc.service`, plus `i2c-tools` and `/etc/modules-load.d/i2c-dev.conf` for checking the chip. When the RTC driver loads, udev starts the service, which sets the system clock from the RTC. Without an RTC nothing runs. If the app started first, its scheduler picks up the new time within a minute.
 
 Enabling the driver:
 
@@ -54,7 +58,7 @@ Enabling the driver:
 The RTC has to be set once. Connect to the Pi's access point and run from your computer:
 
 ```bash
-ssh pi@192.168.50.1 "sudo date -u -s @$(date +%s) && sudo hwclock --systohc --utc"
+ssh -t pi@192.168.50.1 "sudo date -u -s @$(date +%s) && sudo hwclock --systohc --utc"
 ```
 
-Check it with `sudo hwclock -r` on the Pi; `sudo i2cdetect -y 1` shows `UU` at address 68 once the PCF8523 driver uses it.
+(`-t` lets `sudo` ask for the password.) Check it with `sudo hwclock -r` on the Pi. `sudo i2cdetect -y 1` (the image loads `i2c-dev` for it) shows `UU` at address 68 once the PCF8523 driver uses the chip.
