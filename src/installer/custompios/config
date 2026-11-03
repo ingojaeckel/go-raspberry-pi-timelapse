@@ -8,4 +8,7 @@ export NETWORK_DISABLE_PWRSAVE=yes
 export NETWORK_WPA_SUPPLICANT=no
 export NETWORK_NETWORK_MANAGER=yes
 
-export MODULES="base(network,raspicam,disable-services(timelapsepi))"
+# No raspicam module: it configures the legacy camera stack (start_x=1,
+# camera_auto_detect=0, gpu_mem=128), which hides the camera from libcamera and
+# rpicam-still. timelapsepi installs rpicam-apps-lite and keeps auto-detection.
+export MODULES="base(network,disable-services(timelapsepi))"

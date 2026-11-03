@@ -14,7 +14,15 @@ source /common.sh
 install_cleanup_trap
 
 sudo apt-get update
-sudo apt-get install -y htop screen git python3-smbus i2c-tools
+sudo apt-get install -y htop screen git python3-smbus i2c-tools rpicam-apps-lite
+
+# Camera: libcamera detects the sensor (the app captures with rpicam-still).
+BOOT_CONFIG=/"${BASE_BOOT_MOUNT_PATH}"/config.txt
+if grep -q '^camera_auto_detect=' "${BOOT_CONFIG}"; then
+  sed -i 's/^camera_auto_detect=.*/camera_auto_detect=1/' "${BOOT_CONFIG}"
+else
+  echo 'camera_auto_detect=1' >> "${BOOT_CONFIG}"
+fi
 
 unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
 unpack /filesystem/home/root /root root
