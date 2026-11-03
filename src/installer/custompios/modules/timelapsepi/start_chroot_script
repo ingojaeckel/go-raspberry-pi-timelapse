@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
-# Go Raspberry Pi Timelapse install script
-# Sets up RPI to be deployed and start taking timelapse photos.
-# Written by Ingo Jaeckel. Based on documentation of https://github.com/guysoft/PleromaPi and https://github.com/interactionresearchstudio/NaturewatchCameraOS.
-# GPL V3
+# Installs the timelapse app into the image and starts it on boot.
+# Runs as root inside the image (chroot). /filesystem is this module's
+# filesystem/ folder; the app binary was staged into
+# filesystem/root/opt/timelapse/ by `make image` before the build started.
+# Written by Ingo Jaeckel. GPL V3
 ########
 
-
-# Source error handling, leave this in place
 set -x
 set -e
 
 source /common.sh
 install_cleanup_trap
 
-sudo apt-get update
-sudo apt-get install -y htop screen git python3-smbus i2c-tools rpicam-apps-lite
+apt-get update
+apt-get install -y rpicam-apps-lite i2c-tools
 
 # Camera: libcamera detects the sensor (the app captures with rpicam-still).
 BOOT_CONFIG=/"${BASE_BOOT_MOUNT_PATH}"/config.txt
@@ -24,19 +23,20 @@ else
   echo 'camera_auto_detect=1' >> "${BOOT_CONFIG}"
 fi
 
-unpack /filesystem/home/pi /home/"${BASE_USER}" "${BASE_USER}"
-unpack /filesystem/home/root /root root
-unpack /filesystem/boot /boot
+# Wi-Fi access point; the network module copies it into NetworkManager on boot.
+unpack /filesystem/boot /"${BASE_BOOT_MOUNT_PATH}"
+# App, systemd unit and sudoers rule, owned by root whoever ran the build.
+unpack /filesystem/root / root
 
-git clone --depth 1 https://github.com/ingojaeckel/go-raspberry-pi-timelapse.git /home/pi/go-raspberry-pi-timelapse
-
-# Unpack root at the end, so files are modified before
-unpack /filesystem/root /
-
-sudo chmod 644 /etc/systemd/system/timelapse.service
-sudo chmod 440 /etc/sudoers.d/010_timelapse
+if [ ! -x /opt/timelapse/timelapse ]; then
+  echo "Error: /opt/timelapse/timelapse is missing. Build the image with 'make image'." >&2
+  exit 1
+fi
+chmod 755 /opt/timelapse /opt/timelapse/timelapse
+chmod 644 /etc/systemd/system/timelapse.service
+chmod 440 /etc/sudoers.d/010_timelapse
 visudo -cf /etc/sudoers.d/010_timelapse
-sudo systemctl enable timelapse.service
+systemctl enable timelapse.service
 
 # Other system setup:
-sudo systemctl disable NetworkManager-wait-online.service
+systemctl disable NetworkManager-wait-online.service

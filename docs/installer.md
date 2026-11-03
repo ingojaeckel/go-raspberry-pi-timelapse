@@ -1,31 +1,44 @@
 # Installer: Pi disk image
 
-The [`src/installer/custompios/`](../src/installer/custompios/) folder manages how disk images are created which can be installed on SD cards to boot Raspberry Pis. For more information checkout https://github.com/guysoft/CustomPiOS.
+[`src/installer/custompios/`](../src/installer/custompios/) builds the SD card image for the Pi Zero W with [CustomPiOS](https://github.com/guysoft/CustomPiOS) 2.x. It starts from Raspberry Pi OS Lite 32-bit (armhf, Trixie) and adds the app, its systemd service and the Wi-Fi access point.
 
-1. Follow steps in the [CustomPiOS docs](https://github.com/guysoft/CustomPiOS?tab=readme-ov-file#how-to-use-it). This will download the latest OS .img file and prepare it along with other build related files. Optionally: Download another image variant via:
+## Build the image
+
+Requirements: Docker (Docker Desktop on macOS, Apple Silicon or Intel; or Docker on Linux), plus Go and Node as for `make`.
 
 ```bash
-cd src/installer/custompios/image/ && wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-05-28/2021-05-07-raspios-buster-armhf-lite.zip && cd -
+make image
 ```
 
-2. install required software: `sudo apt-get install qemu-user-static p7zip-full jq`
-3. start build: `cd src/installer/custompios/ && sudo ./build_dist`. This will create a disk image in `src/installer/custompios/workspace/*.img`.
-4. The created image can be installed onto an SD card via the [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
+This runs the tests, cross-compiles the app for the Pi and runs [`build-image.sh`](../src/installer/custompios/build-image.sh), which:
 
-## How the image finds the app (path coupling)
+1. downloads the base image pinned in [`config`](../src/installer/custompios/config) (`TIMELAPSEPI_BASE_IMAGE_URL`) into `image/` and checks it against `TIMELAPSEPI_BASE_IMAGE_SHA256`. The download happens once; later builds reuse it.
+2. runs CustomPiOS in its pinned Docker image (`ghcr.io/guysoft/custompios@sha256:…`) with `--privileged`, because it loop-mounts the image's partitions and chroots into them. On ARM64 hosts (Apple Silicon, ARM64 CI runners) the 32-bit ARM programs in the image run through `qemu-arm-static` inside the container, so the host needs nothing besides Docker.
+3. writes `src/installer/custompios/workspace/<base image date>-timelapsepi-trixie-armhf-lite-<version>.zip`, where the version comes from `git describe`.
 
-The image does not contain a separately built binary. Instead:
+Write the image to an SD card with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) ("Use custom"), without its OS customisation, since the image already contains the user, SSH and Wi-Fi settings.
 
-1. `modules/timelapsepi/start_chroot_script` clones this repo's **default branch from GitHub** to `/home/pi/go-raspberry-pi-timelapse` while the image is built. Your local checkout is not used.
-2. `modules/timelapsepi/filesystem/root/etc/systemd/system/timelapse.service` starts the **committed** ARM binary from that clone: `/home/pi/go-raspberry-pi-timelapse/src/backend/bin/arm/go-raspberry-pi-timelapse`.
+To move to a newer Raspberry Pi OS release, change the URL and SHA-256 in `config` (the SHA-256 is published next to each image as `<image>.img.xz.sha256`). To update CustomPiOS, change `CUSTOMPIOS_IMAGE` in `build-image.sh` to the digest of a newer `ghcr.io/guysoft/custompios` image.
 
-As a result:
+Local settings that should not be committed go into `src/installer/custompios/config.local` (sourced last; gitignored).
 
-- Rebuild and commit the binary with `make pi` before building an image, or the image ships a stale binary.
-- If the binary's location in the repo changes, change `ExecStart` in the same commit. A layout change only reaches new images after it is merged to the default branch.
+### In CI
+
+[`.github/workflows/image.yml`](../.github/workflows/image.yml) runs `make image` on an `ubuntu-24.04-arm` runner when started by hand ("Run workflow") and for every pushed tag. The zipped image is a workflow artifact; for a tag it is also attached to the GitHub release of that tag.
+
+## How the app gets into the image
+
+`make image-app` cross-compiles the app for the Pi Zero W into `modules/timelapsepi/filesystem/root/opt/timelapse/timelapse` (gitignored). The image build copies it to `/opt/timelapse/timelapse`, and `timelapse.service` runs it from there. The image therefore contains exactly the app of your checkout; nothing is cloned from GitHub at build time, and the image has no git checkout of this repo.
+
 - The service runs as `pi` with `WorkingDirectory=/home/pi`, so `timelapse.log` (rotated at 10 MB to `timelapse.log.1`) and `timelapse-settings.db` live in `/home/pi`. It restarts automatically (`Restart=always`) after crashes and failed starts.
 - `/etc/sudoers.d/010_timelapse` lets `pi` run exactly `/sbin/shutdown -h now` and `/sbin/shutdown -r now`, which the web UI uses to shut down and restart the Pi.
-- Images built before these changes ran the service as root without a working directory, so their settings and log are in `/`. The unit file comes from the image, not from the git clone, so `git pull` does not change it; copy the new unit to `/etc/systemd/system/` (and move `/timelapse-settings.db` to `/home/pi`, owned by `pi`) to upgrade such a device.
+- To update the app on a running Pi, copy a new build over `/opt/timelapse/timelapse` and run `sudo systemctl restart timelapse`.
+
+### Devices with older images
+
+Images built before this change run `/home/pi/go-raspberry-pi-timelapse/src/backend/bin/arm/go-raspberry-pi-timelapse` from a git clone and update with `git pull`. `make pi` still builds that committed binary for them.
+
+Images built even earlier ran the service as root without a working directory, so their settings and log are in `/`. The unit file comes from the image, not from the git clone, so `git pull` does not change it; copy the new unit to `/etc/systemd/system/` (and move `/timelapse-settings.db` to `/home/pi`, owned by `pi`) to upgrade such a device.
 
 ## On-device helper scripts
 

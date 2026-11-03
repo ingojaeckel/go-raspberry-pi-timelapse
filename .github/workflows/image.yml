@@ -1,0 +1,44 @@
+name: Pi image
+# Builds the SD card image (make image) on demand and for every tag. A tag
+# also publishes the zipped image as a GitHub release asset.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['*']
+permissions:
+  contents: write
+jobs:
+  image:
+    name: Pi image
+    # arm64 runner: CustomPiOS emulates only 32-bit ARM there (qemu-arm-static).
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # git describe names the image after the latest tag
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: src/frontend/.nvmrc
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: src/backend/go.mod
+    - uses: actions/cache@v4
+      with:
+        path: src/installer/custompios/image
+        key: base-image-${{ hashFiles('src/installer/custompios/config') }}
+    - run: sudo modprobe loop
+    # Tests, Pi build, then CustomPiOS in Docker (src/installer/custompios/build-image.sh).
+    - run: make image
+    - uses: actions/upload-artifact@v4
+      with:
+        name: timelapsepi-image
+        path: src/installer/custompios/workspace/*.zip
+        compression-level: 0 # already zipped
+    - name: Attach to release
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes
+        gh release upload "$GITHUB_REF_NAME" src/installer/custompios/workspace/*.zip --clobber

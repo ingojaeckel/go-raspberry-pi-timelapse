@@ -19,5 +19,8 @@ benchmark_results.txt
 profiles/
 timelapse-app
 
-# CustomPiOS image build output
+# CustomPiOS image build: base image, the app staged by make image-app, output
+src/installer/custompios/image/
+src/installer/custompios/config.local
+src/installer/custompios/modules/timelapsepi/filesystem/root/opt/
 src/installer/custompios/workspace/

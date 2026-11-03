@@ -1,5 +1,16 @@
 export DIST_NAME=timelapsepi
-export DIST_VERSION=0.5.0
+# make image passes the output of git describe.
+export DIST_VERSION=${DIST_VERSION:-dev}
+
+# Base image: Raspberry Pi OS Lite 32-bit (armhf, runs on the Pi Zero W),
+# pinned by URL and SHA-256. build-image.sh downloads and verifies it.
+export BASE_BOARD=raspberrypiarmhf
+TIMELAPSEPI_BASE_IMAGE_URL=https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2026-10-06/2026-10-06-raspios-trixie-armhf-lite.img.xz
+TIMELAPSEPI_BASE_IMAGE_SHA256=2c302771f34c67a0b7ae7aa2e0dcdd3eac660504be59193c011ba79d412e1632
+export BASE_ZIP_IMG=${DIST_PATH}/image/${TIMELAPSEPI_BASE_IMAGE_URL##*/}
+
+# Image name: <base image date>-timelapsepi-trixie-armhf-lite-<version>.zip
+export BASE_IGNORE_VARIANT_NAME=yes
 
 export BASE_ENABLE_UART=yes
 export BASE_SSH_ENABLE=yes

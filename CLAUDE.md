@@ -11,6 +11,7 @@ Raspberry Pi Zero W timelapse camera system: a Go HTTP server with embedded Reac
 # From the repo root (Makefile is the entry point):
 make            # frontend build + tests, Go vet + tests, dev build
 make pi         # same, then cross-compile for Pi Zero W (ARM v6) into src/backend/bin/arm/
+make image      # same tests, Pi build into the image module, then the SD card image via CustomPiOS in Docker
 make test       # frontend tests + Go vet/tests
 make frontend   # build frontend into src/backend/web/dist
 make run        # build frontend, run server on :8080
@@ -26,7 +27,7 @@ cd src/frontend && npm install && npm test && npm run build
 
 ## Repository Layout
 
-- `src/backend/` — Go module (`go.mod`, `main.go`, packages below). Committed Pi binary at `src/backend/bin/arm/`.
+- `src/backend/` — Go module (`go.mod`, `main.go`, packages below). Committed Pi binary at `src/backend/bin/arm/` (for devices with older images only).
 - `src/frontend/` — React app; Vite builds into `src/backend/web/dist` (gitignored).
 - `src/installer/custompios/` — CustomPiOS Pi image build; `src/installer/device/` — on-device scripts (`setup.sh`, `rtc.sh`).
 - `src/perf-testing/k6/` — k6 load tests + `run-load-test.sh`.
@@ -35,7 +36,7 @@ cd src/frontend && npm install && npm test && npm run build
 **Path couplings to keep in sync when moving things:**
 - `//go:embed` cannot use `..`: `src/backend/web/embed.go` embeds `dist`, and `src/frontend/vite.config.ts` `OUT_DIR` writes there.
 - URL prefix `/static/frontend/build/` = `frontendPath` in `main.go` = Vite `BASE` (independent of disk layout).
-- `timelapse.service` (`src/installer/custompios/modules/timelapsepi/filesystem/root/etc/systemd/system/`) runs `/home/pi/go-raspberry-pi-timelapse/src/backend/bin/arm/go-raspberry-pi-timelapse` from a git clone of the default branch — moving the binary requires updating `ExecStart` in the same commit.
+- `timelapse.service` (`src/installer/custompios/modules/timelapsepi/filesystem/root/etc/systemd/system/`) runs `/opt/timelapse/timelapse`, which `make image-app` builds into the module's `filesystem/root/opt/timelapse/` (gitignored) for the image build. The committed `src/backend/bin/arm/` binary (`make pi`) only serves devices with older images that run it from a git clone.
 
 ## Architecture
 
@@ -79,6 +80,10 @@ Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. Dependencies: `go.
 - Frontend tests use Vitest
 - The `web` package (and thus `main`) requires the frontend build to exist (`//go:embed dist`). Running `go test ./...` in `src/backend` fails unless `make frontend` has been run first. To test only Go packages without the frontend: `cd src/backend && go test -race ./conf/... ./files/... ./logfile/... ./rest/... ./timelapse/...`
 
+## Pi image
+
+`make image` → `src/installer/custompios/build-image.sh`: downloads the Raspberry Pi OS Lite armhf base image pinned (URL + SHA-256) in `src/installer/custompios/config`, then runs CustomPiOS from a digest-pinned `ghcr.io/guysoft/custompios` container with `--privileged` (loop mounts, chroot via `qemu-arm-static`). Works on macOS with Docker Desktop and on Linux. Output: `src/installer/custompios/workspace/*.zip`. The `timelapsepi` module (`modules/timelapsepi/start_chroot_script`) installs `rpicam-apps-lite`, unpacks `filesystem/` (owned by root) and enables the service. See `docs/installer.md`.
+
 ## CI
 
-GitHub Actions workflow `.github/workflows/go.yml` runs `make pi` on push to `src/backend/**`, `src/frontend/**`, `Makefile`: builds + tests frontend, then Go vet + test + cross-compile for Pi.
+GitHub Actions workflow `.github/workflows/go.yml` runs `make pi` on push to `src/backend/**`, `src/frontend/**`, `Makefile`: builds + tests frontend, then Go vet + test + cross-compile for Pi. `.github/workflows/image.yml` runs `make image` on `ubuntu-24.04-arm` on demand and for tags; tags get the zipped image attached to their GitHub release.

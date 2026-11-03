@@ -1,1 +1,2 @@
-TIMELAPSEPI_VAR="This is a module variable"
+# Settings of the timelapsepi module. Override them in ../../config or in a
+# gitignored ../../config.local.

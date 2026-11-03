@@ -7,9 +7,10 @@ StartLimitIntervalSec=0
 [Service]
 User=pi
 Group=pi
-# timelapse-settings.db and timelapse.log are created here.
+# timelapse-settings.db and timelapse.log are created here. The binary in
+# /opt/timelapse is part of the image (see docs/installer.md).
 WorkingDirectory=/home/pi
-ExecStart=/home/pi/go-raspberry-pi-timelapse/src/backend/bin/arm/go-raspberry-pi-timelapse -port=:8080 -logToFile=true -secondsBetweenCaptures=1800 -storageFolder=/home/pi/timelapse-pictures/
+ExecStart=/opt/timelapse/timelapse -port=:8080 -logToFile=true -secondsBetweenCaptures=1800 -storageFolder=/home/pi/timelapse-pictures/
 # Come back after crashes and failed starts, forever.
 Restart=always
 RestartSec=5
