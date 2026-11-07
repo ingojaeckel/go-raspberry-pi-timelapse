@@ -1038,6 +1038,13 @@ meter {
 .coordinate input {
   width: 11ch;
 }
+.location {
+  margin-top: 8px;
+  justify-items: start;
+}
+.location select {
+  max-width: 100%;
+}
 
 input[type='number'],
 input[type='search'],

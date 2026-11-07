@@ -112,7 +112,7 @@ By default the camera deletes its oldest photos when less than `-minFreeDiskMB` 
 
 ## Night photos
 
-By default the camera takes photos around the clock. Settings, "Skip night photos", pauses captures from sunset to sunrise at the location entered there (latitude and longitude in decimal degrees, e.g. from a map app). Sunrise and sunset are computed on the Pi from the date and location, without internet, to within about a minute (also during the polar day and night). With captures lined up with the clock, the first photo of the day is the first slot after sunrise; otherwise it is taken at sunrise. The log notes `night: no photos until sunrise` once per night. The times follow the Pi's clock, so set it (see [Real-time clock](#real-time-clock)).
+By default the camera takes photos around the clock. Settings, "Skip night photos", pauses captures from sunset to sunrise at the camera's location: pick its country (large countries are split into a few cities), or choose "Exact coordinates…" for latitude and longitude in decimal degrees, e.g. from a map app. A country uses its middle, so sunrise and sunset are a few minutes off elsewhere in it, which is fine for skipping nights. Sunrise and sunset are computed on the Pi from the date and location, without internet, to within about a minute (also during the polar day and night). With captures lined up with the clock, the first photo of the day is the first slot after sunrise; otherwise it is taken at sunrise. The log notes `night: no photos until sunrise` once per night. The times follow the Pi's clock, so set it (see [Real-time clock](#real-time-clock)).
 
 ## Power profiles
 

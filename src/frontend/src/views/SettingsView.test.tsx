@@ -257,9 +257,10 @@ describe('SettingsView night photos', () => {
     expect(screen.queryByLabelText('Latitude')).not.toBeInTheDocument();
 
     await user.click(skip);
-    expect(screen.getByText(/Enter the camera's location\./)).toBeInTheDocument();
+    expect(screen.getByText(/Choose the camera's country, or enter its coordinates\./)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
 
+    await user.selectOptions(screen.getByLabelText('Location'), 'Exact coordinates…');
     await user.type(screen.getByLabelText('Latitude'), '51.5074');
     await user.type(screen.getByLabelText('Longitude'), '-0.1278');
     expect(screen.getByText(/the sun rises at \d\d:\d\d and sets at \d\d:\d\d/)).toBeInTheDocument();
@@ -268,6 +269,53 @@ describe('SettingsView night photos', () => {
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(posted(f)).toEqual({ ...settings, SkipNightPhotos: true, Latitude: 51.5074, Longitude: -0.1278 });
+  });
+
+  it('takes the location from a country', async () => {
+    const f = mockServer();
+    const onSaved = renderSettings();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Skip night photos' }));
+    await user.selectOptions(screen.getByLabelText('Location'), 'Ireland');
+    expect(screen.queryByLabelText('Latitude')).not.toBeInTheDocument();
+    expect(screen.getByText(/the sun rises at \d\d:\d\d and sets at \d\d:\d\d/)).toBeInTheDocument();
+    expect(screen.getByText(/the middle of Ireland/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(posted(f)).toEqual({ ...settings, SkipNightPhotos: true, Latitude: 53.41, Longitude: -8.24 });
+  });
+
+  it('shows a saved location as the country it was picked as', () => {
+    mockServer();
+    renderSettings({ ...settings, SkipNightPhotos: true, Latitude: 53.41, Longitude: -8.24 });
+    expect(screen.getByLabelText('Location')).toHaveDisplayValue('Ireland');
+    expect(screen.queryByLabelText('Latitude')).not.toBeInTheDocument();
+  });
+
+  it('shows other saved coordinates in the coordinate fields', () => {
+    mockServer();
+    renderSettings({ ...settings, SkipNightPhotos: true, Latitude: 51.5074, Longitude: -0.1278 });
+    expect(screen.getByLabelText('Location')).toHaveDisplayValue('Exact coordinates…');
+    expect(screen.getByLabelText('Latitude')).toHaveValue('51.5074');
+    expect(screen.getByLabelText('Longitude')).toHaveValue('-0.1278');
+  });
+
+  it('offers cities instead of the middle of large countries', () => {
+    mockServer();
+    renderSettings({ ...settings, SkipNightPhotos: true });
+    const options = within(screen.getByLabelText('Location')).getAllByRole('option').map((o) => o.textContent);
+    expect(options).toContain('United States – New York');
+    expect(options).toContain('United States – Los Angeles');
+    expect(options).not.toContain('United States');
+    expect(options).toContain('Ireland');
+  });
+
+  it('starts the coordinate fields at the chosen country', async () => {
+    mockServer();
+    renderSettings({ ...settings, SkipNightPhotos: true, Latitude: 53.41, Longitude: -8.24 });
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText('Location'), 'Exact coordinates…');
+    expect(screen.getByLabelText('Latitude')).toHaveValue('53.41');
   });
 
   it('rejects a location that is not on Earth', async () => {

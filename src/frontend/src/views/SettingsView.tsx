@@ -15,6 +15,7 @@ import {
 } from '../format';
 import { useNow, useResource } from '../hooks';
 import { capturesPerDay, captureSlots, formatInterval, isValidInterval, photosPerDay, VALID_INTERVALS } from '../schedule';
+import { PLACES, placeAt } from '../places';
 import { nextSunrise, nextSunset } from '../sun';
 
 function offsetHint(interval: number): string {
@@ -43,7 +44,7 @@ export function validate(s: Settings): Partial<Record<keyof Settings, string>> {
     errors.Longitude = 'Longitude goes from -180 (west) to 180 (east).';
   }
   if (s.SkipNightPhotos && !errors.Latitude && !errors.Longitude && s.Latitude === 0 && s.Longitude === 0) {
-    errors.Latitude = "Enter the camera's location.";
+    errors.Latitude = "Choose the camera's country, or enter its coordinates.";
   }
   return errors;
 }
@@ -422,6 +423,10 @@ interface NightProps {
 
 /** "Skip night photos" and the camera's location, which sunrise and sunset are computed from (offline). */
 function NightFields({ draft, errors, now, onChange }: NightProps) {
+  const place = placeAt(draft.Latitude, draft.Longitude);
+  const noLocation = draft.Latitude === 0 && draft.Longitude === 0;
+  // Coordinates the list doesn't have are shown in the coordinate fields.
+  const [exact, setExact] = useState(!place && !noLocation);
   const located = draft.SkipNightPhotos && !errors.Latitude && !errors.Longitude;
   // The next sunrise and sunset, not today's: what happens next matters.
   const rise = located ? nextSunrise(now, draft.Latitude, draft.Longitude) : null;
@@ -435,7 +440,7 @@ function NightFields({ draft, errors, now, onChange }: NightProps) {
   } else if (errors.Latitude || errors.Longitude) {
     help = [errors.Latitude, errors.Longitude].filter(Boolean).join(' ');
   } else if (rise && set) {
-    help = `Here the sun rises at ${formatClock(rise)} and sets at ${formatClock(set)} (next times, in this device's time zone). No photos are taken in between. Computed on the camera, without internet.`;
+    help = `${place && !exact ? `Uses the middle of ${place.name.replace(/^.* – /, '')}: elsewhere in it the times differ by a few minutes. ` : ''}Here the sun rises at ${formatClock(rise)} and sets at ${formatClock(set)} (next times, in this device's time zone). No photos are taken in between. Computed on the camera, without internet.`;
   } else {
     help = rise ? 'The sun does not set here for now: photos are taken around the clock.' : 'The sun does not rise here for now: no photos until it does.';
   }
@@ -450,6 +455,32 @@ function NightFields({ draft, errors, now, onChange }: NightProps) {
         Skip night photos
       </label>
       {draft.SkipNightPhotos && (
+        <div className="coordinate location">
+          <label htmlFor="location">Location</label>
+          <select
+            id="location"
+            value={exact ? 'exact' : place ? place.name : ''}
+            aria-invalid={!exact && (!!errors.Latitude || !!errors.Longitude)}
+            aria-describedby="night-help"
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'exact') return setExact(true);
+              setExact(false);
+              const p = PLACES.find((x) => x.name === v);
+              onChange(p ? { Latitude: p.lat, Longitude: p.lon } : { Latitude: 0, Longitude: 0 });
+            }}
+          >
+            {!place && !exact && <option value="">Choose a country…</option>}
+            {PLACES.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+            <option value="exact">Exact coordinates…</option>
+          </select>
+        </div>
+      )}
+      {draft.SkipNightPhotos && exact && (
         <div className="inline coordinates">
           {coordinate('Latitude', 'e.g. 51.5074')}
           {coordinate('Longitude', 'e.g. -0.1278')}
@@ -457,7 +488,7 @@ function NightFields({ draft, errors, now, onChange }: NightProps) {
       )}
       <p id="night-help" className={draft.SkipNightPhotos && (errors.Latitude || errors.Longitude) ? 'help error' : 'help'}>
         {help}
-        {draft.SkipNightPhotos && ' Location in decimal degrees: north and east positive, e.g. from a map app.'}
+        {draft.SkipNightPhotos && exact && ' Location in decimal degrees: north and east positive, e.g. from a map app.'}
       </p>
     </div>
   );
