@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"encoding/binary"
 	"errors"
 	"os"
 	"path/filepath"
@@ -256,5 +257,46 @@ func TestReadSettingsGivesUpWhileTheAppHoldsTheFile(t *testing.T) {
 	}
 	if d := time.Since(start); d > 5*time.Second {
 		t.Fatalf("took %v", d)
+	}
+}
+
+// corruptRootPage overwrites the type of the database's root page: the file
+// still opens (its meta pages are intact), but bbolt panics when it reads a
+// bucket.
+func corruptRootPage(t *testing.T, path string) {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Meta pages 0 and 1: a 16-byte page header, then magic, version and page
+	// size (uint32 each), flags, the root page id (uint64 at 32) and, at 64,
+	// the transaction id; the newer of the two is current.
+	pageSize := int(binary.LittleEndian.Uint32(b[24:]))
+	meta := 0
+	if binary.LittleEndian.Uint64(b[pageSize+64:]) > binary.LittleEndian.Uint64(b[64:]) {
+		meta = pageSize
+	}
+	root := int(binary.LittleEndian.Uint64(b[meta+32:])) * pageSize
+	binary.LittleEndian.PutUint16(b[root+8:], 0xff) // page flags: no such page type
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStoreRecoversFromAPageBboltPanicsOn(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.db")
+	s := openTestStore(t, path)
+	if _, err := s.Update(func(c *Settings) { c.Quality = 85 }); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	corruptRootPage(t, path)
+	if got := openTestStore(t, path).Get(); got != Default(1800) {
+		t.Fatalf("expected defaults after recovering, got %s", got)
+	}
+	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 1 {
+		t.Fatalf("corrupt file should be kept aside, found %v", matches)
 	}
 }

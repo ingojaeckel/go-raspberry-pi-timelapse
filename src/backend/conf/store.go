@@ -44,8 +44,15 @@ func OpenStore(path string, defaults Settings) (*Store, error) {
 	}
 	s := &Store{db: db}
 	current, err := s.initialSettings(defaults)
-	if err != nil {
+	if errors.Is(err, errCorruptPage) { // the file opened, but its pages are damaged
 		db.Close()
+		if s.db, err = replaceDB(path, err); err != nil {
+			return nil, fmt.Errorf("open settings: %w", err)
+		}
+		current, err = s.initialSettings(defaults)
+	}
+	if err != nil {
+		s.db.Close()
 		return nil, fmt.Errorf("save settings: %w", err)
 	}
 	s.current.Store(&current)
@@ -61,6 +68,12 @@ func openOrReplaceDB(path string) (*bolt.DB, error) {
 	if err == nil || !isCorrupt(err) {
 		return db, err
 	}
+	return replaceDB(path, err)
+}
+
+// replaceDB moves the unreadable database at path aside and creates a new
+// one; err is why it is unreadable.
+func replaceDB(path string, err error) (*bolt.DB, error) {
 	aside := fmt.Sprintf("%s.corrupt-%d", path, time.Now().Unix())
 	slog.Error("settings database is unreadable, starting with defaults", "path", path, "movedTo", aside, "err", err)
 	if rerr := os.Rename(path, aside); rerr != nil {
@@ -73,6 +86,9 @@ func openOrReplaceDB(path string) (*bolt.DB, error) {
 // and saves them back if they had to be repaired.
 func (s *Store) initialSettings(defaults Settings) (Settings, error) {
 	loaded, err := s.load()
+	if errors.Is(err, errCorruptPage) {
+		return Settings{}, err // writing to the file would panic too
+	}
 	if err != nil {
 		slog.Warn("no usable saved settings, using defaults", "err", err)
 		normalized := defaults.Normalized()
@@ -163,11 +179,14 @@ func (s *Store) put(v Settings) error {
 	})
 }
 
+// errCorruptPage is a page bbolt panicked on while reading the settings.
+var errCorruptPage = errors.New("settings database is damaged")
+
 func (s *Store) load() (v Settings, err error) {
 	defer func() {
 		// bbolt panics on some forms of page corruption.
 		if r := recover(); r != nil {
-			err = fmt.Errorf("reading settings: %v", r)
+			err = fmt.Errorf("%w: %v", errCorruptPage, r)
 		}
 	}()
 	err = s.db.View(func(tx *bolt.Tx) error {
