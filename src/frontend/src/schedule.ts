@@ -1,4 +1,5 @@
 import type { Settings } from './api';
+import { nextSunrise, sunUp } from './sun';
 
 type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'>;
 
@@ -61,4 +62,23 @@ export function captureSlots(s: Schedule): number[] | null {
 export function capturesPerDay(s: Schedule): number {
   if (!isValidInterval(s.SecondsBetweenCaptures)) return 0;
   return 86400 / s.SecondsBetweenCaptures;
+}
+
+type NightSchedule = Schedule & Partial<Pick<Settings, 'SkipNightPhotos' | 'Latitude' | 'Longitude'>>;
+
+/**
+ * When the camera takes its next photo. With nights skipped, a slot at night
+ * moves to the first slot at or after sunrise, as in the scheduler
+ * (timelapse.Scheduler afterNight); `night` says so. Null when captures are not
+ * aligned to the hour, the schedule is invalid, or there is no sunrise within a year.
+ */
+export function nextCapture(s: NightSchedule, now: Date): { at: Date; night: boolean } | null {
+  const wait = secondsToNextCapture(s, now);
+  if (wait === null) return null;
+  const at = new Date(now.getTime() + wait * 1000);
+  const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = s;
+  if (!SkipNightPhotos || sunUp(at, lat, lon)) return { at, night: false };
+  const rise = nextSunrise(at, lat, lon);
+  if (!rise) return null;
+  return { at: new Date(rise.getTime() + (secondsToNextCapture(s, rise) ?? 0) * 1000), night: true };
 }

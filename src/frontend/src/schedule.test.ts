@@ -1,5 +1,7 @@
+import { nextSunrise } from './sun';
 import {
   VALID_INTERVALS,
+  nextCapture,
   captureSlots,
   capturesPerDay,
   formatInterval,
@@ -62,5 +64,37 @@ describe('captureSlots', () => {
     expect(capturesPerDay(halfHourly)).toBe(48);
     expect(capturesPerDay({ SecondsBetweenCaptures: 600, OffsetWithinHour: -1 })).toBe(144);
     expect(capturesPerDay({ SecondsBetweenCaptures: 1000, OffsetWithinHour: -1 })).toBe(0);
+  });
+});
+
+describe('nextCapture', () => {
+  const london = { SecondsBetweenCaptures: 120, OffsetWithinHour: 0, SkipNightPhotos: true, Latitude: 51.5074, Longitude: -0.1278 };
+
+  it('is the next slot during the day', () => {
+    expect(nextCapture(london, new Date('2026-06-21T12:11:00Z'))).toEqual({
+      at: new Date('2026-06-21T12:12:00Z'),
+      night: false,
+    });
+  });
+
+  it('is the first slot after sunrise at night, like the camera', () => {
+    const now = new Date('2026-06-21T23:11:00Z');
+    const rise = nextSunrise(now, london.Latitude, london.Longitude)!;
+    const next = nextCapture(london, now)!;
+    expect(next.night).toBe(true);
+    expect(next.at.getTime()).toBeGreaterThanOrEqual(rise.getTime());
+    expect(next.at.getTime() - rise.getTime()).toBeLessThan(120_000);
+    expect(next.at.getTime() % 120_000).toBe(0);
+  });
+
+  it('is the next slot at night when night photos are taken', () => {
+    expect(nextCapture({ ...london, SkipNightPhotos: false }, new Date('2026-06-21T23:11:00Z'))).toEqual({
+      at: new Date('2026-06-21T23:12:00Z'),
+      night: false,
+    });
+  });
+
+  it('is null when captures are not aligned to the hour', () => {
+    expect(nextCapture({ ...london, OffsetWithinHour: -1 }, new Date('2026-06-21T23:11:00Z'))).toBeNull();
   });
 });

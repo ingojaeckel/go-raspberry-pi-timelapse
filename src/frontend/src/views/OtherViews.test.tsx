@@ -164,4 +164,16 @@ describe('App', () => {
     render(<App />);
     expect(await screen.findByText('Next shot')).toBeInTheDocument();
   });
+
+  it('shows when the next shot is taken after a skipped night, not a countdown', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-21T23:11:00Z'));
+    const night = { ...settings, SecondsBetweenCaptures: 120, OffsetWithinHour: 0, SkipNightPhotos: true, Latitude: 51.5074, Longitude: -0.1278 };
+    mockServer({ 'GET /configuration': () => json(night) });
+    render(<App />);
+    const pill = (await screen.findByText('Next shot')).closest('.next-pill')!;
+    await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^at \d\d:\d\d$/));
+    expect(pill).toHaveAttribute('title', expect.stringMatching(/^Nights are skipped: photos resume at \d\d:\d\d$/));
+    vi.useRealTimers();
+  });
 });

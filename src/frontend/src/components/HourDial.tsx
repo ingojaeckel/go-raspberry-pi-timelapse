@@ -1,17 +1,22 @@
 import type { Settings } from '../api';
 import { formatClock, formatCountdown, formatDuration, formatPastHour } from '../format';
-import { captureSlots, secondsToNextCapture } from '../schedule';
+import { captureSlots, isAligned, nextCapture, secondsToNextCapture } from '../schedule';
 import { nextSunrise, sunUp } from '../sun';
 
 type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'> &
   Partial<Pick<Settings, 'SkipNightPhotos' | 'Latitude' | 'Longitude'>>;
 
-/** With nights skipped, the sunrise the next capture waits for if it falls at night (like the camera's scheduler). */
-function resumesAt(schedule: Schedule, now: Date, wait: number | null): Date | null {
+/**
+ * With nights skipped, when photos resume if the next capture falls at night:
+ * the first aligned slot after sunrise, or sunrise itself for unaligned captures
+ * (like the camera's scheduler).
+ */
+function resumesAt(schedule: Schedule, now: Date): Date | null {
+  const next = nextCapture(schedule, now);
+  if (next) return next.night ? next.at : null;
   const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = schedule;
-  if (!SkipNightPhotos) return null;
-  const next = new Date(now.getTime() + (wait ?? 0) * 1000);
-  return sunUp(next, lat, lon) ? null : nextSunrise(next, lat, lon);
+  if (!SkipNightPhotos || isAligned(schedule) || sunUp(now, lat, lon)) return null;
+  return nextSunrise(now, lat, lon);
 }
 
 interface Props {
@@ -34,7 +39,7 @@ function polar(secondsIntoHour: number, radius: number): [number, number] {
 export function HourDial({ schedule, now, label }: Props) {
   const slots = captureSlots(schedule);
   const wait = secondsToNextCapture(schedule, now);
-  const resume = resumesAt(schedule, now, wait);
+  const resume = resumesAt(schedule, now);
   const into = now.getMinutes() * 60 + now.getSeconds();
   const dense = slots !== null && slots.length > 90;
   const [hx, hy] = polar(into, R - 16);

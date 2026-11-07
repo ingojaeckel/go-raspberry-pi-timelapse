@@ -1,8 +1,8 @@
 import { api } from './api';
 import { Icon, type IconName } from './components/Icon';
-import { formatCountdown } from './format';
+import { formatClock, formatCountdown } from './format';
 import { useNow, useResource, useRoute, type Route } from './hooks';
-import { secondsToNextCapture } from './schedule';
+import { nextCapture } from './schedule';
 import { LogsView } from './views/LogsView';
 import { PhotosView } from './views/PhotosView';
 import { PreviewView } from './views/PreviewView';
@@ -21,7 +21,8 @@ export function App() {
   const route = useRoute();
   const settings = useResource((signal) => api.settings(signal));
   const now = useNow();
-  const wait = settings.data ? secondsToNextCapture(settings.data, now) : null;
+  const next = settings.data ? nextCapture(settings.data, now) : null;
+  const wait = next && Math.max(0, Math.round((next.at.getTime() - now.getTime()) / 1000));
 
   return (
     <div className="shell">
@@ -34,9 +35,13 @@ export function App() {
           </svg>
           Timelapse
         </a>
-        {wait !== null && (
-          <span className="next-pill" aria-live="off">
-            Next shot <strong>{wait === 0 ? 'now' : formatCountdown(wait)}</strong>
+        {next && (
+          <span
+            className="next-pill"
+            aria-live="off"
+            title={next.night ? `Nights are skipped: photos resume at ${formatClock(next.at)}` : undefined}
+          >
+            Next shot <strong>{next.night ? `at ${formatClock(next.at)}` : wait === 0 ? 'now' : formatCountdown(wait!)}</strong>
           </span>
         )}
       </header>
