@@ -22,6 +22,9 @@ TimeoutStopSec=20
 # binary must be built from the same commit as this file (src/backend/watchdog.go).
 WatchdogSec=2min
 NotifyAccess=main
+# Lets the web UI set the clock (POST /admin/time): a Pi without a clock
+# module and without network time loses time at every power cut.
+AmbientCapabilities=CAP_SYS_TIME
 
 [Install]
 WantedBy=multi-user.target

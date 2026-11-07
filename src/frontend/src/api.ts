@@ -19,18 +19,49 @@ export interface Settings {
   PreviewResolutionHeight: number;
   /** 0 or 180. */
   RotateBy: number;
-  /** 0: 3280x2464, 1: 2186x1642, 2: 1640x1232 */
+  /** 0: 3280x2464, 1: 2186x1642, 2: 1640x1232 (4:3; a 16:9 sensor is cropped to 4:3) */
   ResolutionSetting: number;
   Quality: number;
   DebugEnabled: boolean;
+  /** When the card is full: true stops taking photos, false deletes the oldest ones. */
+  StopWhenDiskFull: boolean;
 }
 
-export interface Monitoring {
+/** Command output, or the error message if the command failed. */
+export interface MonitoringOutput {
   Time: string;
   Uptime: string;
   CpuTemperature: string;
   GpuTemperature: string;
   FreeDiskSpace: string;
+}
+
+export interface Monitoring extends MonitoringOutput {
+  /** The camera's clock. */
+  UnixMillis: number;
+  /** Under-voltage and throttling reported by the firmware. */
+  Power: { Now: string[]; SinceBoot: string[]; Error?: string };
+  CPU: { Governor: string; CurrentMHz: number; MinMHz: number; MaxMHz: number; Error?: string };
+  Storage: Storage;
+}
+
+/** The photo folder's disk. */
+export interface Storage {
+  FreeBytes: number;
+  /** Kept free: the disk counts as full below this. */
+  ReserveBytes: number;
+  Photos: number;
+  PhotoBytes: number;
+  StopWhenDiskFull: boolean;
+  /** Photos deleted to make room since the camera started. */
+  DeletedOldest: number;
+  Error?: string;
+}
+
+export interface SetTimeResult {
+  UnixMillis: number;
+  /** Empty without a clock module, "updated", or why it was not. */
+  RTC: string;
 }
 
 export interface Photo {
@@ -119,6 +150,14 @@ export const api = {
   },
   monitoring(signal?: AbortSignal): Promise<Monitoring> {
     return json<Monitoring>('/monitoring', { signal });
+  },
+  /** Sets the camera's clock, normally to this device's. */
+  setTime(unixMillis: number): Promise<SetTimeResult> {
+    return json<SetTimeResult>('/admin/time', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ UnixMillis: unixMillis }),
+    });
   },
   async logs(signal?: AbortSignal): Promise<string> {
     const r = await json<LogResponse>('/logs', { signal });

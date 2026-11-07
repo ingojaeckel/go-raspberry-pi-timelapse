@@ -37,6 +37,7 @@ func applyEditable(c *conf.Settings, req conf.Settings) {
 	c.RotateBy = req.RotateBy
 	c.ResolutionSetting = req.ResolutionSetting
 	c.DebugEnabled = req.DebugEnabled
+	c.StopWhenDiskFull = req.StopWhenDiskFull
 }
 
 // updateErrorStatus is 400 for invalid settings and 500 for anything else.

@@ -135,7 +135,7 @@ func (c cancellingCamera) Capture(ctx context.Context, _ string, _ Options) (str
 func TestRetriesStopWhenTheCaptureWasCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	var attempts int
-	s := &Scheduler{Settings: &fakeSettings{}, Retries: 5, BeforeCapture: func() { attempts++ }}
+	s := &Scheduler{Settings: &fakeSettings{}, Retries: 5, BeforeCapture: func() error { attempts++; return nil }}
 	s.Camera = cancellingCamera{cancel: cancel}
 	s.captureWithRetries(ctx)
 	if attempts != 1 {

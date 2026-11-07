@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the CPU at its lowest clock to save power
+# See /usr/local/sbin/timelapse-cpufreq and docs/installer.md. To let the CPU
+# speed up again: sudo systemctl disable --now timelapse-cpufreq, then reboot.
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/timelapse-cpufreq
+
+[Install]
+WantedBy=multi-user.target

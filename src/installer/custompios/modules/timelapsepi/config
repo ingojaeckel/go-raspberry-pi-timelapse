@@ -5,3 +5,16 @@
 # or ds1307. Empty: the image has the dtoverlay line in config.txt commented
 # out, so it can still be enabled later by editing the boot partition.
 [ -n "$TIMELAPSEPI_RTC" ] || TIMELAPSEPI_RTC=
+
+# Power profile, see docs/installer.md:
+#   remote  for unattended deployments: HDMI off to save power.
+#   bench   for the lab bench and development: HDMI on, so a monitor shows
+#           the console for debugging.
+# Both turn off Bluetooth, onboard audio and services the camera never uses.
+[ -n "$TIMELAPSEPI_PROFILE" ] || TIMELAPSEPI_PROFILE=remote
+
+# Time zone of the Pi, a name below /usr/share/zoneinfo. Photo file names use
+# it, and photos aligned to the hour follow its hours. UTC by default: no
+# daylight saving time, so no hour is skipped or repeated twice a year. The
+# web UI shows times in the browser's time zone either way.
+[ -n "$TIMELAPSEPI_TIMEZONE" ] || TIMELAPSEPI_TIMEZONE=Etc/UTC

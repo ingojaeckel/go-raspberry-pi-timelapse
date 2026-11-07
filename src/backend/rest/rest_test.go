@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -38,21 +39,44 @@ func (c *fakeCamera) Capture(_ context.Context, dir string, o timelapse.Options)
 }
 
 type commands struct {
-	mu  sync.Mutex
-	ran [][]string
+	mu      sync.Mutex
+	ran     [][]string
+	hwclock func() ([]byte, error)
 }
 
 func (c *commands) run(_ context.Context, name string, args ...string) ([]byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ran = append(c.ran, append([]string{name}, args...))
-	if name == "/bin/date" {
+	switch {
+	case name == "/bin/date":
 		return []byte("Mon Nov  2 10:00:00 UTC 2026\n"), nil
+	case strings.HasSuffix(name, "vcgencmd") && slices.Equal(args, []string{"get_throttled"}):
+		return []byte("throttled=0x50005\n"), nil
+	case name == "/usr/bin/sudo" && len(args) > 1 && args[1] == "/usr/sbin/hwclock":
+		return c.hwclock()
 	}
 	return nil, errors.New(name + " not available")
 }
 
+type fakeClock struct {
+	mu   sync.Mutex
+	sets []time.Time
+	err  error
+}
+
+func (c *fakeClock) set(t time.Time) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.err != nil {
+		return c.err
+	}
+	c.sets = append(c.sets, t)
+	return nil
+}
+
 type env struct {
+	clock    *fakeClock
 	srv      *Server
 	url      string
 	folder   string
@@ -70,18 +94,25 @@ func newEnv(t testing.TB) *env {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	e := &env{store: store, folder: filepath.Join(dir, "photos"), camera: &fakeCamera{}, commands: &commands{}}
+	e := &env{store: store, folder: filepath.Join(dir, "photos"), camera: &fakeCamera{}, clock: &fakeClock{},
+		commands: &commands{hwclock: func() ([]byte, error) { return nil, nil }}}
 	os.Mkdir(e.folder, 0o700)
 	os.Mkdir(filepath.Join(dir, "tmp"), 0o700)
 	e.srv = &Server{
-		Settings:    store,
-		Camera:      e.camera,
-		Photos:      files.NewIndex(e.folder),
-		TempFolder:  filepath.Join(dir, "tmp"),
-		LogFile:     filepath.Join(dir, "app.log"),
-		ThermalFile: filepath.Join(dir, "temp"),
-		Version:     "test-v1",
-		Run:         e.commands.run,
+		Settings:      store,
+		Camera:        e.camera,
+		Photos:        files.NewIndex(e.folder),
+		TempFolder:    filepath.Join(dir, "tmp"),
+		LogFile:       filepath.Join(dir, "app.log"),
+		ThermalFile:   filepath.Join(dir, "temp"),
+		CPUFreqDir:    filepath.Join(dir, "cpufreq"),
+		Version:       "test-v1",
+		Run:           e.commands.run,
+		FreeBytes:     func(string) (uint64, error) { return 3 << 30, nil },
+		ReserveBytes:  256 << 20,
+		DeletedOldest: func() int { return 7 },
+		SetClock:      e.clock.set,
+		RTCDevice:     filepath.Join(dir, "rtc0"), // absent unless a test creates it
 	}
 	mux := http.NewServeMux()
 	e.srv.Register(mux)
@@ -163,11 +194,11 @@ func TestGetConfiguration(t *testing.T) {
 
 func TestUpdateConfiguration(t *testing.T) {
 	e := newEnv(t)
-	body := `{"SecondsBetweenCaptures":600,"OffsetWithinHour":300,"Quality":85,"ResolutionSetting":2,"RotateBy":180,"DebugEnabled":true,"PreviewResolutionWidth":1}`
+	body := `{"SecondsBetweenCaptures":600,"OffsetWithinHour":300,"Quality":85,"ResolutionSetting":2,"RotateBy":180,"DebugEnabled":true,"StopWhenDiskFull":true,"PreviewResolutionWidth":1}`
 	res, out := do(t, "POST", e.url+"/configuration", body)
 	wantStatus(t, res, out, 200)
 	got := e.store.Get()
-	if got.SecondsBetweenCaptures != 600 || got.OffsetWithinHour != 300 || got.Quality != 85 || got.RotateBy != 180 || !got.DebugEnabled {
+	if got.SecondsBetweenCaptures != 600 || got.OffsetWithinHour != 300 || got.Quality != 85 || got.RotateBy != 180 || !got.DebugEnabled || !got.StopWhenDiskFull {
 		t.Fatalf("stored %s", got)
 	}
 	if got.PhotoResolutionWidth != 1640 || got.PhotoResolutionHeight != 1232 {
@@ -482,6 +513,135 @@ func TestMonitoring(t *testing.T) {
 	json.Unmarshal([]byte(body), &got)
 	if got.CpuTemperature != "48312\n" || !strings.HasPrefix(got.Time, "Mon Nov") || !strings.Contains(got.Uptime, "not available") {
 		t.Fatalf("got %+v", got)
+	}
+	if d := time.Since(time.UnixMilli(got.UnixMillis)); d < 0 || d > time.Minute {
+		t.Fatalf("UnixMillis %d is not the current time", got.UnixMillis)
+	}
+	if want := []string{"under-voltage", "throttled"}; !slices.Equal(got.Power.Now, want) || !slices.Equal(got.Power.SinceBoot, want) || got.Power.Error != "" {
+		t.Fatalf("power %+v", got.Power)
+	}
+	if got.CPU.Error == "" {
+		t.Fatalf("cpu %+v: want an error without cpufreq", got.CPU)
+	}
+}
+
+func TestMonitoringReportsCPUFrequency(t *testing.T) {
+	e := newEnv(t)
+	os.Mkdir(e.srv.CPUFreqDir, 0o700)
+	for name, v := range map[string]string{"scaling_governor": "powersave", "scaling_cur_freq": "600000", "scaling_min_freq": "600000", "scaling_max_freq": "1000000"} {
+		os.WriteFile(filepath.Join(e.srv.CPUFreqDir, name), []byte(v+"\n"), 0o600)
+	}
+	_, body := do(t, "GET", e.url+"/monitoring", "")
+	var got MonitoringResponse
+	json.Unmarshal([]byte(body), &got)
+	if got.CPU.Governor != "powersave" || got.CPU.CurrentMHz != 600 || got.CPU.MaxMHz != 1000 || got.CPU.Error != "" {
+		t.Fatalf("cpu %+v", got.CPU)
+	}
+}
+
+func TestMonitoringReportsStorage(t *testing.T) {
+	e := newEnv(t)
+	e.photo(t, "a.jpg", "12345", time.Hour)
+	e.photo(t, "b.jpg", "123", 0)
+	e.store.Update(func(s *conf.Settings) { s.StopWhenDiskFull = true })
+	_, body := do(t, "GET", e.url+"/monitoring", "")
+	var got MonitoringResponse
+	json.Unmarshal([]byte(body), &got)
+	want := StorageStatus{FreeBytes: 3 << 30, ReserveBytes: 256 << 20, Photos: 2, PhotoBytes: 8, StopWhenDiskFull: true, DeletedOldest: 7}
+	if got.Storage != want {
+		t.Fatalf("storage %+v, want %+v", got.Storage, want)
+	}
+
+	e.srv.FreeBytes = func(string) (uint64, error) { return 0, errors.New("statfs failed") }
+	_, body = do(t, "GET", e.url+"/monitoring", "")
+	json.Unmarshal([]byte(body), &got)
+	if got.Storage.Error != "statfs failed" || got.Storage.Photos != 2 {
+		t.Fatalf("storage %+v", got.Storage)
+	}
+	os.RemoveAll(e.folder)
+	_, body = do(t, "GET", e.url+"/monitoring", "")
+	json.Unmarshal([]byte(body), &got)
+	if got.Storage.Error == "" {
+		t.Fatalf("storage %+v: want an error without the photo folder", got.Storage)
+	}
+}
+
+func TestMonitoringWithoutVcgencmd(t *testing.T) {
+	e := newEnv(t)
+	e.srv.Run = func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("no vcgencmd") }
+	_, body := do(t, "GET", e.url+"/monitoring", "")
+	var got MonitoringResponse
+	json.Unmarshal([]byte(body), &got)
+	if got.Power.Error != "no vcgencmd" || got.Power.Now == nil || got.Power.SinceBoot == nil {
+		t.Fatalf("power %+v", got.Power)
+	}
+}
+
+func TestSetTime(t *testing.T) {
+	e := newEnv(t)
+	want := time.Date(2026, 11, 7, 9, 30, 0, 0, time.UTC)
+	res, body := do(t, "POST", e.url+"/admin/time", fmt.Sprintf(`{"UnixMillis":%d}`, want.UnixMilli()))
+	wantStatus(t, res, body, 200)
+	if len(e.clock.sets) != 1 || !e.clock.sets[0].Equal(want) {
+		t.Fatalf("clock set to %v, want %v", e.clock.sets, want)
+	}
+	var got SetTimeResponse
+	json.Unmarshal([]byte(body), &got)
+	if got.RTC != "" || got.UnixMillis == 0 {
+		t.Fatalf("without a clock module: %+v", got)
+	}
+	if slices.ContainsFunc(e.commands.ran, func(c []string) bool { return slices.Contains(c, "/usr/sbin/hwclock") }) {
+		t.Fatal("ran hwclock without a clock module")
+	}
+}
+
+func TestSetTimeUpdatesTheClockModule(t *testing.T) {
+	e := newEnv(t)
+	os.WriteFile(e.srv.RTCDevice, nil, 0o600)
+	body := fmt.Sprintf(`{"UnixMillis":%d}`, time.Date(2026, 11, 7, 9, 30, 0, 0, time.UTC).UnixMilli())
+	res, out := do(t, "POST", e.url+"/admin/time", body)
+	wantStatus(t, res, out, 200)
+	var got SetTimeResponse
+	json.Unmarshal([]byte(out), &got)
+	if got.RTC != "updated" {
+		t.Fatalf("RTC %q", got.RTC)
+	}
+	// Exactly the command sudoers allows.
+	wantCmd := []string{"/usr/bin/sudo", "-n", "/usr/sbin/hwclock", "--rtc=" + e.srv.RTCDevice, "--systohc", "--utc"}
+	if !slices.ContainsFunc(e.commands.ran, func(c []string) bool { return slices.Equal(c, wantCmd) }) {
+		t.Fatalf("ran %v, want %v", e.commands.ran, wantCmd)
+	}
+
+	e.commands.hwclock = func() ([]byte, error) { return []byte("hwclock: ioctl failed"), errors.New("exit status 1") }
+	res, out = do(t, "POST", e.url+"/admin/time", body)
+	wantStatus(t, res, out, 200) // the system clock was set
+	json.Unmarshal([]byte(out), &got)
+	if !strings.Contains(got.RTC, "not updated") || !strings.Contains(got.RTC, "ioctl failed") {
+		t.Fatalf("RTC %q", got.RTC)
+	}
+}
+
+func TestSetTimeRejectsBadRequests(t *testing.T) {
+	e := newEnv(t)
+	for _, body := range []string{"", "{", `{"UnixMillis":0}`, `{"UnixMillis":1}`, fmt.Sprintf(`{"UnixMillis":%d}`, time.Date(2200, 1, 1, 0, 0, 0, 0, time.UTC).UnixMilli())} {
+		res, out := do(t, "POST", e.url+"/admin/time", body)
+		wantStatus(t, res, out, 400)
+	}
+	if len(e.clock.sets) != 0 {
+		t.Fatalf("clock set to %v", e.clock.sets)
+	}
+	// Like every POST, not from other websites.
+	res, out := do(t, "POST", e.url+"/admin/time", `{"UnixMillis":1794000000000}`, "Origin", "https://evil.example.com", "Sec-Fetch-Site", "cross-site")
+	wantStatus(t, res, out, 403)
+}
+
+func TestSetTimeFails(t *testing.T) {
+	e := newEnv(t)
+	e.clock.err = errors.New("operation not permitted")
+	res, out := do(t, "POST", e.url+"/admin/time", `{"UnixMillis":1794000000000}`)
+	wantStatus(t, res, out, 500)
+	if !strings.Contains(out, "setting the clock: operation not permitted") {
+		t.Fatalf("body %s", out)
 	}
 }
 

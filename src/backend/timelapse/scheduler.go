@@ -39,8 +39,12 @@ type Scheduler struct {
 	// after a failed capture, RetryDelay apart.
 	Retries    int
 	RetryDelay time.Duration
-	// BeforeCapture, if set, runs before every attempt (e.g. to free disk space).
-	BeforeCapture func()
+	// BeforeCapture, if set, runs before every attempt (e.g. to free disk
+	// space). An error skips the slot without retrying (e.g. the disk is full
+	// and photos must not be deleted).
+	BeforeCapture func() error
+	// Captured, if set, runs after every slot with nil or the last error.
+	Captured func(err error)
 	// Location defines the hours captures are aligned to; nil means time.Local.
 	Location *time.Location
 	// Heartbeat, if set, runs every time the loop wakes up: at least every
@@ -72,7 +76,10 @@ func (s *Scheduler) Run(ctx context.Context) {
 			continue
 		}
 		anchor, lastSlot = next, next
-		s.captureWithRetries(ctx)
+		err := s.captureWithRetries(ctx)
+		if s.Captured != nil && ctx.Err() == nil {
+			s.Captured(err)
+		}
 	}
 }
 
@@ -101,11 +108,16 @@ func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) tim
 }
 
 // nextUnaligned is one interval after anchor. If the clock moved backwards,
-// it waits at most one interval from now.
+// it waits at most one interval from now. If that time has long passed (the
+// clock was set forward, or a capture with retries took longer than the
+// interval), it is now: one capture, not one for every missed interval.
 func nextUnaligned(now, anchor time.Time, interval time.Duration) time.Time {
 	next := anchor.Add(interval)
 	if limit := now.Add(interval); next.After(limit) {
 		return limit
+	}
+	if now.Sub(next) > lateTolerance {
+		return now
 	}
 	return next
 }
@@ -128,27 +140,31 @@ func (s *Scheduler) location() *time.Location {
 	return time.Local
 }
 
-// captureWithRetries tries up to 1+Retries times, RetryDelay apart.
-func (s *Scheduler) captureWithRetries(ctx context.Context) {
+// captureWithRetries tries up to 1+Retries times, RetryDelay apart, and
+// returns the last error.
+func (s *Scheduler) captureWithRetries(ctx context.Context) (err error) {
 	for attempt := range s.Retries + 1 {
 		if attempt > 0 && !sleepCtx(ctx, s.RetryDelay) {
-			return
+			return ctx.Err()
 		}
-		err := s.captureOnce(ctx)
-		if err == nil {
-			return
+		if s.BeforeCapture != nil {
+			if err := s.BeforeCapture(); err != nil {
+				slog.Error("skipping capture", "err", err)
+				return err
+			}
+		}
+		if err = s.captureOnce(ctx); err == nil {
+			return nil
 		}
 		slog.Error("capture failed", "attempt", attempt+1, "of", s.Retries+1, "err", err)
 		if ctx.Err() != nil {
-			return
+			return err
 		}
 	}
+	return err
 }
 
 func (s *Scheduler) captureOnce(ctx context.Context) error {
-	if s.BeforeCapture != nil {
-		s.BeforeCapture()
-	}
 	started := time.Now()
 	path, err := s.Camera.Capture(ctx, s.Folder, PhotoOptions(s.Settings.Get()))
 	if err == nil {

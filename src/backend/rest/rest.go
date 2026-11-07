@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
@@ -35,9 +36,22 @@ type Server struct {
 	LogFile string
 	// ThermalFile holds the CPU temperature in millidegrees Celsius.
 	ThermalFile string
-	Version     string
+	// CPUFreqDir holds the CPU frequency scaling state (health.CPUFreqDir).
+	CPUFreqDir string
+	Version    string
 	// Run executes system commands (monitoring, shutdown, restart).
 	Run func(ctx context.Context, name string, args ...string) ([]byte, error)
+	// FreeBytes reports the free space of the file system holding dir
+	// (files.FreeBytes); ReserveBytes is the free space kept (-minFreeDiskMB).
+	FreeBytes    func(dir string) (uint64, error)
+	ReserveBytes uint64
+	// DeletedOldest, if set, counts the photos deleted to free disk space.
+	DeletedOldest func() int
+	// SetClock sets the system clock (SetSystemClock).
+	SetClock func(time.Time) error
+	// RTCDevice is the battery-backed clock module, written after the clock
+	// is set if it exists. sudoers allows hwclock for /dev/rtc0 only.
+	RTCDevice string
 
 	photosMu    sync.Mutex
 	photosCache *cachedPhotos
@@ -61,6 +75,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /logs", s.logs)
 	mux.HandleFunc("POST /admin/shutdown", s.command("/usr/bin/sudo", "/sbin/shutdown", "-h", "now"))
 	mux.HandleFunc("POST /admin/restart", s.command("/usr/bin/sudo", "/sbin/shutdown", "-r", "now"))
+	mux.HandleFunc("POST /admin/time", s.setTime)
 }
 
 func (s *Server) version(w http.ResponseWriter, _ *http.Request) {

@@ -11,13 +11,16 @@ const (
 	DefaultCaptureRetries         = 2
 	DefaultMinFreeDiskMB          = 256
 
-	MaxFileSizeBytes = 100485760 // 100 MB
+	MaxFileSizeBytes = 100 << 20 // largest file served as a download
 	TempFilesFolder  = "/tmp"
 
-	// SettingsFile and LogFile are relative to the working directory
-	// (WorkingDirectory in timelapse.service).
-	SettingsFile   = "timelapse-settings.db"
-	LogFile        = "timelapse.log"
+	// SettingsFile, LogFile and RunMarkerFile are relative to the working
+	// directory (WorkingDirectory in timelapse.service).
+	SettingsFile = "timelapse-settings.db"
+	LogFile      = "timelapse.log"
+	// RunMarkerFile exists while the app runs; finding it at start-up means
+	// the previous run did not stop cleanly (see health.StartRun).
+	RunMarkerFile  = "timelapse.running"
 	LogFileMaxSize = 10 << 20 // bytes before the log is rotated to LogFile.1
 
 	HeaderContentType        = "Content-Type"

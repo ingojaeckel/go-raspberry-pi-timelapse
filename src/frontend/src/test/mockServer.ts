@@ -12,6 +12,7 @@ export const settings: Settings = {
   ResolutionSetting: 1,
   Quality: 100,
   DebugEnabled: false,
+  StopWhenDiskFull: false,
 };
 
 export const photos: Photo[] = [
@@ -27,6 +28,20 @@ export const monitoring: Monitoring = {
   GpuTemperature: "temp=51.0'C\n",
   FreeDiskSpace:
     'Filesystem      Size  Used Avail Use% Mounted on\n/dev/root        29G  4.1G   24G  15% /\n/dev/mmcblk0p1  253M   51M  202M  20% /boot/firmware\n',
+  // Same as the browser's clock unless a test changes it (Date.now() at load).
+  get UnixMillis() {
+    return Date.now();
+  },
+  Power: { Now: [], SinceBoot: [] },
+  CPU: { Governor: 'powersave', CurrentMHz: 600, MinMHz: 600, MaxMHz: 1000 },
+  Storage: {
+    FreeBytes: 24 * 1024 ** 3,
+    ReserveBytes: 256 * 1024 ** 2,
+    Photos: 3,
+    PhotoBytes: 7 * 1024 ** 2,
+    StopWhenDiskFull: false,
+    DeletedOldest: 0,
+  },
 };
 
 type Handler = (url: URL, init?: RequestInit) => Response | Promise<Response>;
@@ -47,6 +62,7 @@ export function mockServer(overrides: Record<string, Handler> = {}) {
     'DELETE /photos': () => json(3),
     'POST /admin/restart': () => new Response(null, { status: 204 }),
     'POST /admin/shutdown': () => new Response(null, { status: 204 }),
+    'POST /admin/time': (_u, init) => json({ UnixMillis: JSON.parse(String(init?.body)).UnixMillis, RTC: '' }),
     ...overrides,
   };
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

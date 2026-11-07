@@ -35,6 +35,9 @@ type Settings struct {
 	ResolutionSetting int
 	Quality           int
 	DebugEnabled      bool
+	// StopWhenDiskFull stops taking photos when the disk is full. By default
+	// (false) the oldest photos are deleted to make room, like a ring buffer.
+	StopWhenDiskFull bool
 }
 
 func (s Settings) String() string {
@@ -42,7 +45,10 @@ func (s Settings) String() string {
 	return string(b)
 }
 
-// resolutions maps ResolutionSetting to the photo size (Camera Module v2).
+// resolutions maps ResolutionSetting to the photo size: 4:3 sizes of the
+// Camera Module v2 (3280x2464 sensor). A sensor with another aspect ratio,
+// such as the 16:9 Camera Module 3, is cropped to 4:3 by rpicam-still
+// (libcamera crops to the requested aspect ratio rather than stretching).
 var resolutions = [...][2]int{
 	0: {3280, 2464}, // 8 MP
 	1: {2186, 1642}, // 3.5 MP

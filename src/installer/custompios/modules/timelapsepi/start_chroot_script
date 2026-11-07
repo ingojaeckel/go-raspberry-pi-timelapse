@@ -30,9 +30,44 @@ if [ -n "${TIMELAPSEPI_RTC}" ]; then
 else
   RTC_OVERLAY="#dtoverlay=i2c-rtc,pcf8523"
 fi
+
+# Power (see docs/installer.md): onboard audio and HDMI audio are off in every
+# profile; the remote profile also turns HDMI off. The KMS display driver
+# stays loaded either way: its overlay also reserves the memory (CMA) the
+# camera captures into.
+case "${TIMELAPSEPI_PROFILE}" in
+  remote)
+    KMS_OVERLAY="dtoverlay=vc4-kms-v3d,noaudio,nohdmi"
+    KMS_COMMENT="# Profile remote: HDMI off to save power. Delete ,nohdmi to turn it on for debugging."
+    ;;
+  bench)
+    KMS_OVERLAY="dtoverlay=vc4-kms-v3d,noaudio"
+    KMS_COMMENT="# Profile bench: HDMI on for debugging. Add ,nohdmi to turn it off and save power."
+    ;;
+  *)
+    echo "Error: TIMELAPSEPI_PROFILE must be remote or bench, not '${TIMELAPSEPI_PROFILE}'." >&2
+    exit 1
+    ;;
+esac
+# Edit the base image's lines in place; fail if they change, rather than
+# silently building an image that wastes power.
+for line in '^dtparam=audio=on$' '^dtoverlay=vc4-kms-v3d$'; do
+  if ! grep -q "${line}" "${BOOT_CONFIG}"; then
+    echo "Error: ${BOOT_CONFIG} has no line matching ${line}; update start_chroot_script." >&2
+    exit 1
+  fi
+done
+sed -i \
+  -e 's/^dtparam=audio=on$/dtparam=audio=off/' \
+  -e "s/^dtoverlay=vc4-kms-v3d\$/${KMS_COMMENT}\n${KMS_OVERLAY}/" \
+  "${BOOT_CONFIG}"
+
 cat >> "${BOOT_CONFIG}" <<EOF
 
 [all]
+# Bluetooth is never used; turning it off saves power and frees the UART.
+dtoverlay=disable-bt
+
 # Battery-backed real-time clock, see docs/installer.md. The access point has
 # no network time; without one, the clock restarts from the last time saved
 # before a power cut. Chips: pcf8523 (Adafruit PiRTC), ds3231, ds1307.
@@ -60,10 +95,26 @@ if [ ! -f /opt/timelapse/timelapse ]; then
   echo "Error: /opt/timelapse/timelapse is missing. Build the image with 'make image'." >&2
   exit 1
 fi
-chmod 755 /opt/timelapse/timelapse
+chmod 755 /opt/timelapse/timelapse /usr/local/sbin/timelapse-cpufreq
 chmod 440 /etc/sudoers.d/010_timelapse
 visudo -cf /etc/sudoers.d/010_timelapse
-systemctl enable timelapse.service
+systemctl enable timelapse.service timelapse-cpufreq.service
+
+# Time zone (the base image uses Europe/London).
+if [ ! -f "/usr/share/zoneinfo/${TIMELAPSEPI_TIMEZONE}" ]; then
+  echo "Error: TIMELAPSEPI_TIMEZONE=${TIMELAPSEPI_TIMEZONE} is not in /usr/share/zoneinfo." >&2
+  exit 1
+fi
+ln -sf "/usr/share/zoneinfo/${TIMELAPSEPI_TIMEZONE}" /etc/localtime
+echo "${TIMELAPSEPI_TIMEZONE}" > /etc/timezone
 
 # Other system setup:
 systemctl disable NetworkManager-wait-online.service
+# Services the camera never needs. Masked rather than disabled, because
+# bluetooth and ModemManager can also be started over D-Bus. Units missing
+# from the base image are skipped. Keep avahi-daemon: it serves the .local name.
+for unit in bluetooth.service hciuart.service ModemManager.service triggerhappy.service triggerhappy.socket; do
+  if [ -e "/usr/lib/systemd/system/${unit}" ]; then
+    systemctl mask "${unit}"
+  fi
+done

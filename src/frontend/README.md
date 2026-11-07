@@ -16,13 +16,13 @@ These must not change without changing `src/backend/main.go` and `src/backend/we
 
 - Output goes to `../backend/web/dist/` (Vite `outDir`), embedded by `src/backend/web` via `//go:embed dist`.
   `//go:embed` cannot reach outside its package, which is why the build is written into the backend.
-- Assets are served under `/static/frontend/build/` (Vite `base`, `frontendPath` in `main.go`).
+- Assets are served under `/static/frontend/build/` (Vite `base`, `frontendPath` in `src/backend/app.go`).
   This URL is independent of the on-disk location.
 - `GET /` redirects to `/static/frontend/build/index.html`.
 - API calls are same-origin. GET never changes state:
   `GET /photos`, `GET /file/:name`, `GET /file/last`, `GET /archive/{zip,tar}?f=…`, `GET /capture`,
   `GET|POST /configuration`, `GET /monitoring`, `GET /logs`, `GET /version`,
-  `DELETE /file?f=…` (selected photos), `DELETE /photos` (all photos), `POST /admin/{restart,shutdown}`.
+  `DELETE /file?f=…` (selected photos), `DELETE /photos` (all photos), `POST /admin/{restart,shutdown,time}` (`time` sets the camera clock).
   The server rejects cross-site POST/DELETE requests (`http.CrossOriginProtection`), sends no CORS headers,
   and only answers to local host names (IPs, `localhost`, `*.local`, …; more via `-allowedHosts`) to block DNS rebinding.
   Payload types live in `src/api.ts` and mirror `src/backend/rest/model.go` and `src/backend/conf/settings.go`.

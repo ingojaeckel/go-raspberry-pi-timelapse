@@ -313,6 +313,45 @@ export function SettingsView({ settings, error, onSaved }: Props) {
           </div>
         </fieldset>
 
+        <fieldset className="panel">
+          <legend>Storage</legend>
+          <div className="field">
+            <span className="label" id="full-label">When the card is full</span>
+            <div className="segmented" role="radiogroup" aria-labelledby="full-label">
+              <label>
+                <input
+                  type="radio"
+                  name="when-full"
+                  checked={!draft.StopWhenDiskFull}
+                  onChange={() => set('StopWhenDiskFull', false)}
+                />
+                <span>
+                  <strong>Delete oldest</strong>
+                  Keep taking photos
+                </span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="when-full"
+                  checked={draft.StopWhenDiskFull}
+                  onChange={() => set('StopWhenDiskFull', true)}
+                />
+                <span>
+                  <strong>Stop</strong>
+                  Keep every photo
+                </span>
+              </label>
+            </div>
+            <p className="help">
+              {draft.StopWhenDiskFull
+                ? 'The camera stops taking photos when the card is full, until photos are deleted.'
+                : 'The oldest photos are deleted to make room for new ones, so the card always holds the most recent ones.'}{' '}
+              Status shows how long until the card is full.
+            </p>
+          </div>
+        </fieldset>
+
         <div className="save-bar" data-dirty={dirty}>
           <span>{dirty ? (invalid ? 'Fix the highlighted fields to save.' : 'You have unsaved changes.') : 'All changes saved.'}</span>
           <div>

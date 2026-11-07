@@ -1,0 +1,28 @@
+#!/bin/sh
+# Sets the powersave governor on every CPU, which keeps the CPU at its lowest
+# clock: 600 MHz on a Pi Zero 2 W, 700 MHz on a Pi Zero W (arm_freq_min). A
+# photo takes a little longer to encode; the Pi idles between photos anyway.
+#
+# The governor cannot be chosen on the kernel command line: the Raspberry Pi
+# kernel builds the cpufreq driver and every governor as modules. udev loads
+# the driver during boot, so wait for it; writing the governor loads its
+# module. Run by timelapse-cpufreq.service.
+set -eu
+
+governor=powersave
+policies=${TIMELAPSE_CPUFREQ_DIR:-/sys/devices/system/cpu/cpufreq} # overridden by tests
+
+i=0
+until ls "$policies"/policy*/scaling_governor >/dev/null 2>&1; do
+  i=$((i + 1))
+  if [ "$i" -ge 60 ]; then
+    echo "No CPU frequency scaling after 60 seconds ($policies)" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+for policy in "$policies"/policy*; do
+  echo "$governor" > "$policy/scaling_governor"
+  echo "$(basename "$policy"): $(cat "$policy/scaling_governor"), $(($(cat "$policy/scaling_cur_freq") / 1000)) MHz"
+done

@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/health"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/logfile"
 )
 
@@ -23,15 +25,6 @@ func RunCommand(ctx context.Context, name string, args ...string) ([]byte, error
 	return cmd.CombinedOutput()
 }
 
-// vcgencmdPath finds vcgencmd: /usr/bin on current Raspberry Pi OS,
-// /opt/vc/bin on older releases.
-func vcgencmdPath() string {
-	if p, err := exec.LookPath("vcgencmd"); err == nil {
-		return p
-	}
-	return "/opt/vc/bin/vcgencmd"
-}
-
 // monitoring reports system status. Each field holds the command output, or
 // the error if it failed.
 func (s *Server) monitoring(w http.ResponseWriter, r *http.Request) {
@@ -39,11 +32,88 @@ func (s *Server) monitoring(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	writeJSON(w, http.StatusOK, MonitoringResponse{
 		Time:           s.output(ctx, "/bin/date"),
-		GpuTemperature: s.output(ctx, vcgencmdPath(), "measure_temp"),
+		GpuTemperature: s.output(ctx, health.VcgencmdPath(), "measure_temp"),
 		CpuTemperature: readOrError(s.ThermalFile),
 		Uptime:         s.output(ctx, "/usr/bin/uptime"),
 		FreeDiskSpace:  s.output(ctx, "/bin/df", "-h"),
+		UnixMillis:     time.Now().UnixMilli(),
+		Power:          s.power(ctx),
+		CPU:            s.cpu(),
+		Storage:        s.storage(),
 	})
+}
+
+func (s *Server) power(ctx context.Context) PowerStatus {
+	t, err := health.ReadThrottled(ctx, s.Run)
+	if err != nil {
+		return PowerStatus{Now: []string{}, SinceBoot: []string{}, Error: err.Error()}
+	}
+	return PowerStatus{Now: t.Now(), SinceBoot: t.SinceBoot()}
+}
+
+func (s *Server) cpu() CPUStatus {
+	c, err := health.ReadCPUFreq(s.CPUFreqDir)
+	if err != nil {
+		return CPUStatus{Error: err.Error()}
+	}
+	return CPUStatus{CPUFreq: c}
+}
+
+func (s *Server) storage() StorageStatus {
+	st := StorageStatus{ReserveBytes: s.ReserveBytes, StopWhenDiskFull: s.Settings.Get().StopWhenDiskFull}
+	if s.DeletedOldest != nil {
+		st.DeletedOldest = s.DeletedOldest()
+	}
+	list, err := s.Photos.List()
+	if err != nil {
+		st.Error = err.Error()
+		return st
+	}
+	st.Photos = len(list)
+	for _, f := range list {
+		st.PhotoBytes += f.Bytes
+	}
+	if st.FreeBytes, err = s.FreeBytes(s.Photos.Dir()); err != nil {
+		st.Error = err.Error()
+	}
+	return st
+}
+
+// Clocks outside this range are rejected: a browser can be wrong too.
+var (
+	minClock = time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	maxClock = time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)
+)
+
+// setTime sets the camera's clock, which a Pi without a clock module (and
+// no network time) loses at every power cut, and then the clock module if
+// there is one.
+func (s *Server) setTime(w http.ResponseWriter, r *http.Request) {
+	var req SetTimeRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	t := time.UnixMilli(req.UnixMillis)
+	if t.Before(minClock) || t.After(maxClock) {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("UnixMillis must be a time between %d and %d, got %v", minClock.Year(), maxClock.Year(), t.UTC()))
+		return
+	}
+	was := time.Now()
+	if err := s.SetClock(t); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("setting the clock: %w", err))
+		return
+	}
+	slog.Warn("clock set from the web UI", "was", was.Round(0), "now", t, "change", t.Sub(was.Round(0)).Round(time.Second))
+	res := SetTimeResponse{UnixMillis: time.Now().UnixMilli()}
+	if _, err := os.Stat(s.RTCDevice); err == nil { // never for ""
+		res.RTC = "updated"
+		if out, err := s.Run(r.Context(), "/usr/bin/sudo", "-n", "/usr/sbin/hwclock", "--rtc="+s.RTCDevice, "--systohc", "--utc"); err != nil {
+			res.RTC = fmt.Sprintf("not updated: %v %s", err, out)
+			slog.Warn("updating the clock module", "err", err, "output", string(out))
+		}
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 // output returns the output of a command, or its error message.

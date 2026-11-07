@@ -1,10 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
 import { LogsView } from './LogsView';
 import { PreviewView } from './PreviewView';
 import { StatusView } from './StatusView';
-import { json, mockServer, monitoring, settings } from '../test/mockServer';
+import { callsTo, json, mockServer, monitoring, settings } from '../test/mockServer';
 
 describe('StatusView', () => {
   it('turns raw Pi readings into something readable', async () => {
@@ -17,23 +17,100 @@ describe('StatusView', () => {
     expect(screen.getAllByText('24 GB').length).toBeGreaterThan(0);
     expect(screen.getByText('3 days, 2:01')).toBeInTheDocument();
     expect(screen.getByRole('meter')).toHaveAttribute('value', '15');
-    // 24 GB / ~2.33 MB average photo, at 48 photos a day
-    expect(screen.getByText(/Room for about 10,532 more photos \(219 days/)).toBeInTheDocument();
+    // (24 GB free - 256 MB kept free) / ~2.33 MB average photo, at 48 photos a day
+    expect(
+      screen.getByText(/Room for about 10,422 more photos \(217 days at the current schedule\), then the oldest photos are deleted/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Runs at 600 MHz \(powersave, 600–1000 MHz\)/)).toBeInTheDocument();
+    expect(screen.getByText('No under-voltage or throttling since the last restart.')).toBeInTheDocument();
+    expect(screen.queryByText(/clock/i)).not.toBeInTheDocument();
   });
 
   it('warns when the camera clock is wrong', async () => {
-    mockServer({ 'GET /monitoring': () => json({ ...monitoring, Time: 'Thu Jan  1 00:00:00 UTC 1970' }) });
+    mockServer({ 'GET /monitoring': () => json({ ...monitoring, UnixMillis: 0 }) });
     render(<StatusView settings={settings} />);
     expect(await screen.findByText(/clock thinks it is 1970/)).toBeInTheDocument();
+  });
+
+  it("sets the camera's clock to this device's time", async () => {
+    const f = mockServer({ 'GET /monitoring': () => json({ ...monitoring, UnixMillis: Date.now() - 3 * 86400_000 }) });
+    render(<StatusView settings={settings} />);
+    const user = userEvent.setup();
+    expect(await screen.findByText(/behind this device/)).toBeInTheDocument();
+    const before = Date.now();
+    await user.click(screen.getByRole('button', { name: "Set the camera's clock to this device's time" }));
+    expect(await screen.findByText(/Camera clock set\./)).toBeInTheDocument();
+    const sent = JSON.parse(String(callsTo(f, 'POST', '/admin/time')[0]![1]?.body)).UnixMillis;
+    expect(sent).toBeGreaterThanOrEqual(before);
+    expect(sent).toBeLessThanOrEqual(Date.now());
+  });
+
+  it('says when the clock module could not be updated', async () => {
+    mockServer({
+      'GET /monitoring': () => json({ ...monitoring, UnixMillis: 0 }),
+      'POST /admin/time': () => json({ UnixMillis: Date.now(), RTC: 'not updated: exit status 1' }),
+    });
+    render(<StatusView settings={settings} />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: "Set the camera's clock to this device's time" }));
+    expect(await screen.findByText(/clock module was not updated: exit status 1/)).toBeInTheDocument();
+  });
+
+  it('reports a failure to set the clock', async () => {
+    mockServer({
+      'GET /monitoring': () => json({ ...monitoring, UnixMillis: 0 }),
+      'POST /admin/time': () => json('setting the clock: operation not permitted', 500),
+    });
+    render(<StatusView settings={settings} />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: "Set the camera's clock to this device's time" }));
+    expect(await screen.findByText(/The clock was not set. setting the clock: operation not permitted/)).toBeInTheDocument();
+  });
+
+  it('warns about under-voltage', async () => {
+    mockServer({
+      'GET /monitoring': () =>
+        json({ ...monitoring, Power: { Now: ['under-voltage', 'throttled'], SinceBoot: ['under-voltage', 'throttled'] } }),
+    });
+    render(<StatusView settings={settings} />);
+    const power = (await screen.findByRole('heading', { name: 'Power' })).parentElement!;
+    expect(power).toHaveAttribute('data-tone', 'hot');
+    expect(within(power).getByText('Under-voltage, throttled')).toBeInTheDocument();
+    expect(within(power).getByText(/Check the power supply/)).toBeInTheDocument();
+  });
+
+  it('says when the card is full and the camera stopped', async () => {
+    mockServer({
+      'GET /monitoring': () =>
+        json({
+          ...monitoring,
+          Storage: { ...monitoring.Storage, FreeBytes: 100 * 1024 ** 2, StopWhenDiskFull: true },
+        }),
+    });
+    render(<StatusView settings={settings} />);
+    expect(await screen.findByText(/The card is full and the camera has stopped taking photos/)).toBeInTheDocument();
+    expect(screen.getByText(/Full: the camera stops taking photos/)).toBeInTheDocument();
+  });
+
+  it('counts photos deleted to make room', async () => {
+    mockServer({ 'GET /monitoring': () => json({ ...monitoring, Storage: { ...monitoring.Storage, DeletedOldest: 1234 } }) });
+    render(<StatusView settings={settings} />);
+    expect(await screen.findByText(/1,234 old photos deleted to make room/)).toBeInTheDocument();
   });
 
   it('says when a sensor is missing instead of printing the error', async () => {
     mockServer({
       'GET /monitoring': () =>
-        json({ ...monitoring, GpuTemperature: 'fork/exec /opt/vc/bin/vcgencmd: no such file or directory' }),
+        json({
+          ...monitoring,
+          GpuTemperature: 'fork/exec /opt/vc/bin/vcgencmd: no such file or directory',
+          Power: { Now: [], SinceBoot: [], Error: 'fork/exec /opt/vc/bin/vcgencmd: no such file or directory' },
+          CPU: { ...monitoring.CPU, Error: 'open scaling_governor: no such file or directory' },
+        }),
     });
     render(<StatusView settings={settings} />);
-    expect(await screen.findByText('Not available')).toBeInTheDocument();
+    expect(await screen.findAllByText('Not available')).toHaveLength(2);
+    expect(screen.queryByText(/MHz/)).not.toBeInTheDocument();
   });
 });
 

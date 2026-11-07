@@ -1,5 +1,7 @@
 // Parsers for the raw strings the Pi reports, and display formatting.
 
+import type { Storage } from './api';
+
 /** Parses Go's time.Time.String() output, e.g. "2026-11-02 21:15:00.123456789 +0100 CET". */
 export function parseGoTime(raw: string): Date | null {
   const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})(\.\d+)? ([+-]\d{2})(\d{2})/.exec(raw.trim());
@@ -163,30 +165,35 @@ export function primaryDisk(disks: Disk[]): Disk | null {
 }
 
 export interface ClockCheck {
-  /** Camera seconds-into-hour minus phone seconds-into-hour, wrapped to ±1800. */
-  driftSeconds: number | null;
+  /** Camera clock minus this device's clock. */
+  driftSeconds: number;
   /** Year the camera believes it is, when it differs from this device's. */
   wrongYear: number | null;
 }
 
 /**
- * Compares the camera's `date` output against this device's clock. A Pi Zero
- * has no battery-backed clock, and offline it can't sync. The schedule only
- * depends on minutes and seconds, so in-hour drift is what matters and works
- * regardless of time zone.
+ * Compares the camera's clock with this device's. A Pi Zero has no
+ * battery-backed clock, and offline it can't sync: after a power cut its
+ * clock is behind by however long the power was out.
  */
-export function checkClock(raw: string, now: Date): ClockCheck {
-  const t = /\b(\d{1,2}):(\d{2}):(\d{2})\b/.exec(raw);
-  const y = /\b(19\d{2}|20\d{2})\b/.exec(raw);
-  let driftSeconds: number | null = null;
-  if (t) {
-    const cam = Number(t[2]) * 60 + Number(t[3]);
-    const here = now.getMinutes() * 60 + now.getSeconds();
-    let d = (cam - here) % 3600;
-    if (d > 1800) d -= 3600;
-    if (d < -1800) d += 3600;
-    driftSeconds = d;
-  }
-  const year = y ? Number(y[1]) : null;
-  return { driftSeconds, wrongYear: year !== null && year !== now.getFullYear() ? year : null };
+export function checkClock(cameraMillis: number, now: Date): ClockCheck {
+  const year = new Date(cameraMillis).getFullYear();
+  return {
+    driftSeconds: Math.round((cameraMillis - now.getTime()) / 1000),
+    wrongYear: year !== now.getFullYear() ? year : null,
+  };
+}
+
+export interface Runway {
+  /** Photos that fit before the disk counts as full. */
+  photos: number;
+  /** Days until then at `perDay` photos a day, or null without a schedule. */
+  days: number | null;
+}
+
+/** How long until the card is full, from the average size of the photos so far. */
+export function estimateRunway(s: Storage, perDay: number): Runway | null {
+  if (s.Error || s.Photos === 0 || s.PhotoBytes === 0) return null;
+  const photos = Math.floor(Math.max(s.FreeBytes - s.ReserveBytes, 0) / (s.PhotoBytes / s.Photos));
+  return { photos, days: perDay > 0 ? photos / perDay : null };
 }

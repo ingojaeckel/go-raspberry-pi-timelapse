@@ -87,6 +87,9 @@ func startSim(t testing.TB) *sim {
 		store:  store,
 		camera: timelapse.NewCamera(s.camera, captureTimeout),
 		photos: files.NewIndex(photos),
+		// Health readings of a Pi that had an under-voltage once.
+		runCommand: func(context.Context, string, ...string) ([]byte, error) { return []byte("throttled=0x50000\n"), nil },
+		started:    time.Now(),
 	}
 	s.app.freeBytes = func(string) (uint64, error) {
 		list, err := s.app.photos.List()
@@ -97,6 +100,7 @@ func startSim(t testing.TB) *sim {
 	s.cancel = cancel
 	s.wg.Go(func() { followDebugSetting(ctx, store, s.app.level) })
 	s.wg.Go(func() { s.app.scheduler().Run(ctx) })
+	s.wg.Go(func() { s.app.watchHealth(ctx) })
 	s.wg.Go(func() { s.gallery.poll(ctx) })
 	return s
 }

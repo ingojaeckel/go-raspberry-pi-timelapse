@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -93,18 +92,6 @@ func TestRunCommand(t *testing.T) {
 	out, err := RunCommand(t.Context(), "echo", "hi")
 	if err != nil || string(out) != "hi\n" {
 		t.Fatalf("out %q err %v", out, err)
-	}
-}
-
-func TestVcgencmdPath(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("PATH", dir)
-	if got := vcgencmdPath(); got != "/opt/vc/bin/vcgencmd" {
-		t.Errorf("fallback: %s", got)
-	}
-	os.WriteFile(filepath.Join(dir, "vcgencmd"), []byte("#!/bin/sh\n"), 0o755)
-	if got := vcgencmdPath(); got != filepath.Join(dir, "vcgencmd") {
-		t.Errorf("found: %s", got)
 	}
 }
 

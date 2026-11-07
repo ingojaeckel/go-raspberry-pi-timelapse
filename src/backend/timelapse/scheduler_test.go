@@ -282,10 +282,11 @@ func TestBeforeCaptureRunsBeforeEveryAttempt(t *testing.T) {
 		var calls int
 		var mu sync.Mutex
 		h := start(t, 1800, 0, func(h *harness) {
-			h.sched.BeforeCapture = func() {
+			h.sched.BeforeCapture = func() error {
 				mu.Lock()
 				calls++
 				mu.Unlock()
+				return nil
 			}
 			h.camera.failures = 1
 		})
@@ -367,6 +368,51 @@ func TestHeartbeatAtLeastEveryMaxSleep(t *testing.T) {
 		}
 		if len(beats) < 10 {
 			t.Fatalf("only %d heartbeats in 10 minutes", len(beats))
+		}
+	})
+}
+
+func TestNextUnalignedAfterTheClockJumpsForward(t *testing.T) {
+	s := &Scheduler{Location: time.UTC}
+	now := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	before := now.Add(-72 * time.Hour) // last capture, before the clock was set forward 3 days
+	unaligned := conf.Settings{SecondsBetweenCaptures: 600, OffsetWithinHour: conf.OffsetDisabled}
+	// One capture now, not one for each of the 432 missed intervals.
+	if got := s.next(unaligned, now, before, before); !got.Equal(now) {
+		t.Fatalf("got %v, want now", got)
+	}
+	if got := s.next(unaligned, now.Add(5*time.Second), now, now); !got.Equal(now.Add(600 * time.Second)) {
+		t.Fatalf("after catching up: got %v", got)
+	}
+}
+
+func TestBeforeCaptureErrorSkipsTheSlot(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var results []error
+		h := start(t, 600, 0, func(h *harness) {
+			h.sched.BeforeCapture = func() error { return errors.New("disk full") }
+			h.sched.Captured = func(err error) { results = append(results, err) }
+		})
+		advance(h, 1201*time.Second)
+		h.stop()
+		assertTimes(t, h.camera.times(), nil) // no capture, no retries
+		if len(results) != 3 || results[0] == nil {
+			t.Fatalf("Captured got %v, want 3 errors (slots 0, 600, 1200)", results)
+		}
+	})
+}
+
+func TestCapturedReportsEverySlotOnce(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var results []error
+		h := start(t, 600, 0, func(h *harness) {
+			h.camera.failures = 3 // the first slot fails all three attempts
+			h.sched.Captured = func(err error) { results = append(results, err) }
+		})
+		advance(h, 610*time.Second) // a capture takes 5s
+		h.stop()
+		if len(results) != 2 || results[0] == nil || results[1] != nil {
+			t.Fatalf("Captured got %v, want [error, nil]", results)
 		}
 	})
 }

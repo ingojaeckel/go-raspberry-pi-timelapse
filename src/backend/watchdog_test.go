@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -155,5 +156,18 @@ func TestMaxStallCoversAllAttemptsOfACapture(t *testing.T) {
 	a := &app{opts: options{captureRetries: 2}}
 	if got := a.maxStall(); got < 3*captureTimeout || got > 15*time.Minute {
 		t.Fatalf("maxStall = %v", got)
+	}
+}
+
+// Setting the wall clock must not look like a stall (or hide one): the age of
+// the last heartbeat is measured with the monotonic clock, which only
+// time.Now() readings carry ("m=" in their String form).
+func TestWatchdogIgnoresWallClockChanges(t *testing.T) {
+	w := newWatchdog(time.Minute)
+	if !strings.Contains(w.lastBeat().String(), "m=") {
+		t.Fatalf("last heartbeat %v has no monotonic clock reading", w.lastBeat())
+	}
+	if !w.healthy(time.Now()) {
+		t.Fatal("unhealthy right after a heartbeat")
 	}
 }

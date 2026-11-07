@@ -13,6 +13,18 @@ const posted = (f: ReturnType<typeof mockServer>) =>
   JSON.parse(String(callsTo(f, 'POST', '/configuration')[0]?.[1]?.body)) as Settings;
 
 describe('SettingsView', () => {
+  it('saves what happens when the card is full', async () => {
+    const f = mockServer();
+    const onSaved = renderSettings();
+    const user = userEvent.setup();
+    expect(screen.getByRole('radio', { name: /Delete oldest/ })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: /Stop/ }));
+    expect(screen.getByText(/stops taking photos when the card is full/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(posted(f)).toEqual({ ...settings, StopWhenDiskFull: true });
+  });
+
   it('shows the interval and the offset as a minute past the hour', () => {
     mockServer();
     renderSettings();

@@ -16,23 +16,32 @@ import (
 // takes photos (WatchdogSec= in timelapse.service): it pings systemd only
 // while the scheduler loop keeps waking up, which it does at least once a
 // minute and after every capture.
+//
+// Times are measured with the monotonic clock: setting the wall clock (from
+// the web UI, an RTC or NTP) must neither look like a stall nor hide one.
 type watchdog struct {
-	last     atomic.Int64 // UnixNano of the last heartbeat
+	start    time.Time    // carries the monotonic reading the others are relative to
+	last     atomic.Int64 // time.Duration since start of the last heartbeat
 	maxStall time.Duration
 	notify   func(state string) error
 }
 
 func newWatchdog(maxStall time.Duration) *watchdog {
-	w := &watchdog{maxStall: maxStall, notify: sdNotify}
+	w := &watchdog{start: time.Now(), maxStall: maxStall, notify: sdNotify}
 	w.beat()
 	return w
 }
 
 // beat records that the scheduler is alive. It is the scheduler's Heartbeat.
-func (w *watchdog) beat() { w.last.Store(time.Now().UnixNano()) }
+func (w *watchdog) beat() { w.last.Store(int64(time.Since(w.start))) }
 
+// lastBeat is when the scheduler was last alive.
+func (w *watchdog) lastBeat() time.Time { return w.start.Add(time.Duration(w.last.Load())) }
+
+// healthy reports whether the last heartbeat is at most maxStall before now,
+// a time.Now() reading (with its monotonic clock).
 func (w *watchdog) healthy(now time.Time) bool {
-	return now.Sub(time.Unix(0, w.last.Load())) <= w.maxStall
+	return now.Sub(w.lastBeat()) <= w.maxStall
 }
 
 // run pings systemd every interval while healthy, until ctx ends.
@@ -49,7 +58,7 @@ func (w *watchdog) run(ctx context.Context, interval time.Duration) {
 				w.ping()
 				reported = false
 			} else if !reported {
-				slog.Error("scheduler stalled, letting systemd restart the camera", "lastHeartbeat", time.Unix(0, w.last.Load()))
+				slog.Error("scheduler stalled, letting systemd restart the camera", "lastHeartbeat", w.lastBeat())
 				reported = true
 			}
 		}

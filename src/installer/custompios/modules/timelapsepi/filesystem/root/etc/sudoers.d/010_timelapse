@@ -1,3 +1,5 @@
 # The timelapse service runs as pi and may shut down or restart the Pi from the
-# web UI (POST /admin/shutdown, POST /admin/restart). Nothing else.
-pi ALL=(root) NOPASSWD: /sbin/shutdown -h now, /sbin/shutdown -r now
+# web UI (POST /admin/shutdown, POST /admin/restart), and copy the clock set
+# from the web UI (POST /admin/time) to a clock module on /dev/rtc0, which only
+# root may write. Nothing else; every argument is fixed.
+pi ALL=(root) NOPASSWD: /sbin/shutdown -h now, /sbin/shutdown -r now, /usr/sbin/hwclock --rtc=/dev/rtc0 --systohc --utc

@@ -1,9 +1,10 @@
-import { useMemo, type ReactNode } from 'react';
-import { api, type Monitoring, type Settings } from '../api';
+import { useMemo, useState, type ReactNode } from 'react';
+import { api, type Monitoring, type MonitoringOutput, type Settings, type Storage } from '../api';
 import { Icon } from '../components/Icon';
 import { Notice, PageHeader, Spinner } from '../components/ui';
 import {
   checkClock,
+  estimateRunway,
   formatBytes,
   formatDuration,
   parseCpuTemp,
@@ -18,25 +19,18 @@ import { capturesPerDay } from '../schedule';
 
 interface Snapshot {
   monitoring: Monitoring;
-  avgPhotoBytes: number | null;
   fetchedAt: Date;
 }
 
 async function loadSnapshot(signal: AbortSignal): Promise<Snapshot> {
-  const [monitoring, photos] = await Promise.all([
-    api.monitoring(signal),
-    api.photos(signal).catch(() => []),
-  ]);
-  const sizes = photos.map((p) => parseSize(p.Size)).filter((n): n is number => n !== null && n > 0);
-  return {
-    monitoring,
-    avgPhotoBytes: sizes.length ? sizes.reduce((a, b) => a + b, 0) / sizes.length : null,
-    fetchedAt: new Date(),
-  };
+  return { monitoring: await api.monitoring(signal), fetchedAt: new Date() };
 }
 
 // The Pi firmware starts throttling at 80 °C.
 const tempTone = (t: number) => (t >= 80 ? 'hot' : t >= 70 ? 'warm' : 'ok');
+
+/** Command output shown under "Raw readings". */
+const RAW_KEYS: (keyof MonitoringOutput)[] = ['Time', 'Uptime', 'CpuTemperature', 'GpuTemperature', 'FreeDiskSpace'];
 
 export function StatusView({ settings }: { settings: Settings | undefined }) {
   const snap = useResource(loadSnapshot);
@@ -53,9 +47,11 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
       uptime: parseUptime(m.Uptime),
       disks,
       disk: primaryDisk(disks),
-      clock: checkClock(m.Time, snap.data.fetchedAt),
+      clock: checkClock(m.UnixMillis, snap.data.fetchedAt),
     };
   }, [snap.data]);
+
+  const full = view ? isFull(view.m.Storage) : false;
 
   return (
     <>
@@ -70,10 +66,16 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
 
       {view && (
         <>
-          <ClockWarning clock={view.clock} />
+          <ClockWarning clock={view.clock} onSet={snap.reload} />
+          {full && view.m.Storage.StopWhenDiskFull && (
+            <Notice tone="error">
+              The card is full and the camera has stopped taking photos. Download and delete photos, or let the camera
+              delete the oldest ones (Settings, "When the card is full").
+            </Notice>
+          )}
 
           <section className="stat-grid">
-            <Stat label="Storage left" tone={view.disk && view.disk.usedPercent >= 90 ? 'hot' : 'ok'}>
+            <Stat label="Storage left" tone={full || (view.disk && view.disk.usedPercent >= 90) ? 'hot' : 'ok'}>
               {view.disk ? (
                 <>
                   <span className="stat-value">{humanDf(view.disk.avail)}</span>
@@ -82,7 +84,7 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
                   </meter>
                   <span className="stat-note">
                     {view.disk.usedPercent}% of {humanDf(view.disk.size)} used
-                    <Runway avail={view.disk.avail} avg={snap.data?.avgPhotoBytes ?? null} settings={settings} />
+                    <Runway storage={view.m.Storage} settings={settings} />
                   </span>
                 </>
               ) : (
@@ -90,9 +92,14 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
               )}
             </Stat>
 
+            <PowerStat power={view.m.Power} />
+
             <Stat label="Processor" tone={view.cpu !== null ? tempTone(view.cpu) : 'ok'}>
               <Temp value={view.cpu} />
-              <span className="stat-note">{view.cpu !== null && view.cpu >= 80 ? 'Throttling, consider shade or a heatsink' : 'CPU temperature'}</span>
+              <span className="stat-note">
+                {view.cpu !== null && view.cpu >= 80 ? 'Throttling, consider shade or a heatsink' : 'CPU temperature'}
+                <CpuClock cpu={view.m.CPU} />
+              </span>
             </Stat>
 
             <Stat label="Graphics" tone={view.gpu !== null ? tempTone(view.gpu) : 'ok'}>
@@ -137,11 +144,11 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
           <details className="raw">
             <summary>Raw readings</summary>
             <dl>
-              {(Object.entries(view.m) as [keyof Monitoring, string][]).map(([k, v]) => (
+              {RAW_KEYS.map((k) => (
                 <div key={k}>
                   <dt>{k}</dt>
                   <dd>
-                    <pre>{v.trim() || '(empty)'}</pre>
+                    <pre>{view.m[k].trim() || '(empty)'}</pre>
                   </dd>
                 </div>
               ))}
@@ -173,16 +180,66 @@ function Temp({ value }: { value: number | null }) {
   );
 }
 
-function Runway({ avail, avg, settings }: { avail: string; avg: number | null; settings: Settings | undefined }) {
-  const free = parseSize(avail);
-  if (!free || !avg) return null;
-  const photos = Math.floor(free / avg);
-  const perDay = settings ? capturesPerDay(settings) : 0;
-  const days = perDay > 0 ? photos / perDay : null;
+const sentence = (flags: string[]) => {
+  const s = flags.join(', ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+/** Under-voltage is the usual cause of SD card corruption and failed captures on battery or solar power. */
+function PowerStat({ power }: { power: Monitoring['Power'] }) {
+  if (power.Error) {
+    return (
+      <Stat label="Power" tone="ok">
+        <span className="stat-value muted">Not available</span>
+        <span className="stat-note">Reported by the Pi firmware (vcgencmd).</span>
+      </Stat>
+    );
+  }
+  const tone = power.Now.length ? 'hot' : power.SinceBoot.length ? 'warm' : 'ok';
+  return (
+    <Stat label="Power" tone={tone}>
+      <span className="stat-value small">{power.Now.length ? sentence(power.Now) : 'OK'}</span>
+      <span className="stat-note">
+        {power.SinceBoot.length
+          ? `Since the last restart: ${power.SinceBoot.join(', ')}. Check the power supply and cable.`
+          : 'No under-voltage or throttling since the last restart.'}
+      </span>
+    </Stat>
+  );
+}
+
+function CpuClock({ cpu }: { cpu: Monitoring['CPU'] }) {
+  if (cpu.Error) return null;
   return (
     <>
-      . Room for about {photos.toLocaleString()} more photos
-      {days !== null && <> ({runway(days)} at the current schedule)</>}.
+      . Runs at {cpu.CurrentMHz} MHz ({cpu.Governor}, {cpu.MinMHz}–{cpu.MaxMHz} MHz)
+    </>
+  );
+}
+
+function isFull(s: Storage): boolean {
+  return !s.Error && s.FreeBytes < s.ReserveBytes;
+}
+
+function Runway({ storage, settings }: { storage: Storage; settings: Settings | undefined }) {
+  const est = estimateRunway(storage, settings ? capturesPerDay(settings) : 0);
+  const then = storage.StopWhenDiskFull ? 'the camera stops taking photos' : 'the oldest photos are deleted to make room';
+  const deleted =
+    storage.DeletedOldest > 0 ? (
+      <> {storage.DeletedOldest.toLocaleString()} old photos deleted to make room since the camera started.</>
+    ) : null;
+  if (!est) return deleted;
+  if (est.photos === 0) {
+    return (
+      <>
+        . Full: {then}.{deleted}
+      </>
+    );
+  }
+  return (
+    <>
+      . Room for about {est.photos.toLocaleString()} more photos
+      {est.days !== null && <> ({runway(est.days)} at the current schedule)</>}, then {then}.{deleted}
     </>
   );
 }
@@ -199,24 +256,48 @@ function humanDf(raw: string): string {
   return b === null ? raw : formatBytes(b);
 }
 
-function ClockWarning({ clock }: { clock: ReturnType<typeof checkClock> }) {
-  if (clock.wrongYear !== null) {
-    return (
-      <Notice tone="warn">
-        The camera's clock thinks it is {clock.wrongYear}. Photos will carry the wrong date until its clock is set.
-        A Pi Zero has no battery-backed clock and can't sync time while offline. See "Real-time clock" in the
-        project's <code>docs/installer.md</code> for adding a clock module.
-      </Notice>
-    );
+function ClockWarning({ clock, onSet }: { clock: ReturnType<typeof checkClock>; onSet: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(null);
+
+  const setClock = async () => {
+    setBusy(true);
+    try {
+      const r = await api.setTime(Date.now());
+      setResult(
+        r.RTC === '' || r.RTC === 'updated'
+          ? { tone: 'ok', text: `Camera clock set${r.RTC === 'updated' ? ', and saved to the clock module' : ''}.` }
+          : { tone: 'warn', text: `Camera clock set, but the clock module was ${r.RTC}.` },
+      );
+      onSet();
+    } catch (err) {
+      setResult({ tone: 'error', text: `The clock was not set. ${(err as Error).message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const off = clock.wrongYear !== null || Math.abs(clock.driftSeconds) > 60;
+  if (!off) {
+    return result ? <Notice tone={result.tone}>{result.text}</Notice> : null;
   }
-  if (clock.driftSeconds !== null && Math.abs(clock.driftSeconds) > 60) {
-    return (
-      <Notice tone="warn">
-        The camera's clock is {formatDuration(Math.abs(clock.driftSeconds))}{' '}
-        {clock.driftSeconds > 0 ? 'ahead of' : 'behind'} this device, so capture times shown here may be off by that
-        much.
-      </Notice>
-    );
-  }
-  return null;
+  return (
+    <Notice tone="warn">
+      {clock.wrongYear !== null ? (
+        <>The camera's clock thinks it is {clock.wrongYear}. Photos will carry the wrong date until its clock is set. </>
+      ) : (
+        <>
+          The camera's clock is {formatDuration(Math.abs(clock.driftSeconds))}{' '}
+          {clock.driftSeconds > 0 ? 'ahead of' : 'behind'} this device, so photos carry the wrong time.{' '}
+        </>
+      )}
+      Without a battery-backed clock module the Pi loses time at every power cut (see "Real-time clock" in the
+      project's <code>docs/installer.md</code>).
+      <br />
+      <button type="button" className="btn" onClick={setClock} disabled={busy}>
+        <Icon name="refresh" /> {busy ? 'Setting the clock…' : "Set the camera's clock to this device's time"}
+      </button>
+      {result && <> {result.text}</>}
+    </Notice>
+  );
 }

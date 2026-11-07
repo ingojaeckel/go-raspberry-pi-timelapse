@@ -118,7 +118,7 @@ func TestDefaultUsesGivenInterval(t *testing.T) {
 }
 
 func TestSettingsStringIsJSON(t *testing.T) {
-	want := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"ResolutionSetting":0,"Quality":0,"DebugEnabled":false}`
+	want := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"ResolutionSetting":0,"Quality":0,"DebugEnabled":false,"StopWhenDiskFull":false}`
 	if got := (Settings{}).String(); got != want {
 		t.Fatalf("got %s", got)
 	}

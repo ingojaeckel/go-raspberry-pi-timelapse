@@ -46,6 +46,20 @@ This project was created for a timelapse system consisting of the following core
 6. Open the Pi's web interface in a browser: `http://192.168.50.1:8080/`. This interface will allow you to align the camera, download photos, shutdown the Pi, etc.
 
 
+## Other Pis and cameras
+
+* The image is 32-bit (armhf) and also runs on a Pi Zero 2 W. Its CPU runs at its lowest clock, 600 MHz (700 MHz on a Pi Zero W), see [power profiles](installer.md#power-profiles).
+* The resolutions in Settings are the 4:3 sizes of the Camera Module v2 (3280×2464 sensor). With a sensor of another aspect ratio, such as the 16:9 Camera Module 3, `rpicam-still` crops the image to 4:3 (a narrower field of view) rather than stretching it.
+
+## Power management boards (not supported yet)
+
+The Pi Zero cannot sleep, so the only large power saving is cutting its power between photos: a board with its own real-time clock powers the Pi off and wakes it on a schedule. At one photo every 30 minutes, booting and capturing for under a minute instead of idling saves roughly 95 % (estimate). The access point and web UI are then only reachable while the Pi is awake. The app would need a capture-once mode for this; it does not have one yet. The image's power profiles (see [docs/installer.md](installer.md#power-profiles)) are the savings available without extra hardware.
+
+PiJuice from Pi Supply (software and docs: [github.com/PiSupply/PiJuice](https://github.com/PiSupply/PiJuice)) has an RTC with wake-up on a calendar event, software power off, and a deep-sleep state while the Pi is off. As of November 2026 Core Electronics lists both boards as retired; check stock and whether the PiJuice software supports the current Raspberry Pi OS before buying.
+
+* [PiJuice Zero](https://core-electronics.com.au/pijuice-zero-a-portable-power-platform-for-raspberry-pi-zero.html): pHAT size for the Pi Zero W, takes a single-cell LiPo with NTC (no battery included; about 2000 mAh recommended).
+* [PiJuice HAT](https://core-electronics.com.au/pijuice-hat.html): full HAT size for 40-pin Pis, 1820 mAh battery included.
+
 ## PiTFT
 * https://learn.adafruit.com/adafruit-pitft-28-inch-resistive-touchscreen-display-raspberry-pi/easy-install-2 - Follow steps and `PiTFT as HDMI Mirror (Best for Raspberry Pi OS with Desktop)`
 * https://learn.adafruit.com/running-opengl-based-games-and-emulators-on-adafruit-pitft-displays/tuning-performance

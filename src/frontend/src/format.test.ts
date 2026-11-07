@@ -1,5 +1,6 @@
 import {
   checkClock,
+  estimateRunway,
   formatCountdown,
   formatDuration,
   formatPastHour,
@@ -96,9 +97,28 @@ describe('Pi command output', () => {
     ]);
   });
 
-  it('detects clock drift within the hour and a wrong year', () => {
+  it('measures clock drift and spots a wrong year', () => {
     const now = new Date(2026, 10, 2, 14, 10, 0);
-    expect(checkClock('Mon Nov  2 13:12:30 UTC 2026', now)).toEqual({ driftSeconds: 150, wrongYear: null });
-    expect(checkClock('Thu Jan  1 00:59:00 UTC 1970', now)).toEqual({ driftSeconds: -660, wrongYear: 1970 });
+    expect(checkClock(now.getTime() + 150_000, now)).toEqual({ driftSeconds: 150, wrongYear: null });
+    // Behind by three days after a long power cut: more than the old in-hour comparison could see.
+    expect(checkClock(now.getTime() - 3 * 86400_000, now)).toEqual({ driftSeconds: -259200, wrongYear: null });
+    expect(checkClock(0, now).wrongYear).toBe(new Date(0).getFullYear());
+  });
+
+  it('estimates how long until the card is full', () => {
+    const storage = {
+      FreeBytes: 1024 ** 3 + 256 * 1024 ** 2,
+      ReserveBytes: 256 * 1024 ** 2,
+      Photos: 4,
+      PhotoBytes: 8 * 1024 ** 2,
+      StopWhenDiskFull: false,
+      DeletedOldest: 0,
+    };
+    // 1 GB usable / 2 MB per photo, 48 a day
+    expect(estimateRunway(storage, 48)).toEqual({ photos: 512, days: 512 / 48 });
+    expect(estimateRunway(storage, 0)).toEqual({ photos: 512, days: null });
+    expect(estimateRunway({ ...storage, FreeBytes: 0 }, 48)).toEqual({ photos: 0, days: 0 });
+    expect(estimateRunway({ ...storage, Photos: 0, PhotoBytes: 0 }, 48)).toBeNull();
+    expect(estimateRunway({ ...storage, Error: 'statfs failed' }, 48)).toBeNull();
   });
 });

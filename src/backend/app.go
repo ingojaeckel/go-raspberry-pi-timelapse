@@ -11,10 +11,12 @@ import (
 	"os"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/health"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/rest"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/web"
@@ -33,6 +35,15 @@ const (
 	// make progress (see rest.deadlineWriter).
 	writeTimeout = 2 * time.Minute
 	thermalFile  = "/sys/class/thermal/thermal_zone0/temp"
+	// rtcDevice is the clock module; sudoers allows hwclock for it only.
+	rtcDevice = "/dev/rtc0"
+
+	// The Pi's health is sampled every healthSampleInterval (the firmware
+	// remembers power problems since boot, so short ones are not missed)
+	// and summarized in the log every summaryInterval of uptime: the clock
+	// may be wrong, so not at midnight.
+	healthSampleInterval = 10 * time.Minute
+	summaryInterval      = 24 * time.Hour
 )
 
 // app owns the resources of a running camera: log, settings, camera and the
@@ -49,13 +60,24 @@ type app struct {
 	// freeBytes reports the free space of the photo folder's file system;
 	// tests simulate a disk.
 	freeBytes func(dir string) (uint64, error)
+	// runCommand executes system commands (rest.RunCommand); thermalFile and
+	// cpuFreqDir are read for the health readings. Empty or nil in tests.
+	runCommand  health.Run
+	thermalFile string
+	cpuFreqDir  string
+	started     time.Time
+	record      health.Recorder // for the daily summary
+	deleted     atomic.Int64    // photos deleted to free disk space
 }
 
 // newApp acquires all resources in order. On failure, those acquired so far
 // are released again.
 func newApp(opts options, backend timelapse.Backend) (*app, error) {
-	a := &app{opts: opts, version: versionString(gitCommit, builtAt), level: new(slog.LevelVar), freeBytes: files.FreeBytes}
-	for _, step := range []func() error{a.startLogging, a.openSettings, a.createStorageFolder, a.listen} {
+	a := &app{
+		opts: opts, version: versionString(gitCommit, builtAt), level: new(slog.LevelVar), freeBytes: files.FreeBytes,
+		runCommand: rest.RunCommand, thermalFile: thermalFile, cpuFreqDir: health.CPUFreqDir, started: time.Now(),
+	}
+	for _, step := range []func() error{a.startLogging, a.markRun, a.openSettings, a.createStorageFolder, a.listen} {
 		if err := step(); err != nil {
 			a.close()
 			return nil, err
@@ -72,6 +94,27 @@ func (a *app) startLogging() error {
 	}
 	a.closers = append(a.closers, closeLog)
 	slog.Info("starting", "version", a.version, "options", fmt.Sprintf("%+v", a.opts))
+	return nil
+}
+
+// markRun logs how the previous run ended, and marks this one as running
+// until close. Without a marker (read-only folder) the camera still runs.
+func (a *app) markRun() error {
+	previous, done, err := health.StartRun(conf.RunMarkerFile, health.BootIDFile)
+	if err != nil {
+		slog.Warn("cannot tell how the previous run ended", "err", err)
+		return nil
+	}
+	a.closers = append(a.closers, func() {
+		if err := done(); err != nil {
+			slog.Warn("removing the run marker", "err", err)
+		}
+	})
+	if previous == health.StoppedCleanly {
+		slog.Info("previous run stopped cleanly")
+	} else {
+		slog.Warn("previous run did not stop cleanly: "+previous.String(), "previous", int(previous))
+	}
 	return nil
 }
 
@@ -131,6 +174,7 @@ func (a *app) run(ctx context.Context, ready func(addr string)) error {
 		slog.Info("systemd watchdog enabled", "interval", interval, "maxStall", w.maxStall)
 	}
 	wg.Go(func() { sched.Run(ctx) })
+	wg.Go(func() { a.watchHealth(ctx) })
 	err := serve(ctx, server, a.listener, func(addr string) {
 		sdNotify("READY=1") // fails harmlessly when not run by systemd
 		if ready != nil {
@@ -156,22 +200,109 @@ func (a *app) scheduler() *timelapse.Scheduler {
 		Folder:        a.opts.storageFolder,
 		Retries:       a.opts.captureRetries,
 		RetryDelay:    retryDelay,
-		BeforeCapture: a.reclaimDiskSpace,
+		BeforeCapture: a.prepareDisk,
+		Captured:      a.record.Captured,
 	}
 }
+
+var errDiskFull = errors.New("disk full")
+
+// prepareDisk keeps -minFreeDiskMB free before every capture: by deleting
+// the oldest photos or, with StopWhenDiskFull, by not taking the photo.
+func (a *app) prepareDisk() error {
+	if !a.store.Get().StopWhenDiskFull {
+		a.reclaimDiskSpace()
+		return nil
+	}
+	free, err := a.freeBytes(a.photos.Dir())
+	if err != nil {
+		slog.Error("checking free disk space", "err", err)
+		return nil // try anyway
+	}
+	if free < a.minFreeBytes() {
+		return fmt.Errorf("%w: %d MB free, keeping %d MB (-minFreeDiskMB); delete photos or turn off \"stop when full\"", errDiskFull, free>>20, a.opts.minFreeDiskMB)
+	}
+	return nil
+}
+
+func (a *app) minFreeBytes() uint64 { return uint64(a.opts.minFreeDiskMB) << 20 }
 
 // reclaimDiskSpace deletes the oldest photos while less than -minFreeDiskMB
 // are free.
 func (a *app) reclaimDiskSpace() {
-	removed, err := a.photos.Reclaim(uint64(a.opts.minFreeDiskMB)<<20, func() (uint64, error) {
+	removed, err := a.photos.Reclaim(a.minFreeBytes(), func() (uint64, error) {
 		return a.freeBytes(a.photos.Dir())
 	})
+	a.deleted.Add(int64(len(removed)))
+	a.record.Deleted(len(removed))
 	if len(removed) > 0 {
 		slog.Warn("disk almost full, deleted the oldest photos", "count", len(removed), "first", removed[0], "last", removed[len(removed)-1])
 	}
 	if err != nil {
 		slog.Error("freeing disk space", "err", err)
 	}
+}
+
+// watchHealth samples the Pi's health and logs a summary every day until ctx
+// ends.
+func (a *app) watchHealth(ctx context.Context) {
+	sample := time.NewTicker(healthSampleInterval)
+	defer sample.Stop()
+	summary := time.NewTicker(summaryInterval)
+	defer summary.Stop()
+	a.sampleHealth(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-sample.C:
+			a.sampleHealth(ctx)
+		case <-summary.C:
+			a.logSummary()
+		}
+	}
+}
+
+func (a *app) sampleHealth(ctx context.Context) {
+	var s health.Sample
+	if c, err := health.ReadCelsius(a.thermalFile); err == nil {
+		s.Celsius = &c
+	}
+	if a.runCommand != nil {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		if t, err := health.ReadThrottled(ctx, a.runCommand); err == nil {
+			s.Throttled = &t
+		}
+	}
+	a.record.Sample(s)
+}
+
+// logSummary logs what happened since the previous summary: what someone
+// visiting the camera after weeks wants to know first.
+func (a *app) logSummary() {
+	s := a.record.Summary()
+	attrs := []any{
+		"captured", s.Captured, "failed", s.Failed, "deletedOldest", s.DeletedOldest,
+		"throttledSinceBoot", s.ThrottledSinceBoot, "uptime", time.Since(a.started).Round(time.Minute),
+	}
+	if s.LastError != "" {
+		attrs = append(attrs, "lastError", s.LastError)
+	}
+	if s.MinCelsius != nil {
+		attrs = append(attrs, "minCelsius", *s.MinCelsius, "maxCelsius", *s.MaxCelsius)
+	}
+	if list, err := a.photos.List(); err == nil {
+		attrs = append(attrs, "photos", len(list))
+	}
+	if free, err := a.freeBytes(a.photos.Dir()); err == nil {
+		attrs = append(attrs, "freeMB", free>>20)
+	}
+	level := slog.LevelInfo
+	if s.Failed > 0 || len(s.ThrottledSinceBoot) > 0 {
+		level = slog.LevelWarn
+	}
+	slog.Log(context.Background(), level, "daily summary", attrs...)
 }
 
 func (a *app) httpServer() *http.Server {
@@ -199,14 +330,20 @@ func (a *app) handler() http.Handler {
 
 func (a *app) api() *rest.Server {
 	return &rest.Server{
-		Settings:    a.store,
-		Camera:      a.camera,
-		Photos:      a.photos,
-		TempFolder:  conf.TempFilesFolder,
-		LogFile:     conf.LogFile, // served whenever it exists
-		ThermalFile: thermalFile,
-		Version:     a.version,
-		Run:         rest.RunCommand,
+		Settings:      a.store,
+		Camera:        a.camera,
+		Photos:        a.photos,
+		TempFolder:    conf.TempFilesFolder,
+		LogFile:       conf.LogFile, // served whenever it exists
+		ThermalFile:   a.thermalFile,
+		CPUFreqDir:    a.cpuFreqDir,
+		Version:       a.version,
+		Run:           a.runCommand,
+		FreeBytes:     a.freeBytes,
+		ReserveBytes:  a.minFreeBytes(),
+		DeletedOldest: func() int { return int(a.deleted.Load()) },
+		SetClock:      rest.SetSystemClock,
+		RTCDevice:     rtcDevice,
 	}
 }
 
