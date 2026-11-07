@@ -208,12 +208,7 @@ func (a *app) run(ctx context.Context, ready func(addr string)) error {
 	server := a.httpServer()
 	var wg sync.WaitGroup
 	wg.Go(func() { followDebugSetting(ctx, a.store, a.level) })
-	if interval, ok := watchdogInterval(); ok {
-		w := newWatchdog(a.maxStall())
-		sched.Heartbeat = w.beat
-		wg.Go(func() { w.run(ctx, interval) })
-		slog.Info("systemd watchdog enabled", "interval", interval, "maxStall", w.maxStall)
-	}
+	a.startWatchdog(ctx, &wg, sched)
 	wg.Go(func() { sched.Run(ctx) })
 	wg.Go(func() { a.watchHealth(ctx) })
 	err := serve(ctx, server, a.listener, func(addr string) {
@@ -225,6 +220,19 @@ func (a *app) run(ctx context.Context, ready func(addr string)) error {
 	stop()
 	wg.Wait()
 	return err
+}
+
+// startWatchdog pings systemd's watchdog while sched keeps waking up, if
+// systemd asks for it.
+func (a *app) startWatchdog(ctx context.Context, wg *sync.WaitGroup, sched *timelapse.Scheduler) {
+	interval, ok := watchdogInterval()
+	if !ok {
+		return
+	}
+	w := newWatchdog(a.maxStall())
+	sched.Heartbeat = w.beat
+	wg.Go(func() { w.run(ctx, interval) })
+	slog.Info("systemd watchdog enabled", "interval", interval, "maxStall", w.maxStall)
 }
 
 // maxStall is the longest the scheduler loop may go without waking up: all
@@ -310,8 +318,6 @@ func (a *app) sampleHealth(ctx context.Context) {
 		s.Celsius = &c
 	}
 	if a.runCommand != nil {
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
 		if t, err := health.ReadThrottled(ctx, a.runCommand); err == nil {
 			s.Throttled = &t
 		}

@@ -47,24 +47,28 @@ func ParseCameras(out string) []Sensor {
 	var sensors []Sensor
 	for line := range strings.Lines(out) {
 		if m := cameraHeader.FindStringSubmatch(line); m != nil {
-			w, _ := strconv.Atoi(m[2])
-			h, _ := strconv.Atoi(m[3])
-			sensors = append(sensors, Sensor{Model: m[1], Width: w, Height: h})
+			full := parseSize(m[2], m[3])
+			sensors = append(sensors, Sensor{Model: m[1], Width: full.Width, Height: full.Height})
 			continue
 		}
 		if len(sensors) == 0 {
 			continue
 		}
 		if m := cameraMode.FindStringSubmatch(line); m != nil {
-			w, _ := strconv.Atoi(m[1])
-			h, _ := strconv.Atoi(m[2])
-			s := &sensors[len(sensors)-1]
-			if !slices.Contains(s.Modes, Size{w, h}) {
-				s.Modes = append(s.Modes, Size{w, h})
+			sensor, mode := &sensors[len(sensors)-1], parseSize(m[1], m[2])
+			if !slices.Contains(sensor.Modes, mode) {
+				sensor.Modes = append(sensor.Modes, mode)
 			}
 		}
 	}
 	return sensors
+}
+
+// parseSize parses digits matched by the regular expressions above.
+func parseSize(width, height string) Size {
+	w, _ := strconv.Atoi(width)
+	h, _ := strconv.Atoi(height)
+	return Size{w, h}
 }
 
 // Resolutions are the photo sizes offered for this sensor: its modes and its
@@ -76,6 +80,15 @@ func (s Sensor) Resolutions() []Size {
 	}
 	slices.SortStableFunc(out, func(a, b Size) int { return cmp.Compare(b.pixels(), a.pixels()) })
 	return out
+}
+
+// ResolutionList is the Resolutions for messages, e.g. "1920x1080, 1280x720".
+func (s Sensor) ResolutionList() string {
+	var sizes []string
+	for _, r := range s.Resolutions() {
+		sizes = append(sizes, r.String())
+	}
+	return strings.Join(sizes, ", ")
 }
 
 // Supports reports whether width x height is one of the Resolutions.
@@ -114,7 +127,7 @@ type SensorLister interface {
 // ErrNoCamera means rpicam-still lists no camera.
 var ErrNoCamera = errors.New("no camera detected")
 
-// ListCommand runs a command and returns its output (rest.RunCommand).
+// ListCommand runs a command and returns its output (CommandOutput).
 type ListCommand func(ctx context.Context, name string, args ...string) ([]byte, error)
 
 // Sensors detects the connected camera once and remembers it. A failed

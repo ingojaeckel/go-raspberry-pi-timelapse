@@ -57,7 +57,7 @@ func OpenStore(path string, defaults Settings) (*Store, error) {
 // opened, locked or examined (permissions, another process holds it) is left
 // alone and the error returned: its settings may be fine.
 func openOrReplaceDB(path string) (*bolt.DB, error) {
-	db, err := openDB(path)
+	db, err := openDB(path, false)
 	if err == nil || !isCorrupt(err) {
 		return db, err
 	}
@@ -66,7 +66,7 @@ func openOrReplaceDB(path string) (*bolt.DB, error) {
 	if rerr := os.Rename(path, aside); rerr != nil {
 		return nil, fmt.Errorf("%w (and moving it aside failed: %v)", err, rerr)
 	}
-	return openDB(path)
+	return openDB(path, false)
 }
 
 // initialSettings loads the saved settings, or defaults if there are none,
@@ -94,8 +94,9 @@ func isCorrupt(err error) bool {
 	return !errors.Is(err, berrors.ErrTimeout) && !errors.As(err, &pathErr) && !errors.As(err, &errno)
 }
 
-func openDB(path string) (*bolt.DB, error) {
-	return bolt.Open(path, 0o600, &bolt.Options{Timeout: time.Second})
+// openDB waits at most a second for another process's lock on the file.
+func openDB(path string, readOnly bool) (*bolt.DB, error) {
+	return bolt.Open(path, 0o600, &bolt.Options{Timeout: time.Second, ReadOnly: readOnly})
 }
 
 // Close closes the database.
@@ -116,8 +117,8 @@ func (s *Store) Subscribe() <-chan struct{} {
 }
 
 // Update applies change to a copy of the current settings, validates and
-// persists the result and notifies subscribers. Validation errors wrap ErrInvalid and leave the settings as
-// they were.
+// persists the result and notifies subscribers. Validation errors wrap
+// ErrInvalid and leave the settings as they were.
 func (s *Store) Update(change func(*Settings)) (Settings, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -170,11 +171,10 @@ func (s *Store) load() (v Settings, err error) {
 		}
 	}()
 	err = s.db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(bucketName)
-		if bucket == nil {
-			return errors.New("settings not found")
+		var raw []byte
+		if bucket := tx.Bucket(bucketName); bucket != nil {
+			raw = bucket.Get(settingsKey)
 		}
-		raw := bucket.Get(settingsKey)
 		if raw == nil {
 			return errors.New("settings not found")
 		}
@@ -191,7 +191,7 @@ func ReadSettings(path string) (Settings, error) {
 	if _, err := os.Stat(path); err != nil {
 		return Settings{}, err
 	}
-	db, err := bolt.Open(path, 0o600, &bolt.Options{Timeout: time.Second, ReadOnly: true})
+	db, err := openDB(path, true)
 	if err != nil {
 		return Settings{}, err
 	}

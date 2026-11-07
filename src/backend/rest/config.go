@@ -2,11 +2,9 @@ package rest
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
@@ -20,8 +18,7 @@ func (s *Server) getConfiguration(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) updateConfiguration(w http.ResponseWriter, r *http.Request) {
 	var req conf.Settings
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxSettingsBytes)).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, err)
+	if !readJSON(w, r, maxSettingsBytes, &req) {
 		return
 	}
 	if err := s.checkPhotoSize(r.Context(), req); err != nil {
@@ -50,12 +47,8 @@ func (s *Server) checkPhotoSize(ctx context.Context, req conf.Settings) error {
 	if err != nil || sensor.Supports(req.PhotoResolutionWidth, req.PhotoResolutionHeight) {
 		return nil
 	}
-	var sizes []string
-	for _, r := range sensor.Resolutions() {
-		sizes = append(sizes, r.String())
-	}
 	return fmt.Errorf("%w: the %s camera does not support %dx%d; it supports %s", conf.ErrInvalid, sensor.Model,
-		req.PhotoResolutionWidth, req.PhotoResolutionHeight, strings.Join(sizes, ", "))
+		req.PhotoResolutionWidth, req.PhotoResolutionHeight, sensor.ResolutionList())
 }
 
 // applyEditable copies the schedule and photo fields of req into c. The

@@ -87,14 +87,12 @@ var lumaBase = [64]int{
 }
 
 // lumaQuality estimates the quality from table 0 of a DQT segment, or
-// returns 0 if the segment has no table 0. libjpeg scales the base table by
-// 5000/quality (below 50) or 200-2*quality percent, and clamps each entry to
-// 1..255; clamped entries are left out of the estimate.
+// returns 0 if the segment has no table 0.
 func lumaQuality(dqt []byte) int {
 	for len(dqt) > 0 {
-		precision, id := dqt[0]>>4, dqt[0]&0x0f
+		wide, id := dqt[0]>>4 == 1, dqt[0]&0x0f
 		size := 64
-		if precision == 1 {
+		if wide {
 			size = 128
 		}
 		if len(dqt) < 1+size {
@@ -102,35 +100,41 @@ func lumaQuality(dqt []byte) int {
 		}
 		table := dqt[1 : 1+size]
 		dqt = dqt[1+size:]
-		if id != 0 {
-			continue
+		if id == 0 {
+			return tableQuality(table, wide)
 		}
-		var sum, base, ones int
-		for i := range 64 {
-			v := int(table[i])
-			if precision == 1 {
-				v = int(binary.BigEndian.Uint16(table[2*i:]))
-			}
-			switch {
-			case v <= 1:
-				ones++
-			case v < 255:
-				sum += v
-				base += lumaBase[i]
-			}
-		}
-		if base == 0 {
-			if ones == 64 {
-				return 100
-			}
-			return 1
-		}
-		scale := float64(sum) * 100 / float64(base)
-		q := (200 - scale) / 2
-		if scale > 100 {
-			q = 5000 / scale
-		}
-		return int(min(100, max(1, math.Round(q))))
 	}
 	return 0
+}
+
+// tableQuality estimates the quality a luminance table was made with.
+// libjpeg scales the base table by 5000/quality (below 50) or
+// 200-2*quality percent, and clamps each entry to 1..255; clamped entries
+// are left out of the estimate. wide tables have 16-bit entries.
+func tableQuality(table []byte, wide bool) int {
+	var sum, base, ones int
+	for i := range 64 {
+		v := int(table[i])
+		if wide {
+			v = int(binary.BigEndian.Uint16(table[2*i:]))
+		}
+		switch {
+		case v <= 1:
+			ones++
+		case v < 255:
+			sum += v
+			base += lumaBase[i]
+		}
+	}
+	if base == 0 {
+		if ones == 64 {
+			return 100
+		}
+		return 1
+	}
+	scale := float64(sum) * 100 / float64(base)
+	if scale > 100 {
+		return int(max(1, math.Round(5000/scale)))
+	}
+	return int(min(100, math.Round((200-scale)/2)))
 }

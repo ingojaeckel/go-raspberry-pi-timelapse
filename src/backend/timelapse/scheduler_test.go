@@ -519,3 +519,7 @@ func TestNextIsAfterSunriseAtNight(t *testing.T) {
 		}
 	})
 }
+
+func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) time.Time {
+	return s.plan(set, now, anchor, lastSlot).At
+}

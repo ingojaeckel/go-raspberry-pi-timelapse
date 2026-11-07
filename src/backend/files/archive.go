@@ -232,8 +232,13 @@ func openPhoto(root *os.Root, p File, fn func(f *os.File, perm os.FileMode) erro
 // *os.File is what net/http and net hand to sendfile(2).
 func copyFile(w io.Writer, f *os.File, n int64) error {
 	copied, err := io.Copy(w, &io.LimitedReader{R: f, N: n})
+	return completeCopy(copied, n, err)
+}
+
+// completeCopy turns a copy that ended early (the photo shrank) into an error.
+func completeCopy(copied, n int64, err error) error {
 	if err == nil && copied != n {
-		err = fmt.Errorf("%w: ended after %d of %d bytes", ErrChanged, copied, n)
+		return fmt.Errorf("%w: ended after %d of %d bytes", ErrChanged, copied, n)
 	}
 	return err
 }
@@ -250,10 +255,7 @@ func copyWithCRC(w io.Writer, r io.Reader, n int64) (uint32, error) {
 	defer copyBuffers.Put(bp)
 	crc := crc32.NewIEEE()
 	copied, err := io.CopyBuffer(io.MultiWriter(w, crc), io.LimitReader(r, n), *bp)
-	if err == nil && copied != n {
-		err = fmt.Errorf("%w: ended after %d of %d bytes", ErrChanged, copied, n)
-	}
-	return crc.Sum32(), err
+	return crc.Sum32(), completeCopy(copied, n, err)
 }
 
 // writeLength writes n bytes of nothing in particular to w, for ZipSize.

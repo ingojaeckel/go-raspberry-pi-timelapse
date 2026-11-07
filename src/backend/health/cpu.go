@@ -36,13 +36,9 @@ func ReadCPUFreq(dir string) (CPUFreq, error) {
 		{"scaling_min_freq", &c.MinMHz},
 		{"scaling_max_freq", &c.MaxMHz},
 	} {
-		b, err := os.ReadFile(filepath.Join(dir, f.name))
+		khz, err := readInt(filepath.Join(dir, f.name))
 		if err != nil {
 			return c, err
-		}
-		khz, err := strconv.Atoi(strings.TrimSpace(string(b)))
-		if err != nil {
-			return c, fmt.Errorf("%s: %w", f.name, err)
 		}
 		*f.mhz = khz / 1000
 	}
@@ -51,13 +47,19 @@ func ReadCPUFreq(dir string) (CPUFreq, error) {
 
 // ReadCelsius reads a thermal zone file, which holds millidegrees Celsius.
 func ReadCelsius(path string) (float64, error) {
+	milli, err := readInt(path)
+	return float64(milli) / 1000, err
+}
+
+// readInt reads a file holding one integer, as the kernel's /sys files do.
+func readInt(path string) (int, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return 0, err
 	}
-	milli, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	v, err := strconv.Atoi(strings.TrimSpace(string(b)))
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", path, err)
 	}
-	return float64(milli) / 1000, nil
+	return v, nil
 }

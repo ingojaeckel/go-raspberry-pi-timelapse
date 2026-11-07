@@ -53,7 +53,7 @@ type rpicamStill struct{}
 func (rpicamStill) String() string { return commandRpicamStill }
 
 // Sensors lists the cameras with rpicam-still --list-cameras.
-func (rpicamStill) Sensors() *Sensors { return NewSensors(commandOutput) }
+func (rpicamStill) Sensors() *Sensors { return NewSensors(CommandOutput) }
 
 func (rpicamStill) Capture(ctx context.Context, path string, o Options) error {
 	return runCommand(ctx, commandRpicamStill, rpicamStillArgs(path, o)...)
@@ -112,8 +112,8 @@ func runCommand(ctx context.Context, name string, args ...string) error {
 	return nil
 }
 
-// commandOutput runs a command and returns its combined output.
-func commandOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
+// CommandOutput runs a command and returns its combined output.
+func CommandOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.WaitDelay = KillDelay
 	return cmd.CombinedOutput()

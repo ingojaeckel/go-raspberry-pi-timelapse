@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"slices"
 	"sync"
+	"time"
 )
 
 // Run executes a command and returns its output, like rest.RunCommand.
@@ -20,8 +21,11 @@ func VcgencmdPath() string {
 	return "/opt/vc/bin/vcgencmd"
 }
 
-// ReadThrottled asks the firmware for under-voltage and throttling.
+// ReadThrottled asks the firmware for under-voltage and throttling, giving
+// vcgencmd at most 10 seconds.
 func ReadThrottled(ctx context.Context, run Run) (Throttled, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	out, err := run(ctx, VcgencmdPath(), "get_throttled")
 	if err != nil {
 		return 0, err

@@ -2,30 +2,25 @@ package rest
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/health"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/logfile"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 )
 
 const maxLogBytes = 256 << 10
 
 // RunCommand runs a system command and returns its combined output. It is
 // the production implementation of Server.Run.
-func RunCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.WaitDelay = 2 * time.Second
-	return cmd.CombinedOutput()
-}
+var RunCommand = timelapse.CommandOutput
 
 // monitoring reports system status. Each field holds the command output, or
 // the error if it failed.
@@ -122,8 +117,7 @@ var (
 // there is one.
 func (s *Server) setTime(w http.ResponseWriter, r *http.Request) {
 	var req SetTimeRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, err)
+	if !readJSON(w, r, 1<<10, &req) {
 		return
 	}
 	t := time.UnixMilli(req.UnixMillis)
@@ -137,15 +131,21 @@ func (s *Server) setTime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slog.Warn("clock set from the web UI", "was", was.Round(0), "now", t, "change", t.Sub(was.Round(0)).Round(time.Second))
-	res := SetTimeResponse{UnixMillis: time.Now().UnixMilli()}
-	if _, err := os.Stat(s.RTCDevice); err == nil { // never for ""
-		res.RTC = "updated"
-		if out, err := s.Run(r.Context(), "/usr/bin/sudo", "-n", "/usr/sbin/hwclock", "--rtc="+s.RTCDevice, "--systohc", "--utc"); err != nil {
-			res.RTC = fmt.Sprintf("not updated: %v %s", err, out)
-			slog.Warn("updating the clock module", "err", err, "output", string(out))
-		}
+	writeJSON(w, http.StatusOK, SetTimeResponse{UnixMillis: time.Now().UnixMilli(), RTC: s.updateRTC(r.Context())})
+}
+
+// updateRTC copies the system clock to the clock module, if there is one,
+// and says how that went ("" without a clock module).
+func (s *Server) updateRTC(ctx context.Context) string {
+	if _, err := os.Stat(s.RTCDevice); err != nil { // always for ""
+		return ""
 	}
-	writeJSON(w, http.StatusOK, res)
+	out, err := s.Run(ctx, "/usr/bin/sudo", "-n", "/usr/sbin/hwclock", "--rtc="+s.RTCDevice, "--systohc", "--utc")
+	if err != nil {
+		slog.Warn("updating the clock module", "err", err, "output", string(out))
+		return fmt.Sprintf("not updated: %v %s", err, out)
+	}
+	return "updated"
 }
 
 // output returns the output of a command, or its error message.

@@ -95,14 +95,18 @@ func (s *Server) photosBody() (*cachedPhotos, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.photosCache = &cachedPhotos{gen: gen, etag: processID + "-" + strconv.FormatUint(gen, 36), plain: plain, gzipped: gzipBytes(plain)}
+	return s.photosCache, nil
+}
+
+func gzipBytes(plain []byte) []byte {
 	var gz bytes.Buffer
 	zw := gzipWriters.Get().(*gzip.Writer)
+	defer gzipWriters.Put(zw)
 	zw.Reset(&gz)
 	zw.Write(plain)
 	zw.Close()
-	gzipWriters.Put(zw)
-	s.photosCache = &cachedPhotos{gen: gen, etag: processID + "-" + strconv.FormatUint(gen, 36), plain: plain, gzipped: gz.Bytes()}
-	return s.photosCache, nil
+	return gz.Bytes()
 }
 
 // acceptsGzip reports whether the client accepts gzip, ignoring q-values

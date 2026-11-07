@@ -125,10 +125,6 @@ func (s *Scheduler) sleep(ctx context.Context, changed <-chan struct{}, next tim
 	}
 }
 
-func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) time.Time {
-	return s.plan(set, now, anchor, lastSlot).At
-}
-
 func (s *Scheduler) plan(set conf.Settings, now, anchor, lastSlot time.Time) Plan {
 	interval := time.Duration(set.SecondsBetweenCaptures) * time.Second
 	var next time.Time

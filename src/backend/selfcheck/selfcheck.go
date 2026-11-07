@@ -97,42 +97,43 @@ func Run(ctx context.Context, cfg Config) []Result {
 	}
 	settings, settingsResult := readSettings(cfg)
 	opts := timelapse.PhotoOptions(settings)
-	results := []Result{settingsResult}
-	add := func(r Result) Result {
-		results = append(results, r)
-		return r
-	}
-
-	storage := add(checkStorage(cfg))
-	detected := add(checkDetected(pi, sensor, detectErr, opts))
-	free := add(checkCameraFree(cfg, pi))
-
-	var photo string
-	switch {
-	case storage.Status == Fail:
-		add(skipped("capture", "no storage folder to write to"))
-	case detected.Status == Fail:
-		add(skipped("capture", "no camera"))
-	case free.Status == Fail:
-		add(skipped("capture", "the camera is in use"))
-	default:
-		var r Result
-		photo, r = capture(ctx, cfg, opts)
-		add(r)
-	}
-	if photo == "" {
-		add(skipped("photo", "no photo taken"))
+	results := []Result{settingsResult, checkStorage(cfg), checkDetected(pi, sensor, detectErr, opts), checkCameraFree(cfg, pi)}
+	if why := cannotCapture(results); why != "" {
+		results = append(results, skipped("capture", why), skipped("photo", "no photo taken"))
 	} else {
-		add(checkPhoto(cfg, settings, photo, opts))
-		if !cfg.Keep {
-			os.RemoveAll(filepath.Dir(photo))
+		results = append(results, testPhoto(ctx, cfg, settings, opts)...)
+	}
+	return append(results, checkPower(ctx, cfg), checkTemperature(cfg), checkCPU(cfg))
+}
+
+// captureNeeds are the checks a test photo needs, with what to say when one
+// fails.
+var captureNeeds = map[string]string{
+	"storage":         "no storage folder to write to",
+	"camera detected": "no camera",
+	"camera free":     "the camera is in use",
+}
+
+// cannotCapture says why the results rule out a test photo, or "".
+func cannotCapture(results []Result) string {
+	for _, r := range results {
+		if why, needed := captureNeeds[r.Check]; needed && r.Status == Fail {
+			return why
 		}
 	}
+	return ""
+}
 
-	add(checkPower(ctx, cfg))
-	add(checkTemperature(cfg))
-	add(checkCPU(cfg))
-	return results
+// testPhoto takes a photo and checks it: the "capture" and "photo" results.
+func testPhoto(ctx context.Context, cfg Config, settings conf.Settings, opts timelapse.Options) []Result {
+	photo, captured := capture(ctx, cfg, opts)
+	if photo == "" {
+		return []Result{captured, skipped("photo", "no photo taken")}
+	}
+	if !cfg.Keep {
+		defer os.RemoveAll(filepath.Dir(photo))
+	}
+	return []Result{captured, checkPhoto(cfg, settings, photo, opts)}
 }
 
 // Write prints the results and a summary line, and reports whether no check
@@ -189,29 +190,22 @@ func readSettings(cfg Config) (conf.Settings, Result) {
 		r.Detail = "saved settings: " + describe(s)
 		return s, r
 	case errors.Is(err, os.ErrNotExist):
-		r.Detail = "nothing saved yet, using the defaults: " + describe(cfg.DefaultSettings)
+		r.Detail = "nothing saved yet"
 	case errors.Is(err, berrors.ErrTimeout):
 		r.Status = Warn
-		r.Detail = "the timelapse app is running (it holds " + cfg.SettingsFile + "), using the defaults: " + describe(cfg.DefaultSettings)
+		r.Detail = "the timelapse app is running (it holds " + cfg.SettingsFile + ")"
 		r.Hint = "a scheduled capture can collide with this test photo; stop the app for a clean check (in the image: sudo systemctl stop timelapse)"
 	default:
 		r.Status = Warn
-		r.Detail = fmt.Sprintf("cannot read %s (%v), using the defaults: %s", cfg.SettingsFile, err, describe(cfg.DefaultSettings))
+		r.Detail = fmt.Sprintf("cannot read %s (%v)", cfg.SettingsFile, err)
 	}
+	r.Detail += ", using the defaults: " + describe(cfg.DefaultSettings)
 	return cfg.DefaultSettings, r
 }
 
 func checkStorage(cfg Config) Result {
 	r := Result{Check: "storage"}
-	err := os.MkdirAll(cfg.StorageFolder, 0o700)
-	if err == nil {
-		var f *os.File
-		if f, err = os.CreateTemp(cfg.StorageFolder, ".selfcheck-"); err == nil {
-			f.Close()
-			err = os.Remove(f.Name())
-		}
-	}
-	if err != nil {
+	if err := writable(cfg.StorageFolder); err != nil {
 		r.Status, r.Detail = Fail, fmt.Sprintf("cannot write to %s: %v", cfg.StorageFolder, err)
 		r.Hint = "check -storageFolder, its owner and that the card is not read-only"
 		return r
@@ -227,6 +221,19 @@ func checkStorage(cfg Config) Result {
 		r.Hint = fmt.Sprintf("below the %s the app keeps free: it deletes the oldest photos, or stops taking photos (Settings)", formatBytes(cfg.MinFreeBytes))
 	}
 	return r
+}
+
+// writable creates dir if needed, and a file in it, which it deletes again.
+func writable(dir string) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(dir, ".selfcheck-")
+	if err != nil {
+		return err
+	}
+	f.Close()
+	return os.Remove(f.Name())
 }
 
 func formatBytes(b uint64) string {
@@ -266,12 +273,8 @@ func checkDetected(pi bool, sensor timelapse.Sensor, err error, o timelapse.Opti
 	}
 	r.Detail = fmt.Sprintf("%s (%dx%d)", sensor.Model, sensor.Width, sensor.Height)
 	if !sensor.Supports(o.Width, o.Height) {
-		var sizes []string
-		for _, s := range sensor.Resolutions() {
-			sizes = append(sizes, s.String())
-		}
 		r.Status = Warn
-		r.Detail += fmt.Sprintf(": photos of %dx%d are not one of its sizes (%s) and get scaled", o.Width, o.Height, strings.Join(sizes, ", "))
+		r.Detail += fmt.Sprintf(": photos of %dx%d are not one of its sizes (%s) and get scaled", o.Width, o.Height, sensor.ResolutionList())
 		r.Hint = "choose one of the camera's resolutions in Settings"
 	}
 	return r
@@ -291,14 +294,14 @@ func checkCameraFree(cfg Config, pi bool) Result {
 		return r
 	}
 	r.Status = Fail
-	var units []string
+	var described, units []string
 	for _, h := range holders {
-		r.Detail += "; " + h.String()
+		described = append(described, h.String())
 		if h.unit != "" {
 			units = append(units, h.unit)
 		}
 	}
-	r.Detail = "in use by " + r.Detail[2:]
+	r.Detail = "in use by " + strings.Join(described, "; ")
 	r.Hint = "only one program can use the camera; stop the other one"
 	if len(units) > 0 {
 		r.Hint += ": sudo systemctl disable --now " + strings.Join(units, " ")
@@ -332,19 +335,23 @@ func cameraHolders(procDir string) []holder {
 		if _, err := strconv.Atoi(pid); err != nil || pid == self {
 			continue
 		}
-		if !holdsCamera(filepath.Join(procDir, pid, "fd")) {
-			continue
+		if holdsCamera(filepath.Join(procDir, pid, "fd")) {
+			holders = append(holders, readHolder(procDir, pid))
 		}
-		h := holder{pid: pid}
-		if b, err := os.ReadFile(filepath.Join(procDir, pid, "cmdline")); err == nil {
-			h.cmdline = strings.TrimSpace(strings.ReplaceAll(string(b), "\x00", " "))
-		}
-		if b, err := os.ReadFile(filepath.Join(procDir, pid, "cgroup")); err == nil {
-			h.unit = serviceUnit(string(b))
-		}
-		holders = append(holders, h)
 	}
 	return holders
+}
+
+// readHolder reads the command line and systemd unit of process pid.
+func readHolder(procDir, pid string) holder {
+	h := holder{pid: pid}
+	if b, err := os.ReadFile(filepath.Join(procDir, pid, "cmdline")); err == nil {
+		h.cmdline = strings.TrimSpace(strings.ReplaceAll(string(b), "\x00", " "))
+	}
+	if b, err := os.ReadFile(filepath.Join(procDir, pid, "cgroup")); err == nil {
+		h.unit = serviceUnit(string(b))
+	}
+	return h
 }
 
 func holdsCamera(fdDir string) bool {
@@ -417,15 +424,9 @@ func captureHint(out string) string {
 
 func checkPhoto(cfg Config, set conf.Settings, path string, o timelapse.Options) Result {
 	r := Result{Check: "photo"}
-	f, err := os.Open(path)
+	img, err := decodeJPEG(path)
 	if err != nil {
 		r.Status, r.Detail = Fail, err.Error()
-		return r
-	}
-	defer f.Close()
-	img, err := jpeg.Decode(f)
-	if err != nil {
-		r.Status, r.Detail = Fail, fmt.Sprintf("the file is not a JPEG: %v", err)
 		return r
 	}
 	size := img.Bounds().Size()
@@ -433,15 +434,7 @@ func checkPhoto(cfg Config, set conf.Settings, path string, o timelapse.Options)
 	r.Detail = fmt.Sprintf("%dx%d JPEG, brightness %.0f of 255, contrast %.0f", size.X, size.Y, mean, sd)
 	switch {
 	case mean < cfg.MinBrightness:
-		r.Status = Fail
-		r.Detail = fmt.Sprintf("too dark: brightness %.0f of 255 (at least %.0f expected)", mean, cfg.MinBrightness)
-		r.Hint = "remove the lens cap, point the camera at something lit, and check the lens focus; " +
-			"testing in the dark? lower -selfcheckMinBrightness"
-		if rise, night := nightAt(cfg, set); night {
-			r.Status = Warn
-			r.Detail += "; it is night at the camera's location"
-			r.Hint = "run the self-check again after sunrise" + rise
-		}
+		r = tooDark(cfg, set, mean)
 	case sd < minContrast:
 		r.Status = Fail
 		r.Detail = fmt.Sprintf("every pixel has the same brightness (%.0f of 255): the sensor returns a blank frame", mean)
@@ -452,6 +445,34 @@ func checkPhoto(cfg Config, set conf.Settings, path string, o timelapse.Options)
 	}
 	if cfg.Keep {
 		r.Detail += "; kept at " + path
+	}
+	return r
+}
+
+func decodeJPEG(path string) (image.Image, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	img, err := jpeg.Decode(f)
+	if err != nil {
+		return nil, fmt.Errorf("the file is not a JPEG: %v", err)
+	}
+	return img, nil
+}
+
+// tooDark fails a photo below MinBrightness, unless it is night at the
+// saved location: then the lens may well be fine.
+func tooDark(cfg Config, set conf.Settings, mean float64) Result {
+	r := Result{Check: "photo", Status: Fail,
+		Detail: fmt.Sprintf("too dark: brightness %.0f of 255 (at least %.0f expected)", mean, cfg.MinBrightness),
+		Hint: "remove the lens cap, point the camera at something lit, and check the lens focus; " +
+			"testing in the dark? lower -selfcheckMinBrightness"}
+	if rise, night := nightAt(cfg, set); night {
+		r.Status = Warn
+		r.Detail += "; it is night at the camera's location"
+		r.Hint = "run the self-check again after sunrise" + rise
 	}
 	return r
 }
@@ -484,8 +505,6 @@ func brightness(img image.Image) (mean, sd float64) {
 
 func checkPower(ctx context.Context, cfg Config) Result {
 	r := Result{Check: "power"}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 	t, err := health.ReadThrottled(ctx, cfg.Run)
 	if err != nil {
 		return skipped(r.Check, "vcgencmd not available: not a Raspberry Pi")

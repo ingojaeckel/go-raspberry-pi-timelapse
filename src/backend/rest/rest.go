@@ -102,3 +102,13 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeError(w http.ResponseWriter, status int, err error) {
 	writeJSON(w, status, err.Error())
 }
+
+// readJSON decodes a request body of at most maxBytes into v. On failure it
+// responds with 400 and returns false.
+func readJSON(w http.ResponseWriter, r *http.Request, maxBytes int64, v any) bool {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBytes)).Decode(v); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return false
+	}
+	return true
+}
