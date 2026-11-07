@@ -30,12 +30,9 @@ const frontendPath = "/static/frontend/build/"
 // Files the app keeps in its working directory (WorkingDirectory in
 // timelapse.service).
 const (
-	settingsFile = "timelapse-settings.json"
-	// legacySettingsFile is where versions before settingsFile kept the
-	// settings (a bbolt database); see conf.MigrateLegacy.
-	legacySettingsFile = "timelapse-settings.db"
-	logFile            = "timelapse.log"
-	logFileMaxSize     = 10 << 20 // bytes before the log is rotated to logFile.1
+	settingsFile   = "timelapse-settings.json"
+	logFile        = "timelapse.log"
+	logFileMaxSize = 10 << 20 // bytes before the log is rotated to logFile.1
 	// runMarkerFile exists while the app runs; finding it at start-up means
 	// the previous run did not stop cleanly (see health.StartRun).
 	runMarkerFile = "timelapse.running"
@@ -150,9 +147,6 @@ func (a *app) openSettings() error {
 	if detected {
 		d := sensor.DefaultResolution()
 		defaults.PhotoResolutionWidth, defaults.PhotoResolutionHeight = d.Width, d.Height
-	}
-	if err := conf.MigrateLegacy(legacySettingsFile, settingsFile); err != nil {
-		slog.Warn("could not take over the settings of the previous version, using the defaults", "err", err)
 	}
 	store, err := conf.OpenStore(settingsFile, defaults)
 	if err != nil {

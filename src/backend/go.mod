@@ -6,7 +6,6 @@ toolchain go1.27.3
 
 require (
 	github.com/facebookgo/ensure v0.0.0-20200202191622-63f1cf65ac4c
-	go.etcd.io/bbolt v1.5.0
 	golang.org/x/sys v0.49.0
 )
 

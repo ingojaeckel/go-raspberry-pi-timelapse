@@ -1,8 +1,6 @@
 package main
 
 import (
-	bolt "go.etcd.io/bbolt"
-
 	"bytes"
 	"context"
 	"errors"
@@ -341,28 +339,6 @@ func TestSavedUnsupportedSizeIsKeptAndLogged(t *testing.T) {
 	}
 	if logs, _ := os.ReadFile(logFile); !strings.Contains(string(logs), "not one of the camera's sizes") {
 		t.Fatalf("logs:\n%s", logs)
-	}
-}
-
-func TestSettingsOfOlderVersionsAreMigrated(t *testing.T) {
-	t.Chdir(t.TempDir())
-	db, err := bolt.Open(legacySettingsFile, 0o600, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db.Update(func(tx *bolt.Tx) error {
-		bucket, _ := tx.CreateBucket([]byte("settings"))
-		return bucket.Put([]byte("s"), []byte(`{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"PhotoResolutionWidth":1640,"PhotoResolutionHeight":1232,"Quality":77}`))
-	})
-	db.Close()
-	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 1800, listen: "127.0.0.1:0"}, noCamera{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := a.store.Get()
-	a.close()
-	if got.Quality != 77 || got.SecondsBetweenCaptures != 600 {
-		t.Fatalf("got %s, want the settings of the old database", got)
 	}
 }
 
