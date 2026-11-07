@@ -36,7 +36,7 @@ describe('SettingsView', () => {
 
   it('shows the interval and the offset as a minute past the hour', async () => {
     await setup();
-    expect(screen.getByRole('combobox', { name: 'Take a photo every' })).toHaveDisplayValue('30 minutes');
+    expect(screen.getByRole('combobox', { name: 'Take a photo every' })).toHaveDisplayValue('30 min');
     // 900 seconds is minute 15, not "900 minutes" as the old UI showed
     expect(screen.getByLabelText('First capture at minute')).toHaveValue(15);
     expect(screen.getByText('Captures at :15, :45.')).toBeInTheDocument();

@@ -21,10 +21,11 @@ export const VALID_INTERVALS: readonly number[] = Array.from(
   (_, i) => MIN_INTERVAL + i,
 ).filter(isValidInterval);
 
+/** An interval as "1 min 12 s" or "1 hour": one unit throughout, so a list of them reads in order. */
 export function formatInterval(seconds: number): string {
   if (seconds % 3600 === 0) return seconds === 3600 ? '1 hour' : `${seconds / 3600} hours`;
-  if (seconds % 60 === 0) return seconds === 60 ? '1 minute' : `${seconds / 60} minutes`;
-  return `${seconds} seconds`;
+  const rest = seconds % 60;
+  return `${Math.floor(seconds / 60)} min${rest ? ` ${rest} s` : ''}`;
 }
 
 export function isAligned(s: Schedule): boolean {

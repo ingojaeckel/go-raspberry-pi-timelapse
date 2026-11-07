@@ -19,11 +19,13 @@ describe('valid intervals', () => {
     for (const v of shared.invalidIntervals) expect(isValidInterval(v)).toBe(false);
   });
 
-  it('have readable labels', () => {
-    expect(formatInterval(60)).toBe('1 minute');
-    expect(formatInterval(72)).toBe('72 seconds');
-    expect(formatInterval(90)).toBe('90 seconds');
-    expect(formatInterval(600)).toBe('10 minutes');
+  it('are labelled in minutes and seconds, so their order is plain', () => {
+    expect(formatInterval(60)).toBe('1 min');
+    expect(formatInterval(72)).toBe('1 min 12 s');
+    expect(formatInterval(100)).toBe('1 min 40 s');
+    expect(formatInterval(120)).toBe('2 min');
+    expect(formatInterval(450)).toBe('7 min 30 s');
+    expect(formatInterval(1800)).toBe('30 min');
     expect(formatInterval(3600)).toBe('1 hour');
   });
 });
