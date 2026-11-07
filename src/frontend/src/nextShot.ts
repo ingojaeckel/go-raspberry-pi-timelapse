@@ -20,6 +20,11 @@ export function toNextShot(s: CameraSchedule, receivedAt: number): NextShot | nu
   return { at: new Date(receivedAt + s.NextMillis - s.UnixMillis), night: s.Night, zoneOffsetSeconds: s.ZoneOffsetSeconds };
 }
 
+/** Whole seconds until the shot, 0 once it is due. */
+export function secondsUntil(shot: NextShot, now: Date): number {
+  return Math.max(0, Math.round((shot.at.getTime() - now.getTime()) / 1000));
+}
+
 /** Asked again this long after the planned time, until the camera has planned the next one. */
 const PASSED_RETRY_MS = 5000;
 const REFRESH_MS = 60_000;

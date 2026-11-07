@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { errorMessage } from './api';
 
 export interface Resource<T> {
   data: T | undefined;
@@ -28,7 +29,7 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>): Resou
       })
       .catch((e: unknown) => {
         if (ctrl.signal.aborted) return;
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
       })
       .finally(() => {
         if (!ctrl.signal.aborted) setLoading(false);
@@ -39,6 +40,31 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>): Resou
   const reload = useCallback(() => setTick((t) => t + 1), []);
   const set = useCallback((v: T) => setData(v), []);
   return { data, error, loading, reload, set };
+}
+
+/** Whether an async action is running, and a function that runs one and tracks it. */
+export function useBusy(): [boolean, (action: () => Promise<void>) => Promise<void>] {
+  const [busy, setBusy] = useState(false);
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return [busy, run];
+}
+
+/** A ref for a native <dialog>, opened as a modal while `open` and closed otherwise. */
+export function useModal(open: boolean) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (open && dialog && !dialog.open) dialog.showModal();
+    if (!open && dialog?.open) dialog.close();
+  }, [open]);
+  return ref;
 }
 
 /** Current time, updated every `ms`. */

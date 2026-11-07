@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { urls } from '../api';
 import { formatClock, formatDay } from '../format';
+import { useModal } from '../hooks';
 import type { PhotoItem } from '../views/photoItems';
 import { Icon } from './Icon';
 
@@ -12,16 +13,9 @@ interface Props {
 
 /** Full-screen viewer. Photos are only fetched when opened: full-size frames are several MB each. */
 export function PhotoViewer({ photos, index, onIndex }: Props) {
-  const ref = useRef<HTMLDialogElement>(null);
   const [loaded, setLoaded] = useState(false);
   const photo = index !== null ? photos[index] : undefined;
-
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (photo && !d.open) d.showModal();
-    if (!photo && d.open) d.close();
-  }, [photo]);
+  const ref = useModal(!!photo);
 
   useEffect(() => setLoaded(false), [photo?.name]);
 

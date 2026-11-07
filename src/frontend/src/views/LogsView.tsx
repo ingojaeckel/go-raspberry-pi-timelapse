@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { Notice, PageHeader, Spinner } from '../components/ui';
+import { Notice, PageHeader, RefreshButton, Spinner } from '../components/ui';
 import { useResource } from '../hooks';
 
 const TAIL = 400;
@@ -39,9 +39,7 @@ export function LogsView() {
             <Icon name="download" /> Save
           </a>
         )}
-        <button type="button" className="btn ghost" onClick={logs.reload} disabled={logs.loading}>
-          <Icon name="refresh" /> Refresh
-        </button>
+        <RefreshButton resource={logs} />
       </PageHeader>
 
       {logs.error && (

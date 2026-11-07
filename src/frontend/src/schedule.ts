@@ -1,5 +1,5 @@
 import type { Settings } from './api';
-import { daylightFraction, validLocation } from './sun';
+import { daylightFraction, noLocation, validLocation } from './sun';
 
 type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'>;
 
@@ -58,6 +58,6 @@ type NightSchedule = Schedule & Partial<Pick<Settings, 'SkipNightPhotos' | 'Lati
 export function photosPerDay(s: NightSchedule, now: Date): number {
   const all = capturesPerDay(s);
   const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = s;
-  if (!SkipNightPhotos || !validLocation(lat, lon) || (lat === 0 && lon === 0)) return all;
+  if (!SkipNightPhotos || !validLocation(lat, lon) || noLocation(lat, lon)) return all;
   return Math.round(all * daylightFraction(now, lat, lon));
 }

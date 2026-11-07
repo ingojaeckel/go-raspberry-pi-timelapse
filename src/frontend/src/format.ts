@@ -1,6 +1,8 @@
 // Parsers for the raw strings the Pi reports, and display formatting.
 
-import type { Storage } from './api';
+import type { Size, Storage } from './api';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
 
 /** Parses Go's time.Time.String() output, e.g. "2026-11-02 21:15:00.123456789 +0100 CET". */
 export function parseGoTime(raw: string): Date | null {
@@ -12,7 +14,7 @@ export function parseGoTime(raw: string): Date | null {
 }
 
 export function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
 export function formatDay(d: Date, now = new Date()): string {
@@ -40,8 +42,7 @@ export function formatCountdown(totalSeconds: number): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
-  return `${h > 0 ? `${h}:` : ''}${mm}:${String(sec).padStart(2, '0')}`;
+  return h > 0 ? `${h}:${pad2(m)}:${pad2(sec)}` : `${m}:${pad2(sec)}`;
 }
 
 /** "45 s", "30 min", "1 h 30 min" */
@@ -70,7 +71,22 @@ export function formatRelative(from: Date, now = new Date()): string {
 export function formatPastHour(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `:${String(m).padStart(2, '0')}${s ? `:${String(s).padStart(2, '0')}` : ''}`;
+  return `:${pad2(m)}${s ? `:${pad2(s)}` : ''}`;
+}
+
+/** ":15, :45" */
+export function formatPastHours(slots: readonly number[]): string {
+  return slots.map(formatPastHour).join(', ');
+}
+
+/** "1 photo", "1,200 photos" */
+export function plural(n: number, word: string): string {
+  return `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
+}
+
+/** "1920×1080" */
+export function formatSize(s: Size): string {
+  return `${s.Width}×${s.Height}`;
 }
 
 const UNIT: Record<string, number> = { B: 1, K: 1024, M: 1024 ** 2, G: 1024 ** 3, T: 1024 ** 4, P: 1024 ** 5 };
@@ -191,10 +207,13 @@ export interface Runway {
   days: number | null;
 }
 
+/** Free space before the disk counts as full. */
+const usableBytes = (s: Storage) => Math.max(s.FreeBytes - s.ReserveBytes, 0);
+
 /** How long until the card is full, from the average size of the photos so far. */
 export function estimateRunway(s: Storage, perDay: number): Runway | null {
   if (s.Error || s.Photos === 0 || s.PhotoBytes === 0) return null;
-  const photos = Math.floor(Math.max(s.FreeBytes - s.ReserveBytes, 0) / (s.PhotoBytes / s.Photos));
+  const photos = Math.floor(usableBytes(s) / (s.PhotoBytes / s.Photos));
   return { photos, days: perDay > 0 ? photos / perDay : null };
 }
 
@@ -267,7 +286,7 @@ export interface Capacity {
 /** How many photos of `photoBytes` fit on the card, and for how long at `perDay` photos a day. */
 export function estimateCapacity(s: Storage, photoBytes: number, perDay: number): Capacity | null {
   if (s.Error || !(photoBytes > 0)) return null;
-  const usable = Math.max(s.FreeBytes - s.ReserveBytes, 0);
+  const usable = usableBytes(s);
   const more = Math.floor(usable / photoBytes);
   const kept = s.StopWhenDiskFull ? null : Math.floor((usable + s.PhotoBytes) / photoBytes);
   const days = (n: number) => (perDay > 0 ? n / perDay : null);

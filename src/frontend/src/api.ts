@@ -100,6 +100,11 @@ export class ApiError extends Error {
   }
 }
 
+/** The message of a caught error, whatever was thrown. */
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export const OFFLINE_MESSAGE =
   "Can't reach the camera. Check that this device is still connected to the camera's WiFi.";
 
@@ -135,6 +140,10 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+function postJson<T>(path: string, body: unknown): Promise<T> {
+  return json<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+}
+
 function filesQuery(names: readonly string[]): string {
   const q = new URLSearchParams();
   for (const n of names) q.append('f', n);
@@ -159,11 +168,7 @@ export const api = {
     return json<Settings>('/configuration', { signal });
   },
   saveSettings(s: Settings): Promise<Settings> {
-    return json<Settings>('/configuration', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(s),
-    });
+    return postJson<Settings>('/configuration', s);
   },
   camera(signal?: AbortSignal): Promise<Camera> {
     return json<Camera>('/camera', { signal });
@@ -176,11 +181,7 @@ export const api = {
   },
   /** Sets the camera's clock, normally to this device's. */
   setTime(unixMillis: number): Promise<SetTimeResult> {
-    return json<SetTimeResult>('/admin/time', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ UnixMillis: unixMillis }),
-    });
+    return postJson<SetTimeResult>('/admin/time', { UnixMillis: unixMillis });
   },
   async logs(signal?: AbortSignal): Promise<string> {
     const r = await json<LogResponse>('/logs', { signal });

@@ -1,14 +1,23 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PhotosView } from './PhotosView';
-import { callsTo, json, mockServer, settings } from '../test/mockServer';
+import { callsTo, json, mockServer, settings, type Routes } from '../test/mockServer';
 import { OFFLINE_MESSAGE } from '../api';
+
+const NEWEST = '20261102-091500.jpg';
+
+/** Renders the Photos page and waits for the list. */
+async function renderPhotos(routes: Routes = {}) {
+  const f = mockServer(routes);
+  render(<PhotosView settings={settings} />);
+  const user = userEvent.setup();
+  await screen.findByText(NEWEST);
+  return { f, user };
+}
 
 describe('PhotosView', () => {
   it('lists photos newest first, grouped by day', async () => {
-    mockServer();
-    render(<PhotosView settings={settings} />);
-    expect(await screen.findByText('20261102-091500.jpg')).toBeInTheDocument();
+    await renderPhotos();
     const groups = screen.getAllByRole('group');
     expect(groups).toHaveLength(2);
     expect(screen.getByText('3 photos', { exact: false })).toBeInTheDocument();
@@ -23,21 +32,18 @@ describe('PhotosView', () => {
   it('loads no photo until one is opened: the list only', async () => {
     const f = mockServer();
     const { container } = render(<PhotosView settings={settings} />);
-    expect(await screen.findByText('20261102-091500.jpg')).toBeInTheDocument();
+    expect(await screen.findByText(NEWEST)).toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
     expect(f.mock.calls.filter(([u]) => String(u).includes('/file/'))).toHaveLength(0);
   });
 
   it('offers archives of everything, then of the selection', async () => {
-    mockServer();
-    render(<PhotosView settings={settings} />);
-    const user = userEvent.setup();
-    await screen.findByText('20261102-091500.jpg');
+    const { user } = await renderPhotos();
 
     expect(screen.getByRole('link', { name: 'ZIP' })).toHaveAttribute('href', '/archive/zip');
     expect(screen.getByRole('link', { name: 'TAR' })).toHaveAttribute('href', '/archive/tar');
 
-    await user.click(screen.getByRole('checkbox', { name: 'Select 20261102-091500.jpg' }));
+    await user.click(screen.getByRole('checkbox', { name: `Select ${NEWEST}` }));
     expect(screen.getByText('1 photo selected')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'ZIP' })).toHaveAttribute('href', '/archive/zip?f=20261102-091500.jpg');
     expect(screen.getByRole('link', { name: 'Download 20261102-091500.jpg' })).toHaveAttribute(
@@ -47,10 +53,7 @@ describe('PhotosView', () => {
   });
 
   it('selects a whole day at once', async () => {
-    mockServer();
-    render(<PhotosView settings={settings} />);
-    const user = userEvent.setup();
-    await screen.findByText('20261102-091500.jpg');
+    const { user } = await renderPhotos();
     const dayBoxes = screen.getAllByRole('checkbox', { name: /Select all photos from/ });
     await user.click(dayBoxes[1]!);
     expect(screen.getByText('2 photos selected')).toBeInTheDocument();
@@ -61,11 +64,8 @@ describe('PhotosView', () => {
   });
 
   it('deletes the selection after confirmation and refreshes the list', async () => {
-    const f = mockServer();
-    render(<PhotosView settings={settings} />);
-    const user = userEvent.setup();
-    await screen.findByText('20261102-091500.jpg');
-    await user.click(screen.getByRole('checkbox', { name: 'Select 20261102-091500.jpg' }));
+    const { f, user } = await renderPhotos();
+    await user.click(screen.getByRole('checkbox', { name: `Select ${NEWEST}` }));
     await user.click(screen.getByRole('button', { name: 'Delete' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Delete 1 photo?' });
@@ -74,7 +74,7 @@ describe('PhotosView', () => {
 
     await waitFor(() => expect(callsTo(f, 'DELETE', '/file')).toHaveLength(1));
     const url = new URL(String(callsTo(f, 'DELETE', '/file')[0]![0]), 'http://x');
-    expect(url.searchParams.getAll('f')).toEqual(['20261102-091500.jpg']);
+    expect(url.searchParams.getAll('f')).toEqual([NEWEST]);
     expect(await screen.findByText('Deleted 1 photo.')).toBeInTheDocument();
     await waitFor(() => expect(callsTo(f, 'GET', '/photos')).toHaveLength(2));
   });
@@ -91,10 +91,7 @@ describe('PhotosView', () => {
   });
 
   it('opens a photo in the viewer', async () => {
-    mockServer();
-    render(<PhotosView settings={settings} />);
-    const user = userEvent.setup();
-    await screen.findByText('20261102-091500.jpg');
+    const { user } = await renderPhotos();
     // Older days start collapsed
     await user.click(within(screen.getAllByRole('group')[1]!).getByText(/photos/));
     await user.click(await screen.findByText('20261101-084500.jpg'));

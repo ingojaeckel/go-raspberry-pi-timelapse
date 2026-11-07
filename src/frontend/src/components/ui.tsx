@@ -1,15 +1,16 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { useModal } from '../hooks';
 import { Icon } from './Icon';
 
-export function Notice({
-  tone = 'info',
-  children,
-  onDismiss,
-}: {
-  tone?: 'info' | 'error' | 'ok' | 'warn';
-  children: ReactNode;
-  onDismiss?: () => void;
-}) {
+export type Tone = 'info' | 'error' | 'ok' | 'warn';
+
+/** The outcome of an action, shown in a Notice. */
+export interface Message {
+  tone: Tone;
+  text: string;
+}
+
+export function Notice({ tone = 'info', children, onDismiss }: { tone?: Tone; children: ReactNode; onDismiss?: () => void }) {
   return (
     <div className={`notice ${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
       <div className="notice-body">{children}</div>
@@ -19,6 +20,15 @@ export function Notice({
         </button>
       )}
     </div>
+  );
+}
+
+export function MessageNotice({ message, onDismiss }: { message: Message | null; onDismiss?: () => void }) {
+  if (!message) return null;
+  return (
+    <Notice tone={message.tone} onDismiss={onDismiss}>
+      {message.text}
+    </Notice>
   );
 }
 
@@ -35,13 +45,7 @@ interface ConfirmProps {
 
 /** Native <dialog>: focus trapping, Esc and backdrop handled by the browser. */
 export function ConfirmDialog({ open, title, children, confirmLabel, danger, busy, onConfirm, onCancel }: ConfirmProps) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
-  }, [open]);
+  const ref = useModal(open);
 
   return (
     <dialog ref={ref} className="confirm" aria-labelledby="confirm-title" onCancel={(e) => busy && e.preventDefault()}
@@ -73,6 +77,15 @@ export function PageHeader({ title, children }: { title: string; children?: Reac
       <h1>{title}</h1>
       {children && <div className="page-actions">{children}</div>}
     </header>
+  );
+}
+
+/** Reloads a resource; disabled while it loads. */
+export function RefreshButton({ resource }: { resource: { reload: () => void; loading: boolean } }) {
+  return (
+    <button type="button" className="btn ghost" onClick={resource.reload} disabled={resource.loading}>
+      <Icon name="refresh" /> Refresh
+    </button>
   );
 }
 

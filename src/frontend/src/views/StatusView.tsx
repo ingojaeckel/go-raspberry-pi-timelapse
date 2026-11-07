@@ -1,9 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { api, type Monitoring, type MonitoringOutput, type Settings, type Storage } from '../api';
+import { api, errorMessage, type Monitoring, type MonitoringOutput, type SetTimeResult, type Settings, type Storage } from '../api';
 import { Icon } from '../components/Icon';
-import { Notice, PageHeader, Spinner } from '../components/ui';
+import { MessageNotice, Notice, PageHeader, RefreshButton, Spinner, type Message } from '../components/ui';
 import {
   checkClock,
+  type ClockCheck,
+  type Disk,
   estimateRunway,
   formatBytes,
   formatDays,
@@ -15,7 +17,7 @@ import {
   parseUptime,
   primaryDisk,
 } from '../format';
-import { useInterval, useResource } from '../hooks';
+import { useBusy, useInterval, useResource } from '../hooks';
 import { photosPerDay } from '../schedule';
 
 interface Snapshot {
@@ -52,14 +54,10 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
     };
   }, [snap.data]);
 
-  const full = view ? isFull(view.m.Storage) : false;
-
   return (
     <>
       <PageHeader title="Status">
-        <button type="button" className="btn ghost" onClick={snap.reload} disabled={snap.loading}>
-          <Icon name="refresh" /> Refresh
-        </button>
+        <RefreshButton resource={snap} />
       </PageHeader>
 
       {snap.error && <Notice tone="error">{snap.error}</Notice>}
@@ -68,7 +66,7 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
       {view && (
         <>
           <ClockWarning clock={view.clock} onSet={snap.reload} />
-          {full && view.m.Storage.StopWhenDiskFull && (
+          {isFull(view.m.Storage) && view.m.Storage.StopWhenDiskFull && (
             <Notice tone="error">
               The card is full and the camera has stopped taking photos. Download and delete photos, or let the camera
               delete the oldest ones (Settings, "When the card is full").
@@ -76,38 +74,15 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
           )}
 
           <section className="stat-grid">
-            <Stat label="Storage left" tone={full || (view.disk && view.disk.usedPercent >= 90) ? 'hot' : 'ok'}>
-              {view.disk ? (
-                <>
-                  <span className="stat-value">{humanDf(view.disk.avail)}</span>
-                  <meter min={0} max={100} low={75} high={90} optimum={0} value={view.disk.usedPercent}>
-                    {view.disk.usedPercent}%
-                  </meter>
-                  <span className="stat-note">
-                    {view.disk.usedPercent}% of {humanDf(view.disk.size)} used
-                    <Runway storage={view.m.Storage} settings={settings} />
-                  </span>
-                </>
-              ) : (
-                <span className="stat-value muted">Unknown</span>
-              )}
-            </Stat>
-
+            <StorageStat disk={view.disk} storage={view.m.Storage} settings={settings} />
             <PowerStat power={view.m.Power} />
-
-            <Stat label="Processor" tone={view.cpu !== null ? tempTone(view.cpu) : 'ok'}>
-              <Temp value={view.cpu} />
-              <span className="stat-note">
-                {view.cpu !== null && view.cpu >= 80 ? 'Throttling, consider shade or a heatsink' : 'CPU temperature'}
-                <CpuClock cpu={view.m.CPU} />
-              </span>
-            </Stat>
-
-            <Stat label="Graphics" tone={view.gpu !== null ? tempTone(view.gpu) : 'ok'}>
-              <Temp value={view.gpu} />
-              <span className="stat-note">GPU temperature</span>
-            </Stat>
-
+            <TempStat label="Processor" celsius={view.cpu}>
+              {view.cpu !== null && view.cpu >= 80 ? 'Throttling, consider shade or a heatsink' : 'CPU temperature'}
+              <CpuClock cpu={view.m.CPU} />
+            </TempStat>
+            <TempStat label="Graphics" celsius={view.gpu}>
+              GPU temperature
+            </TempStat>
             <Stat label="Running for" tone="ok">
               <span className="stat-value small">{view.uptime.up ?? 'Unknown'}</span>
               {view.uptime.load && (
@@ -116,48 +91,79 @@ export function StatusView({ settings }: { settings: Settings | undefined }) {
             </Stat>
           </section>
 
-          {view.disks.length > 1 && (
-            <section className="panel">
-              <h2>Drives</h2>
-              <table className="disks">
-                <thead>
-                  <tr>
-                    <th scope="col">Mounted at</th>
-                    <th scope="col">Free</th>
-                    <th scope="col">Size</th>
-                    <th scope="col">Used</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.disks.map((d) => (
-                    <tr key={d.filesystem + d.mount}>
-                      <td>{d.mount}</td>
-                      <td>{humanDf(d.avail)}</td>
-                      <td>{humanDf(d.size)}</td>
-                      <td>{d.usedPercent}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          )}
-
-          <details className="raw">
-            <summary>Raw readings</summary>
-            <dl>
-              {RAW_KEYS.map((k) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>
-                    <pre>{view.m[k].trim() || '(empty)'}</pre>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </details>
+          {view.disks.length > 1 && <DrivesTable disks={view.disks} />}
+          <RawReadings monitoring={view.m} />
         </>
       )}
     </>
+  );
+}
+
+function StorageStat({ disk, storage, settings }: { disk: Disk | null; storage: Storage; settings: Settings | undefined }) {
+  if (!disk) {
+    return (
+      <Stat label="Storage left" tone={isFull(storage) ? 'hot' : 'ok'}>
+        <span className="stat-value muted">Unknown</span>
+      </Stat>
+    );
+  }
+  return (
+    <Stat label="Storage left" tone={isFull(storage) || disk.usedPercent >= 90 ? 'hot' : 'ok'}>
+      <span className="stat-value">{humanDf(disk.avail)}</span>
+      <meter min={0} max={100} low={75} high={90} optimum={0} value={disk.usedPercent}>
+        {disk.usedPercent}%
+      </meter>
+      <span className="stat-note">
+        {disk.usedPercent}% of {humanDf(disk.size)} used
+        <Runway storage={storage} settings={settings} />
+      </span>
+    </Stat>
+  );
+}
+
+function DrivesTable({ disks }: { disks: Disk[] }) {
+  return (
+    <section className="panel">
+      <h2>Drives</h2>
+      <table className="disks">
+        <thead>
+          <tr>
+            <th scope="col">Mounted at</th>
+            <th scope="col">Free</th>
+            <th scope="col">Size</th>
+            <th scope="col">Used</th>
+          </tr>
+        </thead>
+        <tbody>
+          {disks.map((d) => (
+            <tr key={d.filesystem + d.mount}>
+              <td>{d.mount}</td>
+              <td>{humanDf(d.avail)}</td>
+              <td>{humanDf(d.size)}</td>
+              <td>{d.usedPercent}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function RawReadings({ monitoring }: { monitoring: Monitoring }) {
+  return (
+    <details className="raw">
+      <summary>Raw readings</summary>
+      <dl>
+        {RAW_KEYS.map((k) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>
+              <pre>{monitoring[k].trim() || '(empty)'}</pre>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
 
@@ -170,14 +176,19 @@ function Stat({ label, tone, children }: { label: string; tone: string; children
   );
 }
 
-function Temp({ value }: { value: number | null }) {
-  return value === null ? (
-    <span className="stat-value muted">Not available</span>
-  ) : (
-    <span className="stat-value">
-      {value.toFixed(1)}
-      <span className="unit"> °C</span>
-    </span>
+function TempStat({ label, celsius, children }: { label: string; celsius: number | null; children: ReactNode }) {
+  return (
+    <Stat label={label} tone={celsius !== null ? tempTone(celsius) : 'ok'}>
+      {celsius === null ? (
+        <span className="stat-value muted">Not available</span>
+      ) : (
+        <span className="stat-value">
+          {celsius.toFixed(1)}
+          <span className="unit"> °C</span>
+        </span>
+      )}
+      <span className="stat-note">{children}</span>
+    </Stat>
   );
 }
 
@@ -256,41 +267,30 @@ function humanDf(raw: string): string {
   return b === null ? raw : formatBytes(b);
 }
 
-function ClockWarning({ clock, onSet }: { clock: ReturnType<typeof checkClock>; onSet: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(null);
+function clockSetMessage(r: SetTimeResult): Message {
+  if (r.RTC === '') return { tone: 'ok', text: 'Camera clock set.' };
+  if (r.RTC === 'updated') return { tone: 'ok', text: 'Camera clock set, and saved to the clock module.' };
+  return { tone: 'warn', text: `Camera clock set, but the clock module was ${r.RTC}.` };
+}
 
-  const setClock = async () => {
-    setBusy(true);
-    try {
-      const r = await api.setTime(Date.now());
-      setResult(
-        r.RTC === '' || r.RTC === 'updated'
-          ? { tone: 'ok', text: `Camera clock set${r.RTC === 'updated' ? ', and saved to the clock module' : ''}.` }
-          : { tone: 'warn', text: `Camera clock set, but the clock module was ${r.RTC}.` },
-      );
-      onSet();
-    } catch (err) {
-      setResult({ tone: 'error', text: `The clock was not set. ${(err as Error).message}` });
-    } finally {
-      setBusy(false);
-    }
-  };
+function ClockWarning({ clock, onSet }: { clock: ClockCheck; onSet: () => void }) {
+  const [busy, runBusy] = useBusy();
+  const [result, setResult] = useState<Message | null>(null);
 
-  const off = clock.wrongYear !== null || Math.abs(clock.driftSeconds) > 60;
-  if (!off) {
-    return result ? <Notice tone={result.tone}>{result.text}</Notice> : null;
-  }
+  const setClock = () =>
+    runBusy(async () => {
+      try {
+        setResult(clockSetMessage(await api.setTime(Date.now())));
+        onSet();
+      } catch (err) {
+        setResult({ tone: 'error', text: `The clock was not set. ${errorMessage(err)}` });
+      }
+    });
+
+  if (clock.wrongYear === null && Math.abs(clock.driftSeconds) <= 60) return <MessageNotice message={result} />;
   return (
     <Notice tone="warn">
-      {clock.wrongYear !== null ? (
-        <>The camera's clock thinks it is {clock.wrongYear}. Photos will carry the wrong date until its clock is set. </>
-      ) : (
-        <>
-          The camera's clock is {formatDuration(Math.abs(clock.driftSeconds))}{' '}
-          {clock.driftSeconds > 0 ? 'ahead of' : 'behind'} this device, so photos carry the wrong time.{' '}
-        </>
-      )}
+      <ClockProblem clock={clock} />
       Without a battery-backed clock module the Pi loses time at every power cut (see "Real-time clock" in the
       project's <code>docs/installer.md</code>).
       <br />
@@ -299,5 +299,18 @@ function ClockWarning({ clock, onSet }: { clock: ReturnType<typeof checkClock>; 
       </button>
       {result && <> {result.text}</>}
     </Notice>
+  );
+}
+
+function ClockProblem({ clock }: { clock: ClockCheck }) {
+  if (clock.wrongYear !== null) {
+    return <>The camera's clock thinks it is {clock.wrongYear}. Photos will carry the wrong date until its clock is set. </>;
+  }
+  const direction = clock.driftSeconds > 0 ? 'ahead of' : 'behind';
+  return (
+    <>
+      The camera's clock is {formatDuration(Math.abs(clock.driftSeconds))} {direction} this device, so photos carry the wrong
+      time.{' '}
+    </>
   );
 }

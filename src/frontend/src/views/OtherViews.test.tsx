@@ -4,14 +4,24 @@ import { App } from '../App';
 import { LogsView } from './LogsView';
 import { PreviewView } from './PreviewView';
 import { StatusView } from './StatusView';
-import { callsTo, json, mockServer, monitoring, settings } from '../test/mockServer';
+import { callsTo, json, mockServer, monitoring, schedule, settings, withMonitoring, withStorage, type Routes } from '../test/mockServer';
+
+function renderStatus(routes: Routes = {}) {
+  const f = mockServer(routes);
+  render(<StatusView settings={settings} />);
+  return { f, user: userEvent.setup() };
+}
+
+const clockButton = () => screen.findByRole('button', { name: "Set the camera's clock to this device's time" });
+
+/** The top bar's "Next shot" pill, once it shows. */
+const nextShotPill = async () => (await screen.findByText('Next shot')).closest('.next-pill')!;
 
 describe('StatusView', () => {
   it('turns raw Pi readings into something readable', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 10, 2, 11, 0, 0));
-    mockServer();
-    render(<StatusView settings={settings} />);
+    renderStatus();
     expect(await screen.findByText('48.3')).toBeInTheDocument();
     expect(screen.getByText('51.0')).toBeInTheDocument();
     expect(screen.getAllByText('24 GB').length).toBeGreaterThan(0);
@@ -38,18 +48,15 @@ describe('StatusView', () => {
   });
 
   it('warns when the camera clock is wrong', async () => {
-    mockServer({ 'GET /monitoring': () => json({ ...monitoring, UnixMillis: 0 }) });
-    render(<StatusView settings={settings} />);
+    renderStatus(withMonitoring({ UnixMillis: 0 }));
     expect(await screen.findByText(/clock thinks it is 1970/)).toBeInTheDocument();
   });
 
   it("sets the camera's clock to this device's time", async () => {
-    const f = mockServer({ 'GET /monitoring': () => json({ ...monitoring, UnixMillis: Date.now() - 3 * 86400_000 }) });
-    render(<StatusView settings={settings} />);
-    const user = userEvent.setup();
+    const { f, user } = renderStatus(withMonitoring({ UnixMillis: Date.now() - 3 * 86400_000 }));
     expect(await screen.findByText(/behind this device/)).toBeInTheDocument();
     const before = Date.now();
-    await user.click(screen.getByRole('button', { name: "Set the camera's clock to this device's time" }));
+    await user.click(await clockButton());
     expect(await screen.findByText(/Camera clock set\./)).toBeInTheDocument();
     const sent = JSON.parse(String(callsTo(f, 'POST', '/admin/time')[0]![1]?.body)).UnixMillis;
     expect(sent).toBeGreaterThanOrEqual(before);
@@ -57,33 +64,25 @@ describe('StatusView', () => {
   });
 
   it('says when the clock module could not be updated', async () => {
-    mockServer({
-      'GET /monitoring': () => json({ ...monitoring, UnixMillis: 0 }),
+    const { user } = renderStatus({
+      ...withMonitoring({ UnixMillis: 0 }),
       'POST /admin/time': () => json({ UnixMillis: Date.now(), RTC: 'not updated: exit status 1' }),
     });
-    render(<StatusView settings={settings} />);
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: "Set the camera's clock to this device's time" }));
+    await user.click(await clockButton());
     expect(await screen.findByText(/clock module was not updated: exit status 1/)).toBeInTheDocument();
   });
 
   it('reports a failure to set the clock', async () => {
-    mockServer({
-      'GET /monitoring': () => json({ ...monitoring, UnixMillis: 0 }),
+    const { user } = renderStatus({
+      ...withMonitoring({ UnixMillis: 0 }),
       'POST /admin/time': () => json('setting the clock: operation not permitted', 500),
     });
-    render(<StatusView settings={settings} />);
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: "Set the camera's clock to this device's time" }));
+    await user.click(await clockButton());
     expect(await screen.findByText(/The clock was not set. setting the clock: operation not permitted/)).toBeInTheDocument();
   });
 
   it('warns about under-voltage', async () => {
-    mockServer({
-      'GET /monitoring': () =>
-        json({ ...monitoring, Power: { Now: ['under-voltage', 'throttled'], SinceBoot: ['under-voltage', 'throttled'] } }),
-    });
-    render(<StatusView settings={settings} />);
+    renderStatus(withMonitoring({ Power: { Now: ['under-voltage', 'throttled'], SinceBoot: ['under-voltage', 'throttled'] } }));
     const power = (await screen.findByRole('heading', { name: 'Power' })).parentElement!;
     expect(power).toHaveAttribute('data-tone', 'hot');
     expect(within(power).getByText('Under-voltage, throttled')).toBeInTheDocument();
@@ -91,35 +90,25 @@ describe('StatusView', () => {
   });
 
   it('says when the card is full and the camera stopped', async () => {
-    mockServer({
-      'GET /monitoring': () =>
-        json({
-          ...monitoring,
-          Storage: { ...monitoring.Storage, FreeBytes: 100 * 1024 ** 2, StopWhenDiskFull: true },
-        }),
-    });
-    render(<StatusView settings={settings} />);
+    renderStatus(withStorage({ FreeBytes: 100 * 1024 ** 2, StopWhenDiskFull: true }));
     expect(await screen.findByText(/The card is full and the camera has stopped taking photos/)).toBeInTheDocument();
     expect(screen.getByText(/Full: the camera stops taking photos/)).toBeInTheDocument();
   });
 
   it('counts photos deleted to make room', async () => {
-    mockServer({ 'GET /monitoring': () => json({ ...monitoring, Storage: { ...monitoring.Storage, DeletedOldest: 1234 } }) });
-    render(<StatusView settings={settings} />);
+    renderStatus(withStorage({ DeletedOldest: 1234 }));
     expect(await screen.findByText(/1,234 old photos deleted to make room/)).toBeInTheDocument();
   });
 
   it('says when a sensor is missing instead of printing the error', async () => {
-    mockServer({
-      'GET /monitoring': () =>
-        json({
-          ...monitoring,
-          GpuTemperature: 'fork/exec /opt/vc/bin/vcgencmd: no such file or directory',
-          Power: { Now: [], SinceBoot: [], Error: 'fork/exec /opt/vc/bin/vcgencmd: no such file or directory' },
-          CPU: { ...monitoring.CPU, Error: 'open scaling_governor: no such file or directory' },
-        }),
-    });
-    render(<StatusView settings={settings} />);
+    const missing = 'fork/exec /opt/vc/bin/vcgencmd: no such file or directory';
+    renderStatus(
+      withMonitoring({
+        GpuTemperature: missing,
+        Power: { Now: [], SinceBoot: [], Error: missing },
+        CPU: { ...monitoring.CPU, Error: 'open scaling_governor: no such file or directory' },
+      }),
+    );
     expect(await screen.findAllByText('Not available')).toHaveLength(2);
     expect(screen.queryByText(/MHz/)).not.toBeInTheDocument();
   });
@@ -179,29 +168,27 @@ describe('App', () => {
   it("counts down to the camera's planned next shot, whatever this device's clock says", async () => {
     // The camera's clock is an hour behind this device; its next shot is 72 s after its now.
     const cameraNow = Date.now() - 3600_000;
-    mockServer({ 'GET /schedule': () => json({ UnixMillis: cameraNow, NextMillis: cameraNow + 72_000, Night: false, ZoneOffsetSeconds: 0 }) });
+    mockServer({ 'GET /schedule': () => schedule(72_000, { cameraNow }) });
     render(<App />);
-    const pill = (await screen.findByText('Next shot')).closest('.next-pill')!;
+    const pill = await nextShotPill();
     await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^1:1\d$/));
   });
 
   it('shows when photos resume after a skipped night, not a countdown', async () => {
-    const cameraNow = Date.now();
-    mockServer({ 'GET /schedule': () => json({ UnixMillis: cameraNow, NextMillis: cameraNow + 11 * 3600_000, Night: true, ZoneOffsetSeconds: 0 }) });
+    mockServer({ 'GET /schedule': () => schedule(11 * 3600_000, { night: true }) });
     render(<App />);
-    const pill = (await screen.findByText('Next shot')).closest('.next-pill')!;
+    const pill = await nextShotPill();
     await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^at \d\d:\d\d$/));
     expect(pill).toHaveAttribute('title', expect.stringMatching(/^Nights are skipped: photos resume at \d\d:\d\d$/));
   });
 
   it('counts down for captures every N minutes from start-up too', async () => {
-    const cameraNow = Date.now();
     mockServer({
       'GET /configuration': () => json({ ...settings, OffsetWithinHour: -1 }),
-      'GET /schedule': () => json({ UnixMillis: cameraNow, NextMillis: cameraNow + 300_000, Night: false, ZoneOffsetSeconds: 0 }),
+      'GET /schedule': () => schedule(300_000),
     });
     render(<App />);
-    const pill = (await screen.findByText('Next shot')).closest('.next-pill')!;
+    const pill = await nextShotPill();
     await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^[45]:\d\d$/));
   });
 

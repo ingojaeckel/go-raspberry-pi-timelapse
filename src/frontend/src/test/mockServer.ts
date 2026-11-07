@@ -68,15 +68,27 @@ type Handler = (url: URL, init?: RequestInit) => Response | Promise<Response>;
 export const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
+/** A GET /schedule response: the next shot `inMs` after the camera's clock `cameraNow`. */
+export const schedule = (inMs: number, { cameraNow = Date.now(), night = false, zoneOffsetSeconds = 0 } = {}) =>
+  json({ UnixMillis: cameraNow, NextMillis: cameraNow + inMs, Night: night, ZoneOffsetSeconds: zoneOffsetSeconds });
+
+/** A route override for GET /monitoring with some fields changed. */
+export const withMonitoring = (patch: Partial<Monitoring>) => ({ 'GET /monitoring': () => json({ ...monitoring, ...patch }) });
+
+/** A route override for GET /monitoring with some storage fields changed. */
+export const withStorage = (patch: Partial<Monitoring['Storage']>) => withMonitoring({ Storage: { ...monitoring.Storage, ...patch } });
+
+export type Routes = Record<string, Handler>;
+
 /** Stubs fetch with a tiny fake of the Go backend. Override routes per test. */
-export function mockServer(overrides: Record<string, Handler> = {}) {
-  const routes: Record<string, Handler> = {
+export function mockServer(overrides: Routes = {}) {
+  const routes: Routes = {
     'GET /configuration': () => json(settings),
     'POST /configuration': (_u, init) => json(JSON.parse(String(init?.body))),
     'GET /photos': () => json({ Photos: photos }),
     'GET /monitoring': () => json(monitoring),
     'GET /camera': () => json(camera),
-    'GET /schedule': () => json({ UnixMillis: Date.now(), NextMillis: Date.now() + 600_000, Night: false, ZoneOffsetSeconds: 0 }),
+    'GET /schedule': () => schedule(600_000),
     'GET /logs': () => json({ Logs: '2026/11/02 10:00:00 started\n2026/11/02 10:15:00 Error during capture: boom\n' }),
     'GET /version': () => new Response('Hello from arm on linux [version:abc]'),
     'DELETE /file': () => json(1),

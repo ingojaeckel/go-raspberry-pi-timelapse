@@ -18,6 +18,11 @@ export function validLocation(lat: number, lon: number): boolean {
   return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
 }
 
+/** 0, 0 is what an unset location is saved as. */
+export function noLocation(lat: number, lon: number): boolean {
+  return lat === 0 && lon === 0;
+}
+
 /** The sun's angle above the horizon in degrees, without refraction. */
 export function elevation(t: Date, lat: number, lon: number): number {
   const unix = t.getTime() / 1000;
