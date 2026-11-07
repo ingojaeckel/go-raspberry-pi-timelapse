@@ -6,7 +6,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { ConfirmDialog, MessageNotice, Notice, PageHeader, Spinner, type Message } from '../components/ui';
 import { formatPastHours, formatSize } from '../format';
 import { useBusy, useNow, useResource, type Resource } from '../hooks';
-import { capturesPerDay, captureSlots, formatInterval, isValidInterval, photosPerDay, VALID_INTERVALS } from '../schedule';
+import { capturesPerDay, captureSlots, formatInterval, isValidInterval, photosPerDay, skipsNights, VALID_INTERVALS } from '../schedule';
 import { noLocation } from '../sun';
 import { NightFields, type SettingsErrors } from './NightFields';
 import { QualityField, ResolutionField, RotationField } from './PhotoFields';
@@ -228,7 +228,7 @@ function IntervalField({ draft, errors, now, onChange }: FieldsProps & { now: Da
 }
 
 function photosADay(s: Settings, now: Date): string {
-  if (!s.SkipNightPhotos) return `${capturesPerDay(s).toLocaleString()} photos a day`;
+  if (!skipsNights(s, now)) return `${capturesPerDay(s).toLocaleString()} photos a day`;
   return `About ${photosPerDay(s, now).toLocaleString()} photos a day with nights skipped`;
 }
 

@@ -137,29 +137,35 @@ func (s *Scheduler) plan(set conf.Settings, now, anchor, lastSlot time.Time) Pla
 	if !set.SkipNightPhotos || sun.Up(next, set.Latitude, set.Longitude) {
 		return Plan{At: next}
 	}
-	return Plan{At: s.afterNight(set, next), Night: true}
+	at, night := s.afterNight(set, next)
+	return Plan{At: at, Night: night}
 }
 
-// noSunriseRecheck is when to look again where the sun does not rise
-// within a year (only at the poles, and only if the date is wrong).
-const noSunriseRecheck = 24 * time.Hour
+// longestNight is how far ahead the scheduler looks for sunrise. A night
+// longer than this is the polar night, and there nights are not skipped:
+// photos are taken around the clock. Finding a sunrise weeks away means
+// sampling the sun's position across all of them, again at every wake-up
+// (each minute), which costs a Pi Zero more CPU than the skipped photos
+// save; a polar night is rare enough that a day's search is all it gets.
+const longestNight = 24 * time.Hour
 
 // afterNight is the first capture after the night that slot falls into:
 // sunrise for unaligned captures (then every interval from there), else the
-// first aligned slot after sunrise.
-func (s *Scheduler) afterNight(set conf.Settings, slot time.Time) time.Time {
-	rise, ok := sun.NextSunrise(slot, set.Latitude, set.Longitude)
+// first aligned slot after sunrise. In the polar night (see longestNight) it
+// is slot itself, and false.
+func (s *Scheduler) afterNight(set conf.Settings, slot time.Time) (time.Time, bool) {
+	rise, ok := sun.NextSunriseWithin(slot, set.Latitude, set.Longitude, longestNight)
 	if !ok {
-		return slot.Add(noSunriseRecheck)
+		return slot, false
 	}
 	if !rise.Equal(s.pausedUntil) {
 		s.pausedUntil = rise
 		slog.Info("night: no photos until sunrise", "sunrise", rise.In(s.location()))
 	}
 	if set.OffsetWithinHour == conf.OffsetDisabled {
-		return rise
+		return rise, true
 	}
-	return NextAligned(rise.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour)
+	return NextAligned(rise.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour), true
 }
 
 // nextUnaligned is one interval after anchor. If the clock moved backwards,

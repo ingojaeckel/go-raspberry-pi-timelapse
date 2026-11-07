@@ -3,7 +3,7 @@ import type { Settings } from '../api';
 import { Check, Help } from '../components/fields';
 import { formatClock } from '../format';
 import { PLACES, placeAt, type Place } from '../places';
-import { nextSunrise, nextSunset, noLocation } from '../sun';
+import { nextSunrise, nextSunset, noLocation, polarNight } from '../sun';
 
 export type SettingsErrors = Partial<Record<keyof Settings, string>>;
 
@@ -44,11 +44,14 @@ export function NightFields({ draft, errors, now, onChange }: Props) {
 function nightHelp(s: Settings, locationError: string, place: Place | undefined, now: Date): string {
   if (!s.SkipNightPhotos) return 'Photos are taken around the clock.';
   if (locationError) return locationError;
+  if (polarNight(now, s.Latitude, s.Longitude)) {
+    return 'The sun does not rise here within a day (polar night): photos are taken around the clock until it does.';
+  }
   // The next sunrise and sunset, not today's: what happens next matters.
   const rise = nextSunrise(now, s.Latitude, s.Longitude);
   const set = nextSunset(now, s.Latitude, s.Longitude);
   if (!rise || !set) {
-    return rise ? 'The sun does not set here for now: photos are taken around the clock.' : 'The sun does not rise here for now: no photos until it does.';
+    return 'The sun does not set here for now: photos are taken around the clock.';
   }
   const middle = place ? `Uses the middle of ${place.name.replace(/^.* – /, '')}: elsewhere in it the times differ by a few minutes. ` : '';
   return `${middle}Here the sun rises at ${formatClock(rise)} and sets at ${formatClock(set)} (next times, in this device's time zone). No photos are taken in between. Computed on the camera, without internet.`;

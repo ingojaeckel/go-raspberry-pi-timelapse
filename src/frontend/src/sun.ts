@@ -89,6 +89,17 @@ export function nextSunset(t: Date, lat: number, lon: number, limitDays = 366): 
   return nextChange(t, lat, lon, false, limitDays);
 }
 
+/**
+ * Nights longer than this are the polar night, which the camera does not skip
+ * (see longestNight in src/backend/timelapse/scheduler.go).
+ */
+export const LONGEST_NIGHT_DAYS = 1;
+
+/** Whether it is the polar night at t: the sun is down and does not rise within LONGEST_NIGHT_DAYS. */
+export function polarNight(t: Date, lat: number, lon: number): boolean {
+  return !sunUp(t, lat, lon) && nextSunrise(t, lat, lon, LONGEST_NIGHT_DAYS) === null;
+}
+
 /** The share of the 24 hours from t with the sun up (0..1), for estimating photos a day. */
 export function daylightFraction(t: Date, lat: number, lon: number): number {
   const samples = 24 * 6;

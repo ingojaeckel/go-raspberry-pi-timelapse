@@ -13,7 +13,7 @@ import {
   type Capacity,
 } from '../format';
 import type { Resource } from '../hooks';
-import { photosPerDay } from '../schedule';
+import { photosPerDay, skipsNights } from '../schedule';
 
 const sameSize = (a: Size, b: Size) => a.Width === b.Width && a.Height === b.Height;
 
@@ -127,7 +127,7 @@ function StorageEstimate({ draft, storage }: { draft: Settings; storage: Storage
     photo.fromPhotos > 0 ? `estimated from the last ${plural(photo.fromPhotos, 'photo')}` : 'a rough estimate until the camera has taken photos';
   return (
     <p className="help estimate">
-      About {formatBytes(photo.bytes)} per photo, {basis}.{capacity && ` ${capacityText(capacity, perDay, draft.SkipNightPhotos)}`}
+      About {formatBytes(photo.bytes)} per photo, {basis}.{capacity && ` ${capacityText(capacity, perDay, skipsNights(draft, new Date()))}`}
     </p>
   );
 }

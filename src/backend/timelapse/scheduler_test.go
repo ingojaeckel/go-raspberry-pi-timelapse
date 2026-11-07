@@ -555,24 +555,21 @@ func TestEachNightIsLoggedOnce(t *testing.T) {
 	}
 }
 
-// In the polar night the scheduler sleeps until the sun rises in March,
-// waking only every MaxSleep, and takes no photos.
-func TestPolarNightWaitsForSpringWithoutSpinning(t *testing.T) {
+// In the polar night (no sunrise within a day) nights are not skipped:
+// photos are taken around the clock.
+func TestPolarNightTakesPhotosAroundTheClock(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		beats := 0
 		h := start(t, 600, 0, func(h *harness) {
 			h.settings.s.SkipNightPhotos, h.settings.s.Latitude, h.settings.s.Longitude = true, 89.9, 0
-			h.sched.Heartbeat = func() { beats++ }
 		})
-		advance(h, 2*time.Hour)
+		advance(h, 55*time.Minute)
 		plan, _ := h.sched.Next()
 		h.stop()
-		assertTimes(t, h.camera.times(), nil)
-		if want := int(2 * time.Hour / MaxSleep); beats > want+2 {
-			t.Fatalf("%d wake-ups in 2 hours, want about %d", beats, want)
+		if got := len(h.camera.times()); got != 6 { // at :00, :10, ... :50
+			t.Fatalf("%d photos in an hour of polar night, want 6", got)
 		}
-		if !plan.Night || plan.At.Month() != time.March {
-			t.Fatalf("next capture %+v, want after sunrise in March", plan)
+		if plan.Night {
+			t.Fatalf("next capture %+v is marked as after a night", plan)
 		}
 	})
 }

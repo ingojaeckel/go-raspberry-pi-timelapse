@@ -98,6 +98,17 @@ func TestNextSunriseAfterThePolarNight(t *testing.T) {
 	}
 }
 
+func TestNextSunriseWithinADay(t *testing.T) {
+	london := time.Date(2026, 12, 21, 20, 0, 0, 0, time.UTC)
+	if _, ok := NextSunriseWithin(london, 51.5074, -0.1278, 24*time.Hour); !ok {
+		t.Error("London: no sunrise within a day")
+	}
+	tromso := time.Date(2026, 12, 21, 12, 0, 0, 0, time.UTC)
+	if got, ok := NextSunriseWithin(tromso, 69.6492, 18.9553, 24*time.Hour); ok {
+		t.Errorf("Tromsø in the polar night: sunrise %s within a day", got)
+	}
+}
+
 func TestNoSunriseAtThePole(t *testing.T) {
 	// North pole: the sun sets at the September equinox and rises at the
 	// March one, five months later, still within the search limit.

@@ -39,21 +39,27 @@ func Up(t time.Time, lat, lon float64) bool {
 // does not rise within a year. If the sun is up at t, it is the sunrise after
 // the coming sunset.
 func NextSunrise(t time.Time, lat, lon float64) (time.Time, bool) {
-	return next(t, lat, lon, true)
+	return next(t, lat, lon, true, searchLimit)
+}
+
+// NextSunriseWithin is NextSunrise, but searches only until t+limit, so it
+// costs at most limit/step elevation samples.
+func NextSunriseWithin(t time.Time, lat, lon float64, limit time.Duration) (time.Time, bool) {
+	return next(t, lat, lon, true, limit)
 }
 
 // NextSunset is the first time after t when the sun sets, and false if it
 // does not set within a year.
 func NextSunset(t time.Time, lat, lon float64) (time.Time, bool) {
-	return next(t, lat, lon, false)
+	return next(t, lat, lon, false, searchLimit)
 }
 
 // next finds the next change of Up to up: sampling every step, then
-// bisecting to the second.
-func next(t time.Time, lat, lon float64, up bool) (time.Time, bool) {
+// bisecting to the second; false if there is none within limit.
+func next(t time.Time, lat, lon float64, up bool, limit time.Duration) (time.Time, bool) {
 	before := t
 	wasUp := Up(before, lat, lon)
-	for elapsed := time.Duration(0); elapsed < searchLimit; elapsed += step {
+	for elapsed := time.Duration(0); elapsed < limit; elapsed += step {
 		after := before.Add(step)
 		isUp := Up(after, lat, lon)
 		if isUp == up && wasUp != up {

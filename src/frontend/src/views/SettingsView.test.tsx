@@ -238,6 +238,14 @@ describe('SettingsView night photos', () => {
     expect(posted(f)).toEqual({ ...settings, SkipNightPhotos: true, Latitude: 53.41, Longitude: -8.24 });
   });
 
+  it('keeps taking photos in the polar night', async () => {
+    vi.setSystemTime(new Date('2026-12-21T12:00:00Z'));
+    await setup({ ...settings, SkipNightPhotos: true, Latitude: 69.6492, Longitude: 18.9553 }); // Tromsø
+    expect(screen.getByText(/The sun does not rise here within a day \(polar night\): photos are taken around the clock until it does\./)).toBeInTheDocument();
+    expect(screen.getByText(/^48 photos a day\./)).toBeInTheDocument();
+    expect(screen.queryByText(/nights skipped/)).not.toBeInTheDocument();
+  });
+
   it('shows a saved location as the country it was picked as', async () => {
     await setup({ ...settings, SkipNightPhotos: true, Latitude: 53.41, Longitude: -8.24 });
     expect(screen.getByLabelText('Location')).toHaveDisplayValue('Ireland');

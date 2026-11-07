@@ -18,7 +18,7 @@ import {
   primaryDisk,
 } from '../format';
 import { useBusy, useInterval, useResource } from '../hooks';
-import { photosPerDay } from '../schedule';
+import { photosPerDay, skipsNights } from '../schedule';
 
 interface Snapshot {
   monitoring: Monitoring;
@@ -254,7 +254,7 @@ function Runway({ storage, settings }: { storage: Storage; settings: Settings | 
       {est.days !== null && (
         <>
           {' '}
-          ({formatDays(est.days)} at the current schedule{settings?.SkipNightPhotos ? ', nights skipped' : ''})
+          ({formatDays(est.days)} at the current schedule{settings && skipsNights(settings, new Date()) ? ', nights skipped' : ''})
         </>
       )}, then {then}.{deleted}
     </>

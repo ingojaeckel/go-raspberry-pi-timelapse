@@ -1,5 +1,5 @@
 import type { Settings } from './api';
-import { daylightFraction, noLocation, validLocation } from './sun';
+import { daylightFraction, noLocation, polarNight, validLocation } from './sun';
 
 type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'>;
 
@@ -51,13 +51,15 @@ export function capturesPerDay(s: Schedule): number {
 
 type NightSchedule = Schedule & Partial<Pick<Settings, 'SkipNightPhotos' | 'Latitude' | 'Longitude'>>;
 
-/**
- * Photos a day: with nights skipped (and a valid location), only the share of
- * the coming 24 hours with the sun up.
- */
+/** Whether the camera skips nights with these settings: asked to, a valid location, and not the polar night. */
+export function skipsNights(s: NightSchedule, now: Date): boolean {
+  const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = s;
+  return !!SkipNightPhotos && validLocation(lat, lon) && !noLocation(lat, lon) && !polarNight(now, lat, lon);
+}
+
+/** Photos a day: when nights are skipped, only the share of the coming 24 hours with the sun up. */
 export function photosPerDay(s: NightSchedule, now: Date): number {
   const all = capturesPerDay(s);
-  const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = s;
-  if (!SkipNightPhotos || !validLocation(lat, lon) || noLocation(lat, lon)) return all;
-  return Math.round(all * daylightFraction(now, lat, lon));
+  if (!skipsNights(s, now)) return all;
+  return Math.round(all * daylightFraction(now, s.Latitude ?? 0, s.Longitude ?? 0));
 }

@@ -4,6 +4,7 @@ import {
   capturesPerDay,
   formatInterval,
   isValidInterval,
+  photosPerDay,
 } from './schedule';
 import shared from './schedule-cases.json';
 
@@ -42,5 +43,18 @@ describe('captureSlots', () => {
     expect(capturesPerDay(halfHourly)).toBe(48);
     expect(capturesPerDay({ SecondsBetweenCaptures: 600, OffsetWithinHour: -1 })).toBe(144);
     expect(capturesPerDay({ SecondsBetweenCaptures: 1000, OffsetWithinHour: -1 })).toBe(0);
+  });
+});
+
+describe('photosPerDay', () => {
+  const skipping = { ...halfHourly, SkipNightPhotos: true };
+  const midwinter = new Date('2026-12-21T12:00:00Z');
+
+  it('counts only daytime photos with nights skipped', () => {
+    expect(photosPerDay({ ...skipping, Latitude: 51.5074, Longitude: -0.1278 }, midwinter)).toBeLessThan(20); // London
+  });
+
+  it('counts all photos in the polar night, where nights are not skipped', () => {
+    expect(photosPerDay({ ...skipping, Latitude: 69.6492, Longitude: 18.9553 }, midwinter)).toBe(48); // Tromsø
   });
 });
