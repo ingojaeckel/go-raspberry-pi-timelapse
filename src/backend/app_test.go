@@ -271,12 +271,6 @@ func TestVcsVersion(t *testing.T) {
 	}
 }
 
-func TestVersionStringNeedsCommitAndBuildTime(t *testing.T) {
-	if got := versionString("abc", ""); got == "abc built at " {
-		t.Fatalf("got %q", got)
-	}
-}
-
 func TestRunReturnsWhenServingFailsOnItsOwn(t *testing.T) {
 	t.Chdir(t.TempDir())
 	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 600, listen: "127.0.0.1:0"}, noCamera{})
@@ -348,6 +342,33 @@ func TestSavedUnsupportedSizeIsKeptAndLogged(t *testing.T) {
 	}
 }
 
+// brokenCamera is a camera whose rpicam-still cannot list cameras.
+type brokenCamera struct{ noCamera }
+
+func (brokenCamera) Sensors() *timelapse.Sensors {
+	return timelapse.NewSensors(func(context.Context, string, ...string) ([]byte, error) {
+		return nil, errors.New("no cameras available")
+	})
+}
+
+func TestFailedCameraDetectionKeepsTheDefaultSizeAndWarns(t *testing.T) {
+	t.Chdir(t.TempDir())
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 600, listen: "127.0.0.1:0", logToFile: true}, brokenCamera{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := a.store.Get()
+	a.close()
+	if want := conf.Default(600); got.PhotoResolutionWidth != want.PhotoResolutionWidth || got.PhotoResolutionHeight != want.PhotoResolutionHeight {
+		t.Fatalf("first run saved %dx%d, want the default %dx%d", got.PhotoResolutionWidth, got.PhotoResolutionHeight, want.PhotoResolutionWidth, want.PhotoResolutionHeight)
+	}
+	if logs, _ := os.ReadFile(conf.LogFile); !strings.Contains(string(logs), "camera not detected") {
+		t.Fatalf("logs:\n%s", logs)
+	}
+}
+
 func TestWithoutCameraDetectionTheAPIHasNoSensor(t *testing.T) {
 	t.Chdir(t.TempDir())
 	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 600, listen: "127.0.0.1:0"}, noCamera{})
@@ -357,5 +378,17 @@ func TestWithoutCameraDetectionTheAPIHasNoSensor(t *testing.T) {
 	defer a.close()
 	if a.api().Sensor != nil {
 		t.Fatal("Sensor set for a backend that cannot list cameras")
+	}
+}
+
+// With StopWhenDiskFull, exactly -minFreeDiskMB free still captures; one
+// byte less skips the slot.
+func TestStopWhenDiskFullThreshold(t *testing.T) {
+	for free, wantFull := range map[uint64]bool{8<<20 - 1: true, 8 << 20: false} {
+		a, _ := diskApp(t, 8, free)
+		a.store.Update(func(s *conf.Settings) { s.StopWhenDiskFull = true })
+		if err := a.prepareDisk(); errors.Is(err, errDiskFull) != wantFull {
+			t.Errorf("%d bytes free of 8 MB: got %v", free, err)
+		}
 	}
 }

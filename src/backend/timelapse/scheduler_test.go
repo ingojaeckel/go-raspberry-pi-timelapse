@@ -1,8 +1,11 @@
 package timelapse
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -185,28 +188,30 @@ func TestUnalignedCapturesDoNotDrift(t *testing.T) {
 	})
 }
 
-func TestUnalignedConfigChangeAppliesWhileWaiting(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		h := start(t, 3600, conf.OffsetDisabled)
-		advance(h, 30*time.Second)
-		h.settings.set(60, conf.OffsetDisabled)
-		advance(h, 200*time.Second)
-		h.stop()
-		// The old one hour sleep is abandoned; captures continue every 60s
-		// counted from start-up.
-		assertTimes(t, h.camera.times(), secs(60, 120, 180))
-	})
-}
-
-func TestUnalignedConfigChangeToLongerInterval(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		h := start(t, 60, conf.OffsetDisabled)
-		advance(h, 70*time.Second) // captured at 60
-		h.settings.set(300, conf.OffsetDisabled)
-		advance(h, 400*time.Second)
-		h.stop()
-		assertTimes(t, h.camera.times(), secs(60, 360))
-	})
+// A new unaligned interval applies at once, not after the old sleep, and
+// captures stay counted from start-up.
+func TestUnalignedConfigChange(t *testing.T) {
+	for _, c := range []struct {
+		name            string
+		from, to        int           // interval before and after the change
+		changeAt, until time.Duration // since start-up
+		want            []time.Duration
+	}{
+		{"shorter, while waiting", 3600, 60, 30 * time.Second, 200 * time.Second, secs(60, 120, 180)},
+		{"shorter, after its first slot passed", 3600, 72, 70 * time.Second, 150 * time.Second, secs(72, 144)},
+		{"longer", 60, 300, 70 * time.Second, 400 * time.Second, secs(60, 360)},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := start(t, c.from, conf.OffsetDisabled)
+				advance(h, c.changeAt)
+				h.settings.set(c.to, conf.OffsetDisabled)
+				advance(h, c.until)
+				h.stop()
+				assertTimes(t, h.camera.times(), c.want)
+			})
+		})
+	}
 }
 
 func TestSwitchingFromUnalignedToAligned(t *testing.T) {
@@ -309,18 +314,6 @@ func TestRunStopsWhenCancelled(t *testing.T) {
 	})
 }
 
-func TestUnalignedConfigChangeAppliesImmediately(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		h := start(t, 3600, conf.OffsetDisabled)
-		advance(h, 70*time.Second)
-		h.settings.set(72, conf.OffsetDisabled)
-		advance(h, 150*time.Second)
-		h.stop()
-		// Not delayed until the scheduler happens to wake up again.
-		assertTimes(t, h.camera.times(), secs(72, 144))
-	})
-}
-
 func TestNextToleratesASlightlyLateWakeUp(t *testing.T) {
 	s := &Scheduler{Location: time.UTC}
 	set := conf.Settings{SecondsBetweenCaptures: 600, OffsetWithinHour: 0}
@@ -333,8 +326,8 @@ func TestNextToleratesASlightlyLateWakeUp(t *testing.T) {
 	if got := s.next(set, slot.Add(2*time.Second), slot, slot); !got.Equal(slot.Add(600 * time.Second)) {
 		t.Fatalf("a captured slot must not be captured again, got %v", got)
 	}
-	if got := s.next(set, slot.Add(time.Minute), before, before); !got.Equal(slot.Add(600 * time.Second)) {
-		t.Fatalf("a slot missed by a minute is skipped, got %v", got)
+	if got := s.next(set, slot.Add(6*time.Second), before, before); !got.Equal(slot.Add(600 * time.Second)) {
+		t.Fatalf("a slot missed by 6s (over the 5s tolerance) is skipped, got %v", got)
 	}
 }
 
@@ -363,7 +356,7 @@ func TestHeartbeatAtLeastEveryMaxSleep(t *testing.T) {
 		advance(h, 10*time.Minute)
 		h.stop()
 		for i := 1; i < len(beats); i++ {
-			if gap := beats[i] - beats[i-1]; gap > maxSleep+10*time.Second {
+			if gap := beats[i] - beats[i-1]; gap > MaxSleep+10*time.Second {
 				t.Fatalf("no heartbeat for %v", gap)
 			}
 		}
@@ -522,4 +515,64 @@ func TestNextIsAfterSunriseAtNight(t *testing.T) {
 
 func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) time.Time {
 	return s.plan(set, now, anchor, lastSlot).At
+}
+
+// syncBuffer is a log destination safe for the scheduler's goroutine.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) count(s string) int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return strings.Count(b.buf.String(), s)
+}
+
+func captureLogs(t *testing.T) *syncBuffer {
+	logs := &syncBuffer{}
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return logs
+}
+
+func TestEachNightIsLoggedOnce(t *testing.T) {
+	logs := captureLogs(t)
+	synctest.Test(t, func(t *testing.T) {
+		h := start(t, 600, 0, london)
+		advance(h, 40*time.Hour) // the night of Jan 1 and of Jan 1 to 2, until 16:00 on Jan 2
+		h.stop()
+	})
+	if got := logs.count("night: no photos until sunrise"); got != 2 {
+		t.Fatalf("logged %d nights, want 2", got)
+	}
+}
+
+// In the polar night the scheduler sleeps until the sun rises in March,
+// waking only every MaxSleep, and takes no photos.
+func TestPolarNightWaitsForSpringWithoutSpinning(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		beats := 0
+		h := start(t, 600, 0, func(h *harness) {
+			h.settings.s.SkipNightPhotos, h.settings.s.Latitude, h.settings.s.Longitude = true, 89.9, 0
+			h.sched.Heartbeat = func() { beats++ }
+		})
+		advance(h, 2*time.Hour)
+		plan, _ := h.sched.Next()
+		h.stop()
+		assertTimes(t, h.camera.times(), nil)
+		if want := int(2 * time.Hour / MaxSleep); beats > want+2 {
+			t.Fatalf("%d wake-ups in 2 hours, want about %d", beats, want)
+		}
+		if !plan.Night || plan.At.Month() != time.March {
+			t.Fatalf("next capture %+v, want after sunrise in March", plan)
+		}
+	})
 }

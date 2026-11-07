@@ -15,9 +15,9 @@ const (
 	// lateTolerance is how late a capture may start and still count for its
 	// slot, e.g. when a timer fires slightly late on a busy Pi.
 	lateTolerance = 5 * time.Second
-	// maxSleep bounds each wait so that wall clock adjustments (NTP, RTC at
+	// MaxSleep bounds each wait so that wall clock adjustments (NTP, RTC at
 	// boot) are noticed within a minute.
-	maxSleep = time.Minute
+	MaxSleep = time.Minute
 )
 
 // SettingsSource provides the current settings and change notifications.
@@ -50,7 +50,7 @@ type Scheduler struct {
 	// Location defines the hours captures are aligned to; nil means time.Local.
 	Location *time.Location
 	// Heartbeat, if set, runs every time the loop wakes up: at least every
-	// maxSleep while waiting, and after every capture (with its retries).
+	// MaxSleep while waiting, and after every capture (with its retries).
 	Heartbeat func()
 
 	// pausedUntil is the sunrise captures wait for with SkipNightPhotos,
@@ -110,11 +110,11 @@ func (s *Scheduler) Run(ctx context.Context) {
 	}
 }
 
-// sleep waits until next, but at most maxSleep and only until the settings
+// sleep waits until next, but at most MaxSleep and only until the settings
 // change or ctx is cancelled.
 func (s *Scheduler) sleep(ctx context.Context, changed <-chan struct{}, next time.Time, wait time.Duration) {
 	slog.Debug("waiting for next capture", "at", next, "in", wait.Round(time.Second))
-	timer := time.NewTimer(min(wait, maxSleep))
+	timer := time.NewTimer(min(wait, MaxSleep))
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():

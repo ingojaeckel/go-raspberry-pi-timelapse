@@ -88,13 +88,6 @@ func TestStatusRecorderUnwrap(t *testing.T) {
 	}
 }
 
-func TestRunCommand(t *testing.T) {
-	out, err := RunCommand(t.Context(), "echo", "hi")
-	if err != nil || string(out) != "hi\n" {
-		t.Fatalf("out %q err %v", out, err)
-	}
-}
-
 func TestSelected(t *testing.T) {
 	all := []files.File{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 	if got := files.Names(selected(all, nil)); strings.Join(got, ",") != "a,b,c" {

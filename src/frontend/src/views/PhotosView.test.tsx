@@ -101,6 +101,19 @@ describe('PhotosView', () => {
     expect(within(viewer).getByText('3 of 3')).toBeInTheDocument();
   });
 
+  it('steps through photos with the arrow keys and closes', async () => {
+    const { user } = await renderPhotos();
+    await user.click(screen.getByText(NEWEST));
+    const viewer = screen.getByRole('dialog', { name: `Photo ${NEWEST}` });
+    within(viewer).getByRole('button', { name: 'Close' }).focus(); // browsers focus into a modal; jsdom doesn't
+    await user.keyboard('{ArrowLeft}');
+    expect(within(viewer).getByText('2 of 3')).toBeInTheDocument();
+    await user.keyboard('{ArrowRight}{ArrowRight}'); // stops at the newest
+    expect(within(viewer).getByText('1 of 3')).toBeInTheDocument();
+    await user.click(within(viewer).getByRole('button', { name: 'Close' }));
+    expect(viewer).not.toHaveAttribute('open');
+  });
+
   it('explains when the camera is unreachable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     render(<PhotosView settings={settings} />);

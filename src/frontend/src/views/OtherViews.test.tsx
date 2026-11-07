@@ -1,6 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
+import { formatClock } from '../format';
 import { LogsView } from './LogsView';
 import { PreviewView } from './PreviewView';
 import { StatusView } from './StatusView';
@@ -81,6 +82,25 @@ describe('StatusView', () => {
     expect(await screen.findByText(/The clock was not set. setting the clock: operation not permitted/)).toBeInTheDocument();
   });
 
+  it('shows why the readings could not be loaded', async () => {
+    renderStatus({ 'GET /monitoring': () => json('vcgencmd: timeout', 500) });
+    expect(await screen.findByText('vcgencmd: timeout')).toBeInTheDocument();
+  });
+
+  it('accepts a camera clock up to a minute off', async () => {
+    renderStatus(withMonitoring({ UnixMillis: Date.now() - 50_000 }));
+    expect(await screen.findByText('48.3')).toBeInTheDocument();
+    expect(screen.queryByText(/behind this device/)).not.toBeInTheDocument();
+  });
+
+  it('remembers under-voltage since the last restart when the power is fine now', async () => {
+    renderStatus(withMonitoring({ Power: { Now: [], SinceBoot: ['under-voltage'] } }));
+    const power = (await screen.findByRole('heading', { name: 'Power' })).parentElement!;
+    expect(power).toHaveAttribute('data-tone', 'warm');
+    expect(within(power).getByText('OK')).toBeInTheDocument();
+    expect(within(power).getByText('Since the last restart: under-voltage. Check the power supply and cable.')).toBeInTheDocument();
+  });
+
   it('warns about under-voltage', async () => {
     renderStatus(withMonitoring({ Power: { Now: ['under-voltage', 'throttled'], SinceBoot: ['under-voltage', 'throttled'] } }));
     const power = (await screen.findByRole('heading', { name: 'Power' })).parentElement!;
@@ -125,6 +145,17 @@ describe('LogsView', () => {
     expect(screen.getByText(/Error during capture/)).toBeInTheDocument();
   });
 
+  it('filters lines by the search text', async () => {
+    mockServer();
+    render(<LogsView />);
+    const user = userEvent.setup();
+    await user.type(await screen.findByRole('searchbox', { name: 'Filter log lines' }), 'CAPTURE');
+    expect(screen.queryByText(/started/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Error during capture/)).toBeInTheDocument();
+    await user.type(screen.getByRole('searchbox'), ' nothing like this');
+    expect(screen.getByText('No lines match.')).toBeInTheDocument();
+  });
+
   it('explains why logs may be missing', async () => {
     mockServer({ 'GET /logs': () => json('open timelapse.log: no such file or directory', 500) });
     render(<LogsView />);
@@ -145,6 +176,13 @@ describe('PreviewView', () => {
     await user.click(screen.getByRole('button', { name: 'Take preview' }));
     expect(screen.getByAltText('Camera preview').getAttribute('src')).not.toBe(first);
   });
+
+  it('says when the camera could not take a preview, and allows a retry', async () => {
+    render(<PreviewView settings={settings} />);
+    fireEvent.error(screen.getByAltText('Camera preview'));
+    expect(await screen.findByText(/The camera couldn't take a preview/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Take preview' })).toBeEnabled();
+  });
 });
 
 describe('App', () => {
@@ -159,37 +197,32 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('shows the countdown to the next capture', async () => {
-    mockServer();
-    render(<App />);
-    expect(await screen.findByText('Next shot')).toBeInTheDocument();
-  });
-
   it("counts down to the camera's planned next shot, whatever this device's clock says", async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-02T10:00:00Z'));
     // The camera's clock is an hour behind this device; its next shot is 72 s after its now.
-    const cameraNow = Date.now() - 3600_000;
-    mockServer({ 'GET /schedule': () => schedule(72_000, { cameraNow }) });
+    mockServer({ 'GET /schedule': () => schedule(72_000, { cameraNow: Date.now() - 3600_000 }) });
     render(<App />);
     const pill = await nextShotPill();
-    await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^1:1\d$/));
+    await waitFor(() => expect(pill.querySelector('strong')).toHaveTextContent(/^1:12$/));
   });
 
   it('shows when photos resume after a skipped night, not a countdown', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-02T20:00:00Z'));
     mockServer({ 'GET /schedule': () => schedule(11 * 3600_000, { night: true }) });
     render(<App />);
     const pill = await nextShotPill();
-    await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^at \d\d:\d\d$/));
-    expect(pill).toHaveAttribute('title', expect.stringMatching(/^Nights are skipped: photos resume at \d\d:\d\d$/));
+    const resume = `at ${formatClock(new Date('2026-11-03T07:00:00Z'))}`;
+    await waitFor(() => expect(pill.querySelector('strong')).toHaveTextContent(resume));
+    expect(pill).toHaveAttribute('title', `Nights are skipped: photos resume ${resume}`);
   });
 
-  it('counts down for captures every N minutes from start-up too', async () => {
-    mockServer({
-      'GET /configuration': () => json({ ...settings, OffsetWithinHour: -1 }),
-      'GET /schedule': () => schedule(300_000),
-    });
+  it('shows why the settings could not be loaded', async () => {
+    mockServer({ 'GET /configuration': () => json('reading settings: database not open', 500) });
+    window.location.hash = '#/settings';
     render(<App />);
-    const pill = await nextShotPill();
-    await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^[45]:\d\d$/));
+    expect(await screen.findByText('reading settings: database not open')).toBeInTheDocument();
   });
 
   it('asks the camera again after saving settings', async () => {

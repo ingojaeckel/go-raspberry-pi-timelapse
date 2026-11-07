@@ -1,0 +1,84 @@
+{
+  "GET /camera": {
+    "Height": "number",
+    "Model": "string",
+    "Resolutions": [
+      {
+        "Height": "number",
+        "Width": "number"
+      }
+    ],
+    "Width": "number"
+  },
+  "GET /configuration": {
+    "DebugEnabled": "boolean",
+    "Latitude": "number",
+    "Longitude": "number",
+    "OffsetWithinHour": "number",
+    "PhotoResolutionHeight": "number",
+    "PhotoResolutionWidth": "number",
+    "PreviewResolutionHeight": "number",
+    "PreviewResolutionWidth": "number",
+    "Quality": "number",
+    "RotateBy": "number",
+    "SecondsBetweenCaptures": "number",
+    "SkipNightPhotos": "boolean",
+    "StopWhenDiskFull": "boolean"
+  },
+  "GET /logs": {
+    "Logs": "string"
+  },
+  "GET /monitoring": {
+    "CPU": {
+      "CurrentMHz": "number",
+      "Error": "string",
+      "Governor": "string",
+      "MaxMHz": "number",
+      "MinMHz": "number"
+    },
+    "CpuTemperature": "string",
+    "FreeDiskSpace": "string",
+    "GpuTemperature": "string",
+    "Power": {
+      "Now": [
+        "string"
+      ],
+      "SinceBoot": [
+        "string"
+      ]
+    },
+    "Storage": {
+      "DeletedOldest": "number",
+      "FreeBytes": "number",
+      "PhotoBytes": "number",
+      "Photos": "number",
+      "ReserveBytes": "number",
+      "SampleBytesPerPixel": "number",
+      "SamplePhotos": "number",
+      "SampleQuality": "number",
+      "StopWhenDiskFull": "boolean"
+    },
+    "Time": "string",
+    "UnixMillis": "number",
+    "Uptime": "string"
+  },
+  "GET /photos": {
+    "Photos": [
+      {
+        "ModTime": "string",
+        "Name": "string",
+        "Size": "string"
+      }
+    ]
+  },
+  "GET /schedule": {
+    "NextMillis": "number",
+    "Night": "boolean",
+    "UnixMillis": "number",
+    "ZoneOffsetSeconds": "number"
+  },
+  "POST /admin/time": {
+    "RTC": "string",
+    "UnixMillis": "number"
+  }
+}

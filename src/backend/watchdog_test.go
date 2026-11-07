@@ -13,6 +13,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 )
 
 // notifySocket listens like systemd does and returns what it receives.
@@ -105,6 +107,32 @@ func TestWatchdogInterval(t *testing.T) {
 			t.Errorf("WATCHDOG_USEC=%q WATCHDOG_PID=%q: %v %v, want %v %v", c.usec, c.pid, got, ok, c.want, c.ok)
 		}
 	}
+}
+
+// Started by systemd with WatchdogSec, the app wires the watchdog to the
+// scheduler's heartbeat and pings systemd.
+func TestStartWatchdogUnderSystemd(t *testing.T) {
+	quietLogs(t)
+	dir, err := os.MkdirTemp("", "sd") // socket paths must be short
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	got := notifySocket(t, filepath.Join(dir, "notify"))
+	t.Setenv("NOTIFY_SOCKET", filepath.Join(dir, "notify"))
+	t.Setenv("WATCHDOG_USEC", "200000") // ping every 100 ms
+	t.Setenv("WATCHDOG_PID", "")
+
+	sched := &timelapse.Scheduler{}
+	ctx, cancel := context.WithCancel(t.Context())
+	var wg sync.WaitGroup
+	(&app{opts: options{captureRetries: 2}}).startWatchdog(ctx, &wg, sched)
+	defer func() { cancel(); wg.Wait() }()
+	if sched.Heartbeat == nil {
+		t.Fatal("the scheduler's heartbeat is not wired to the watchdog")
+	}
+	sched.Heartbeat()
+	receive(t, got, "WATCHDOG=1")
 }
 
 // The watchdog pings systemd while the scheduler keeps beating, stops when

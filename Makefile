@@ -4,7 +4,10 @@
 #   make pi         vet + test + cross-compile for Pi Zero W (ARM v6) into the image module
 #   make pi64       vet + test + cross-compile for 64-bit Raspberry Pi OS (arm64: Pi Zero 2 W, 3, 4, 5)
 #   make image      make pi + SD card image (needs Docker)
-#   make test       frontend tests + Go vet/tests
+#   make test       frontend tests + Go vet/tests (-short: without the long soak/zip64/restart tests)
+#   make test-long  all Go tests, including the long ones (CI runs them)
+#   make lint-sh    shellcheck the installer and helper scripts
+#   make test-e2e   browser smoke test (Playwright, Chromium) against the real server
 #   make run        build the frontend and run the server locally on :8080
 #   make loadtest   run the k6 load test against a local build
 #
@@ -22,7 +25,7 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD)
 BUILT_AT   := $(shell date)
 LDFLAGS    := -X 'main.gitCommit=$(GIT_COMMIT)' -X 'main.builtAt=$(BUILT_AT)'
 
-.PHONY: all dev pi pi64 image test test-frontend test-go vet frontend run loadtest clean
+.PHONY: all dev pi pi64 image test test-frontend test-go test-long test-e2e lint-sh vet frontend run loadtest clean
 
 all: dev
 
@@ -44,8 +47,25 @@ vet: frontend
 	cd $(BACKEND) && go vet ./...
 
 # -race needs cgo, which the Pi cross-compile does not use; tests run natively.
+# -short skips the tests that take a minute (multi-day soak, zip64, restarts).
 test-go: frontend
-	cd $(BACKEND) && go test -race -shuffle=on -cover ./...
+	cd $(BACKEND) && go test -short -race -shuffle=on -cover ./...
+
+test-long: frontend
+	cd $(BACKEND) && go test -race -shuffle=on ./...
+
+# Builds the frontend and the Go server, runs it on a free port and drives it
+# with Chromium (src/frontend/e2e).
+test-e2e: $(FRONTEND)/node_modules
+	cd $(FRONTEND) && npx playwright install chromium && npm run test:e2e
+
+SCRIPTS := src/installer/custompios/build-image.sh \
+	src/installer/custompios/modules/timelapsepi/start_chroot_script \
+	src/installer/custompios/modules/timelapsepi/filesystem/root/usr/local/sbin/timelapse-cpufreq \
+	src/frontend/build.sh src/perf-testing/k6/run-load-test.sh
+
+lint-sh:
+	shellcheck -S warning $(SCRIPTS)
 
 test: test-frontend vet test-go
 

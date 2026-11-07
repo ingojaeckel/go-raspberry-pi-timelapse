@@ -5,6 +5,7 @@ on:
       - 'src/backend/**'
       - 'src/frontend/**'
       - 'Makefile'
+      - 'src/installer/**'
       - '.github/workflows/go.yml'
 jobs:
   build:
@@ -22,3 +23,13 @@ jobs:
     # Go vet + tests, and cross-compiles for the Pi.
     - name: Test and build for Pi
       run: make pi
+    # The multi-day soak, zip64 and restart tests that make skips (-short).
+    - name: Long tests
+      run: make test-long
+    # Browser smoke test against the real server.
+    - name: Browser test
+      working-directory: src/frontend
+      run: npx playwright install --with-deps chromium && npm run test:e2e
+    # shellcheck is preinstalled on GitHub's Ubuntu runners.
+    - name: Check shell scripts
+      run: make lint-sh

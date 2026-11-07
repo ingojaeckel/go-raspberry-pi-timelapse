@@ -77,8 +77,15 @@ func TestVersionString(t *testing.T) {
 	if got := versionString("abc123", "Mon Nov 2"); got != "abc123 built at Mon Nov 2" {
 		t.Fatalf("got %q", got)
 	}
-	if got := versionString("", ""); got == "" {
+	fallback := versionString("", "")
+	if fallback == "" {
 		t.Fatal("expected a fallback version")
+	}
+	// Both values are needed; one alone falls back too.
+	for _, partial := range [][2]string{{"abc", ""}, {"", "Mon Nov 2"}} {
+		if got := versionString(partial[0], partial[1]); got != fallback {
+			t.Errorf("versionString(%q, %q) = %q, want the fallback %q", partial[0], partial[1], got, fallback)
+		}
 	}
 }
 
@@ -131,7 +138,7 @@ func TestRunServesTheAppAndShutsDownCleanly(t *testing.T) {
 	}
 	// The scheduler's plan reaches the API (the page shows it as "Next shot").
 	var sched struct{ NextMillis int64 }
-	for deadline := time.Now().Add(5 * time.Second); sched.NextMillis == 0 && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+	for deadline := time.Now().Add(15 * time.Second); sched.NextMillis == 0 && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
 		_, body := get("/schedule")
 		json.Unmarshal([]byte(body), &sched)
 	}

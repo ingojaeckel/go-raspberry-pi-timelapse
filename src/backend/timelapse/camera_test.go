@@ -14,35 +14,27 @@ import (
 	"time"
 )
 
-func TestRpicamStillArgs(t *testing.T) {
-	got := rpicamStillArgs("foo/someFile.jpg", Options{Width: 200, Height: 100, Quality: 100})
-	want := []string{"--width", "200", "--height", "100", "--quality", "100", "--output", "foo/someFile.jpg"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("got %v", got)
-	}
-}
-
-func TestRpicamStillArgsRotated(t *testing.T) {
-	got := rpicamStillArgs("x.jpg", Options{Width: 200, Height: 100, Quality: 90, Rotate: true})
-	want := []string{"--width", "200", "--height", "100", "--quality", "90", "--vflip", "--hflip", "--output", "x.jpg"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("got %v", got)
-	}
-}
-
-func TestFfmpegArgsLinux(t *testing.T) {
-	got := ffmpegArgs("linux", "x.jpg", Options{Width: 640, Height: 480, Quality: 75, Rotate: true})
-	want := []string{"-f", "v4l2", "-video_size", "640x480", "-i", "/dev/video0", "-frames:v", "1", "-q:v", "75", "-vf", "hflip,vflip", "-y", "x.jpg"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("got %v", got)
-	}
-}
-
-func TestFfmpegArgsDarwin(t *testing.T) {
-	got := ffmpegArgs("darwin", "x.jpg", Options{Width: 640, Height: 480, Quality: 75})
-	want := []string{"-f", "avfoundation", "-framerate", "30", "-i", "0", "-frames:v", "1", "-s", "640x480", "-y", "x.jpg"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("got %v", got)
+func TestCaptureCommandArgs(t *testing.T) {
+	for _, c := range []struct {
+		name      string
+		got, want []string
+	}{
+		{"rpicam-still",
+			rpicamStillArgs("foo/someFile.jpg", Options{Width: 200, Height: 100, Quality: 100}),
+			[]string{"--width", "200", "--height", "100", "--quality", "100", "--output", "foo/someFile.jpg"}},
+		{"rpicam-still rotated",
+			rpicamStillArgs("x.jpg", Options{Width: 200, Height: 100, Quality: 90, Rotate: true}),
+			[]string{"--width", "200", "--height", "100", "--quality", "90", "--vflip", "--hflip", "--output", "x.jpg"}},
+		{"ffmpeg on Linux, rotated",
+			ffmpegArgs("linux", "x.jpg", Options{Width: 640, Height: 480, Quality: 75, Rotate: true}),
+			[]string{"-f", "v4l2", "-video_size", "640x480", "-i", "/dev/video0", "-frames:v", "1", "-q:v", "75", "-vf", "hflip,vflip", "-y", "x.jpg"}},
+		{"ffmpeg on macOS",
+			ffmpegArgs("darwin", "x.jpg", Options{Width: 640, Height: 480, Quality: 75}),
+			[]string{"-f", "avfoundation", "-framerate", "30", "-i", "0", "-frames:v", "1", "-s", "640x480", "-y", "x.jpg"}},
+	} {
+		if !slices.Equal(c.got, c.want) {
+			t.Errorf("%s: got %v, want %v", c.name, c.got, c.want)
+		}
 	}
 }
 

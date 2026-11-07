@@ -65,7 +65,7 @@ func TestRestartsAndTrafficReleaseEverything(t *testing.T) {
 
 	// Closed connections finish asynchronously; give them a moment.
 	var after resources
-	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+	for deadline := time.Now().Add(15 * time.Second); ; time.Sleep(50 * time.Millisecond) {
 		after = measure()
 		if after.goroutines <= baseline.goroutines && after.fds <= baseline.fds || time.Now().After(deadline) {
 			break

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { formatClock } from '../format';
 import { HourDial } from './HourDial';
 
 const hourly = { SecondsBetweenCaptures: 1800, OffsetWithinHour: 0 };
@@ -15,9 +16,10 @@ describe('HourDial', () => {
   });
 
   it('says when photos resume after a skipped night instead of counting down', () => {
-    render(<HourDial schedule={hourly} now={now} next={shotIn(290 * 60_000, { night: true })} />);
+    const shot = shotIn(290 * 60_000, { night: true });
+    render(<HourDial schedule={hourly} now={now} next={shot} />);
     expect(screen.getByText('Night')).toBeInTheDocument();
-    expect(screen.getByText(/^photos resume at \d\d:\d\d$/)).toBeInTheDocument();
+    expect(screen.getByText(`photos resume at ${formatClock(shot.at)}`)).toBeInTheDocument();
     expect(screen.queryByText('until next capture')).not.toBeInTheDocument();
   });
 
@@ -33,8 +35,13 @@ describe('HourDial', () => {
     expect(Number(hand.getAttribute('x2'))).toBeLessThan(100); // left half of the face: 30..60 minutes
   });
 
-  it('shows no countdown before the camera has planned a capture', () => {
-    render(<HourDial schedule={hourly} now={now} next={null} />);
+  it.each([
+    [{ SecondsBetweenCaptures: 600, OffsetWithinHour: -1 }, 'Every 10 min', 'since start-up'],
+    [hourly, 'Every 30 min', 'at the marked minutes'],
+  ])('describes the schedule before the camera has planned a capture (%o)', (schedule, count, caption) => {
+    render(<HourDial schedule={schedule} now={now} next={null} />);
+    expect(screen.getByText(count)).toBeInTheDocument();
+    expect(screen.getByText(caption)).toBeInTheDocument();
     expect(screen.queryByText('until next capture')).not.toBeInTheDocument();
   });
 });

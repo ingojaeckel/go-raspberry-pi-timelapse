@@ -212,7 +212,7 @@ func TestGetConfiguration(t *testing.T) {
 
 func TestUpdateConfiguration(t *testing.T) {
 	e := newEnv(t)
-	body := `{"SecondsBetweenCaptures":600,"OffsetWithinHour":300,"Quality":85,"PhotoResolutionWidth":1640,"PhotoResolutionHeight":1232,"RotateBy":180,"DebugEnabled":true,"StopWhenDiskFull":true,"PreviewResolutionWidth":1}`
+	body := `{"SecondsBetweenCaptures":600,"OffsetWithinHour":300,"Quality":85,"PhotoResolutionWidth":1640,"PhotoResolutionHeight":1232,"RotateBy":180,"DebugEnabled":true,"StopWhenDiskFull":true,"PreviewResolutionWidth":1,"SkipNightPhotos":true,"Latitude":51.5074,"Longitude":-0.1278}`
 	res, out := do(t, "POST", e.url+"/configuration", body)
 	wantStatus(t, res, out, 200)
 	got := e.store.Get()
@@ -221,6 +221,9 @@ func TestUpdateConfiguration(t *testing.T) {
 	}
 	if got.PhotoResolutionWidth != 1640 || got.PhotoResolutionHeight != 1232 {
 		t.Fatalf("resolution not stored: %s", got)
+	}
+	if !got.SkipNightPhotos || got.Latitude != 51.5074 || got.Longitude != -0.1278 {
+		t.Fatalf("night skipping not stored: %s", got)
 	}
 	if got.PreviewResolutionWidth != 640 {
 		t.Fatal("preview resolution is not editable through the API")
@@ -233,25 +236,30 @@ func TestUpdateConfiguration(t *testing.T) {
 }
 
 func TestUpdateConfigurationRejectsInvalidSettings(t *testing.T) {
-	cases := map[string]string{
-		"not json":                    `not json`,
-		"interval too short":          `{"SecondsBetweenCaptures":1,"OffsetWithinHour":0,"Quality":90}`,
-		"interval not dividing hour":  `{"SecondsBetweenCaptures":1000,"OffsetWithinHour":0,"Quality":90}`,
-		"interval longer than hour":   `{"SecondsBetweenCaptures":7200,"OffsetWithinHour":0,"Quality":90}`,
-		"offset not below interval":   `{"SecondsBetweenCaptures":600,"OffsetWithinHour":900,"Quality":90}`,
-		"quality out of range":        `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":0}`,
-		"photo too small":             `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"PhotoResolutionWidth":32,"PhotoResolutionHeight":24}`,
-		"unsupported rotation":        `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"RotateBy":90}`,
-		"body larger than any config": `{"SecondsBetweenCaptures":600,"x":"` + strings.Repeat("a", 1<<20) + `"}`,
+	// The error names the problem, e.g. "location" (only checked where given).
+	cases := map[string]struct{ body, mentions string }{
+		"not json":                           {`not json`, ""},
+		"interval too short":                 {`{"SecondsBetweenCaptures":1,"OffsetWithinHour":0,"Quality":90}`, ""},
+		"interval not dividing hour":         {`{"SecondsBetweenCaptures":1000,"OffsetWithinHour":0,"Quality":90}`, ""},
+		"interval longer than hour":          {`{"SecondsBetweenCaptures":7200,"OffsetWithinHour":0,"Quality":90}`, ""},
+		"offset not below interval":          {`{"SecondsBetweenCaptures":600,"OffsetWithinHour":900,"Quality":90}`, ""},
+		"quality out of range":               {`{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":0}`, ""},
+		"photo too small":                    {`{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"PhotoResolutionWidth":32,"PhotoResolutionHeight":24}`, ""},
+		"unsupported rotation":               {`{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"RotateBy":90}`, ""},
+		"body larger than any config":        {`{"SecondsBetweenCaptures":600,"x":"` + strings.Repeat("a", 1<<20) + `"}`, ""},
+		"skipping nights without a location": {`{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"SkipNightPhotos":true}`, "location"},
 	}
-	for name, body := range cases {
+	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			e := newEnv(t)
 			before := e.store.Get()
-			res, out := do(t, "POST", e.url+"/configuration", body)
+			res, out := do(t, "POST", e.url+"/configuration", c.body)
 			wantStatus(t, res, out, 400)
 			if e.store.Get() != before {
 				t.Fatal("settings changed")
+			}
+			if !strings.Contains(out, c.mentions) {
+				t.Fatalf("error %q does not mention %q", out, c.mentions)
 			}
 		})
 	}
@@ -853,24 +861,6 @@ func TestMonitoringWithoutPhotosHasNoSample(t *testing.T) {
 	json.Unmarshal([]byte(out), &m)
 	if m.Storage.SamplePhotos != 0 || m.Storage.SampleBytesPerPixel != 0 {
 		t.Fatalf("got %+v", m.Storage)
-	}
-}
-
-func TestUpdateConfigurationSavesNightSkipping(t *testing.T) {
-	e := newEnv(t)
-	res, out := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"SkipNightPhotos":true,"Latitude":51.5074,"Longitude":-0.1278}`)
-	wantStatus(t, res, out, 200)
-	if got := e.store.Get(); !got.SkipNightPhotos || got.Latitude != 51.5074 || got.Longitude != -0.1278 {
-		t.Fatalf("stored %s", got)
-	}
-}
-
-func TestUpdateConfigurationNeedsALocationToSkipNights(t *testing.T) {
-	e := newEnv(t)
-	res, out := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"SkipNightPhotos":true}`)
-	wantStatus(t, res, out, 400)
-	if !strings.Contains(out, "location") {
-		t.Fatalf("got %s", out)
 	}
 }
 

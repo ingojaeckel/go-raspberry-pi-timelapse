@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -119,13 +120,13 @@ func TestZipFlagsNonASCIINamesAsUTF8(t *testing.T) {
 }
 
 // More than 65535 entries need zip64 records, which two months at one photo
-// per minute reach.
+// per minute reach. One more than that is the smallest such archive.
 func TestZip64ForManyPhotos(t *testing.T) {
 	if testing.Short() {
-		t.Skip("writes 70000 files")
+		t.Skip("writes 65536 files")
 	}
 	dir := t.TempDir()
-	photos := make([]File, 70000)
+	photos := make([]File, math.MaxUint16+1)
 	for i := range photos {
 		photos[i] = File{Name: fmt.Sprintf("%06d.jpg", i), ModTimeEpoch: 1.7e9}
 		os.WriteFile(filepath.Join(dir, photos[i].Name), nil, 0o600)
