@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -84,6 +86,8 @@ type env struct {
 	camera   *fakeCamera
 	commands *commands
 	handler  http.Handler // mux + middleware, as served at url
+	// sensor is the detected camera; nil means none detected.
+	sensor *timelapse.Sensor
 }
 
 func newEnv(t testing.TB) *env {
@@ -113,6 +117,12 @@ func newEnv(t testing.TB) *env {
 		DeletedOldest: func() int { return 7 },
 		SetClock:      e.clock.set,
 		RTCDevice:     filepath.Join(dir, "rtc0"), // absent unless a test creates it
+	}
+	e.srv.Sensor = func(context.Context) (timelapse.Sensor, error) {
+		if e.sensor == nil {
+			return timelapse.Sensor{}, timelapse.ErrNoCamera
+		}
+		return *e.sensor, nil
 	}
 	mux := http.NewServeMux()
 	e.srv.Register(mux)
@@ -194,7 +204,7 @@ func TestGetConfiguration(t *testing.T) {
 
 func TestUpdateConfiguration(t *testing.T) {
 	e := newEnv(t)
-	body := `{"SecondsBetweenCaptures":600,"OffsetWithinHour":300,"Quality":85,"ResolutionSetting":2,"RotateBy":180,"DebugEnabled":true,"StopWhenDiskFull":true,"PreviewResolutionWidth":1}`
+	body := `{"SecondsBetweenCaptures":600,"OffsetWithinHour":300,"Quality":85,"PhotoResolutionWidth":1640,"PhotoResolutionHeight":1232,"RotateBy":180,"DebugEnabled":true,"StopWhenDiskFull":true,"PreviewResolutionWidth":1}`
 	res, out := do(t, "POST", e.url+"/configuration", body)
 	wantStatus(t, res, out, 200)
 	got := e.store.Get()
@@ -202,7 +212,7 @@ func TestUpdateConfiguration(t *testing.T) {
 		t.Fatalf("stored %s", got)
 	}
 	if got.PhotoResolutionWidth != 1640 || got.PhotoResolutionHeight != 1232 {
-		t.Fatalf("resolution not derived: %s", got)
+		t.Fatalf("resolution not stored: %s", got)
 	}
 	if got.PreviewResolutionWidth != 640 {
 		t.Fatal("preview resolution is not editable through the API")
@@ -222,7 +232,7 @@ func TestUpdateConfigurationRejectsInvalidSettings(t *testing.T) {
 		"interval longer than hour":   `{"SecondsBetweenCaptures":7200,"OffsetWithinHour":0,"Quality":90}`,
 		"offset not below interval":   `{"SecondsBetweenCaptures":600,"OffsetWithinHour":900,"Quality":90}`,
 		"quality out of range":        `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":0}`,
-		"unknown resolution":          `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"ResolutionSetting":99}`,
+		"photo too small":             `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"PhotoResolutionWidth":32,"PhotoResolutionHeight":24}`,
 		"unsupported rotation":        `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"RotateBy":90}`,
 		"body larger than any config": `{"SecondsBetweenCaptures":600,"x":"` + strings.Repeat("a", 1<<20) + `"}`,
 	}
@@ -720,5 +730,120 @@ func TestHumanReadableSize(t *testing.T) {
 		if got := humanReadableSize(n); got != want {
 			t.Errorf("%d: got %s want %s", n, got, want)
 		}
+	}
+}
+
+// imx290 is a 1920x1080 sensor with a 1280x720 mode.
+var imx290 = timelapse.Sensor{Model: "imx290", Width: 1920, Height: 1080, Modes: []timelapse.Size{{Width: 1280, Height: 720}, {Width: 1920, Height: 1080}}}
+
+func TestCamera(t *testing.T) {
+	e := newEnv(t)
+	e.sensor = &imx290
+	res, out := do(t, "GET", e.url+"/camera", "")
+	wantStatus(t, res, out, 200)
+	var got CameraResponse
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Model != "imx290" || got.Width != 1920 || !slices.Equal(got.Resolutions, []timelapse.Size{{Width: 1920, Height: 1080}, {Width: 1280, Height: 720}}) || got.Error != "" {
+		t.Fatalf("got %s", out)
+	}
+}
+
+func TestCameraNotDetected(t *testing.T) {
+	e := newEnv(t)
+	res, out := do(t, "GET", e.url+"/camera", "")
+	wantStatus(t, res, out, 200)
+	var got CameraResponse
+	json.Unmarshal([]byte(out), &got)
+	if got.Error != "no camera detected" || len(got.Resolutions) != 0 {
+		t.Fatalf("got %s", out)
+	}
+}
+
+func TestUpdateConfigurationOffersOnlyTheCamerasResolutions(t *testing.T) {
+	e := newEnv(t)
+	e.sensor = &imx290
+	settings := `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"PhotoResolutionWidth":%d,"PhotoResolutionHeight":%d}`
+
+	res, out := do(t, "POST", e.url+"/configuration", fmt.Sprintf(settings, 1640, 1232))
+	wantStatus(t, res, out, 400)
+	if !strings.Contains(out, "1920x1080, 1280x720") {
+		t.Errorf("the error does not list the supported sizes: %s", out)
+	}
+
+	res, out = do(t, "POST", e.url+"/configuration", fmt.Sprintf(settings, 1280, 720))
+	wantStatus(t, res, out, 200)
+	if got := e.store.Get(); got.PhotoResolutionWidth != 1280 || got.PhotoResolutionHeight != 720 {
+		t.Fatalf("stored %s", got)
+	}
+}
+
+func TestUpdateConfigurationKeepsAnUnsupportedSizeThatWasNotChanged(t *testing.T) {
+	e := newEnv(t)
+	e.sensor = &imx290 // the default 2186x1642 is not one of its sizes
+	before := e.store.Get()
+	body := fmt.Sprintf(`{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":70,"PhotoResolutionWidth":%d,"PhotoResolutionHeight":%d}`,
+		before.PhotoResolutionWidth, before.PhotoResolutionHeight)
+	res, out := do(t, "POST", e.url+"/configuration", body)
+	wantStatus(t, res, out, 200)
+}
+
+func TestUpdateConfigurationAcceptsAnySizeWithoutACamera(t *testing.T) {
+	e := newEnv(t)
+	res, out := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"PhotoResolutionWidth":800,"PhotoResolutionHeight":600}`)
+	wantStatus(t, res, out, 200)
+}
+
+func TestUpdateConfigurationWithoutASizeKeepsTheSavedOne(t *testing.T) {
+	e := newEnv(t)
+	before := e.store.Get()
+	res, out := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90}`)
+	wantStatus(t, res, out, 200)
+	if got := e.store.Get(); got.PhotoResolutionWidth != before.PhotoResolutionWidth || got.PhotoResolutionHeight != before.PhotoResolutionHeight {
+		t.Fatalf("stored %s", got)
+	}
+}
+
+func jpegPhoto(t *testing.T, w, h, quality int) string {
+	t.Helper()
+	img := image.NewGray(image.Rect(0, 0, w, h))
+	for i := range img.Pix {
+		img.Pix[i] = uint8(i * 13)
+	}
+	var b bytes.Buffer
+	if err := jpeg.Encode(&b, img, &jpeg.Options{Quality: quality}); err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
+}
+
+func TestMonitoringMeasuresRecentPhotos(t *testing.T) {
+	e := newEnv(t)
+	old := jpegPhoto(t, 64, 48, 50)
+	recent := jpegPhoto(t, 64, 48, 80)
+	e.photo(t, "a.jpg", old, 3*time.Hour) // taken before the quality was changed
+	e.photo(t, "b.jpg", recent, 2*time.Hour)
+	e.photo(t, "c.jpg", recent, time.Hour)
+	e.photo(t, "d.jpg", "not a jpeg", 0) // unreadable photos are left out
+	res, out := do(t, "GET", e.url+"/monitoring", "")
+	wantStatus(t, res, out, 200)
+	var m MonitoringResponse
+	json.Unmarshal([]byte(out), &m)
+	s := m.Storage
+	want := float64(len(recent)) / (64 * 48)
+	if s.SamplePhotos != 2 || s.SampleQuality != 80 || s.SampleBytesPerPixel < want*0.999 || s.SampleBytesPerPixel > want*1.001 {
+		t.Fatalf("got %+v, want 2 photos at quality 80 with %.4f bytes per pixel", s, want)
+	}
+}
+
+func TestMonitoringWithoutPhotosHasNoSample(t *testing.T) {
+	e := newEnv(t)
+	res, out := do(t, "GET", e.url+"/monitoring", "")
+	wantStatus(t, res, out, 200)
+	var m MonitoringResponse
+	json.Unmarshal([]byte(out), &m)
+	if m.Storage.SamplePhotos != 0 || m.Storage.SampleBytesPerPixel != 0 {
+		t.Fatalf("got %+v", m.Storage)
 	}
 }

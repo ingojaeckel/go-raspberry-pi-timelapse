@@ -19,8 +19,6 @@ export interface Settings {
   PreviewResolutionHeight: number;
   /** 0 or 180. */
   RotateBy: number;
-  /** 0: 3280x2464, 1: 2186x1642, 2: 1640x1232 (4:3; a 16:9 sensor is cropped to 4:3) */
-  ResolutionSetting: number;
   Quality: number;
   DebugEnabled: boolean;
   /** When the card is full: true stops taking photos, false deletes the oldest ones. */
@@ -55,6 +53,13 @@ export interface Storage {
   StopWhenDiskFull: boolean;
   /** Photos deleted to make room since the camera started. */
   DeletedOldest: number;
+  /**
+   * Size on disk per pixel of the newest photos (SamplePhotos of them, 0
+   * without photos) taken at SampleQuality, read from their JPEG headers.
+   */
+  SampleBytesPerPixel: number;
+  SampleQuality: number;
+  SamplePhotos: number;
   Error?: string;
 }
 
@@ -148,6 +153,9 @@ export const api = {
       body: JSON.stringify(s),
     });
   },
+  camera(signal?: AbortSignal): Promise<Camera> {
+    return json<Camera>('/camera', { signal });
+  },
   monitoring(signal?: AbortSignal): Promise<Monitoring> {
     return json<Monitoring>('/monitoring', { signal });
   },
@@ -189,8 +197,17 @@ export const urls = {
     `${API_BASE}/archive/${format}${filesQuery(names)}`,
 };
 
-export const RESOLUTIONS = [
-  { setting: 0, width: 3280, height: 2464, label: '8 MP' },
-  { setting: 1, width: 2186, height: 1642, label: '3.5 MP' },
-  { setting: 2, width: 1640, height: 1232, label: '2 MP' },
-] as const;
+/** A photo size in pixels. */
+export interface Size {
+  Width: number;
+  Height: number;
+}
+
+/** The connected camera (rpicam-still --list-cameras) and the photo sizes it supports, largest first. */
+export interface Camera {
+  Model: string;
+  Width: number;
+  Height: number;
+  Resolutions: Size[] | null;
+  Error?: string;
+}

@@ -94,7 +94,7 @@ func traffic(t *testing.T, client *http.Client, base string, n int) {
 	for _, p := range []string{"/photos", "/file/last", "/file/20260003.jpg", "/configuration", "/version", "/archive/zip?f=20260001.jpg", "/nope"} {
 		get(p)
 	}
-	body := fmt.Sprintf(`{"SecondsBetweenCaptures":600,"OffsetWithinHour":%d,"Quality":90,"ResolutionSetting":1}`, n%600)
+	body := fmt.Sprintf(`{"SecondsBetweenCaptures":600,"OffsetWithinHour":%d,"Quality":90}`, n%600)
 	req, _ := http.NewRequest(http.MethodPost, base+"/configuration", strings.NewReader(body))
 	if res, err := client.Do(req); err == nil {
 		io.Copy(io.Discard, res.Body)

@@ -52,6 +52,9 @@ type rpicamStill struct{}
 
 func (rpicamStill) String() string { return commandRpicamStill }
 
+// Sensors lists the cameras with rpicam-still --list-cameras.
+func (rpicamStill) Sensors() *Sensors { return NewSensors(commandOutput) }
+
 func (rpicamStill) Capture(ctx context.Context, path string, o Options) error {
 	return runCommand(ctx, commandRpicamStill, rpicamStillArgs(path, o)...)
 }
@@ -107,6 +110,13 @@ func runCommand(ctx context.Context, name string, args ...string) error {
 		return fmt.Errorf("%s: %w: %s", name, err, strings.TrimSpace(out.String()))
 	}
 	return nil
+}
+
+// commandOutput runs a command and returns its combined output.
+func commandOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.WaitDelay = KillDelay
+	return cmd.CombinedOutput()
 }
 
 // Camera serializes access to the camera hardware, bounds every capture by a

@@ -1,9 +1,17 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { api, RESOLUTIONS, type AdminCommand, type Settings } from '../api';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { api, type AdminCommand, type Camera, type Settings, type Size, type Storage } from '../api';
 import { HourDial } from '../components/HourDial';
 import { Icon } from '../components/Icon';
 import { ConfirmDialog, Notice, PageHeader, Spinner } from '../components/ui';
-import { formatPastHour } from '../format';
+import {
+  aspectRatio,
+  estimateCapacity,
+  estimatePhotoBytes,
+  formatBytes,
+  formatDays,
+  formatMegapixels,
+  formatPastHour,
+} from '../format';
 import { useNow, useResource } from '../hooks';
 import { capturesPerDay, captureSlots, formatInterval, isValidInterval, VALID_INTERVALS } from '../schedule';
 
@@ -63,6 +71,8 @@ export function SettingsView({ settings, error, onSaved }: Props) {
   const [pending, setPending] = useState<AdminCommand | null>(null);
   const [adminBusy, setAdminBusy] = useState(false);
   const now = useNow();
+  const camera = useResource((signal) => api.camera(signal));
+  const monitoring = useResource((signal) => api.monitoring(signal));
 
   useEffect(() => {
     if (settings && !draft) setDraft(settings);
@@ -102,15 +112,14 @@ export function SettingsView({ settings, error, onSaved }: Props) {
       const saved = await api.saveSettings(draft);
       onSaved(saved);
       setDraft(saved);
-      const resolution = RESOLUTIONS.find((r) => r.setting === draft.ResolutionSetting);
       const resolutionApplied =
-        !resolution || (saved.PhotoResolutionWidth === resolution.width && saved.PhotoResolutionHeight === resolution.height);
+        saved.PhotoResolutionWidth === draft.PhotoResolutionWidth && saved.PhotoResolutionHeight === draft.PhotoResolutionHeight;
       setFlash(
         resolutionApplied
           ? { tone: 'ok', text: 'Settings saved. They apply from the next capture.' }
           : {
               tone: 'warn',
-              text: `Settings saved, but the camera kept ${saved.PhotoResolutionWidth}×${saved.PhotoResolutionHeight} instead of ${resolution.width}×${resolution.height}.`,
+              text: `Settings saved, but the camera kept ${saved.PhotoResolutionWidth}×${saved.PhotoResolutionHeight} instead of ${draft.PhotoResolutionWidth}×${draft.PhotoResolutionHeight}.`,
             },
       );
     } catch (err) {
@@ -234,29 +243,14 @@ export function SettingsView({ settings, error, onSaved }: Props) {
         <fieldset className="panel">
           <legend>Photo</legend>
 
-          <div className="field">
-            <span className="label" id="res-label">Resolution</span>
-            <div className="segmented" role="radiogroup" aria-labelledby="res-label">
-              {RESOLUTIONS.map((r) => (
-                <label key={r.setting}>
-                  <input
-                    type="radio"
-                    name="resolution"
-                    checked={draft.ResolutionSetting === r.setting}
-                    onChange={() => set('ResolutionSetting', r.setting)}
-                  />
-                  <span>
-                    <strong>{r.label}</strong>
-                    {r.width}×{r.height}
-                  </span>
-                </label>
-              ))}
-            </div>
-            <p className="help">
-              Photos are currently saved at {settings?.PhotoResolutionWidth}×{settings?.PhotoResolutionHeight}. Lower
-              resolutions fit more photos on the card.
-            </p>
-          </div>
+          <ResolutionField
+            camera={camera.data}
+            loading={camera.loading}
+            error={camera.error}
+            value={{ Width: draft.PhotoResolutionWidth, Height: draft.PhotoResolutionHeight }}
+            saved={settings && { Width: settings.PhotoResolutionWidth, Height: settings.PhotoResolutionHeight }}
+            onChange={(r) => setDraft({ ...draft, PhotoResolutionWidth: r.Width, PhotoResolutionHeight: r.Height })}
+          />
 
           <div className="field">
             <label htmlFor="quality">JPEG quality</label>
@@ -286,6 +280,7 @@ export function SettingsView({ settings, error, onSaved }: Props) {
             <p id="quality-help" className={errors.Quality ? 'help error' : 'help'}>
               {errors.Quality ?? 'Lower values make smaller files. Few people can tell 85 from 100.'}
             </p>
+            {!errors.Quality && <StorageEstimate draft={draft} storage={monitoring.data?.Storage} />}
           </div>
 
           <div className="field">
@@ -398,6 +393,102 @@ export function SettingsView({ settings, error, onSaved }: Props) {
         {pending ? ADMIN[pending].body : null}
       </ConfirmDialog>
     </>
+  );
+}
+
+const sameSize = (a: Size, b: Size) => a.Width === b.Width && a.Height === b.Height;
+
+interface ResolutionProps {
+  camera: Camera | undefined;
+  loading: boolean;
+  error: string | null;
+  value: Size;
+  saved: Size | undefined;
+  onChange: (s: Size) => void;
+}
+
+/**
+ * The connected camera's photo sizes (its sensor modes), so only sizes it
+ * supports can be chosen. A saved size it lacks (e.g. after swapping the
+ * camera) stays selectable until another one is chosen.
+ */
+function ResolutionField({ camera, loading, error, value, saved, onChange }: ResolutionProps) {
+  const detected = camera && !camera.Error && camera.Resolutions?.length ? camera : null;
+  const supported = detected?.Resolutions ?? [];
+  const options = [...supported];
+  for (const extra of [saved, value]) {
+    if (extra && !options.some((o) => sameSize(o, extra))) options.push(extra);
+  }
+  const isSupported = (s: Size) => !detected || supported.some((o) => sameSize(o, s));
+
+  let help: ReactNode;
+  if (detected) {
+    help = (
+      <>
+        Sizes of the {detected.Model} camera ({detected.Width}×{detected.Height} sensor). Lower resolutions fit more photos
+        on the card.
+        {!isSupported(value) && (
+          <>
+            {' '}
+            <strong>
+              The camera does not support {value.Width}×{value.Height}: photos are scaled. Choose one of its sizes.
+            </strong>
+          </>
+        )}
+      </>
+    );
+  } else if (loading) {
+    help = 'Detecting the camera…';
+  } else {
+    help = `Couldn't detect the camera (${camera?.Error ?? error ?? 'unknown error'}), so only the current size is shown.`;
+  }
+
+  return (
+    <div className="field">
+      <span className="label" id="res-label">
+        Resolution
+      </span>
+      <div className="segmented" role="radiogroup" aria-labelledby="res-label">
+        {options.map((r) => (
+          <label key={`${r.Width}x${r.Height}`}>
+            <input type="radio" name="resolution" checked={sameSize(value, r)} onChange={() => onChange(r)} />
+            <span>
+              <strong>{formatMegapixels(r.Width, r.Height)}</strong>
+              {r.Width}×{r.Height} · {isSupported(r) ? aspectRatio(r.Width, r.Height) : 'not supported'}
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="help">{help}</p>
+    </div>
+  );
+}
+
+/** Photo size at the chosen size and quality, and how long the card lasts at the chosen schedule. */
+function StorageEstimate({ draft, storage }: { draft: Settings; storage: Storage | undefined }) {
+  const photo = estimatePhotoBytes(draft.PhotoResolutionWidth, draft.PhotoResolutionHeight, draft.Quality, storage);
+  const perDay = capturesPerDay(draft);
+  const capacity = storage && estimateCapacity(storage, photo.bytes, perDay);
+  const basis =
+    photo.fromPhotos > 0
+      ? `estimated from the last ${photo.fromPhotos.toLocaleString()} photo${photo.fromPhotos === 1 ? '' : 's'}`
+      : 'a rough estimate until the camera has taken photos';
+  const atSchedule = (days: number | null) => (days === null ? '' : `: ${formatDays(days)} at ${perDay.toLocaleString()} photos a day`);
+  return (
+    <p className="help estimate">
+      About {formatBytes(photo.bytes)} per photo, {basis}.
+      {capacity && (
+        <>
+          {' '}
+          The card has room for about {capacity.more.toLocaleString()} more{atSchedule(capacity.days)}, then{' '}
+          {capacity.kept === null
+            ? 'the camera stops taking photos.'
+            : `the oldest photos are deleted, so the card keeps about the last ${capacity.kept.toLocaleString()} photos${
+                capacity.keptDays === null ? '' : ` (${formatDays(capacity.keptDays)})`
+              }.`}
+        </>
+      )}
+    </p>
   );
 }
 

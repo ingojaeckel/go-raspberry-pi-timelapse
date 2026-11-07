@@ -67,7 +67,9 @@ type app struct {
 	cpuFreqDir  string
 	started     time.Time
 	record      health.Recorder // for the daily summary
-	deleted     atomic.Int64    // photos deleted to free disk space
+	// sensors detects the camera; nil for backends that cannot list cameras.
+	sensors *timelapse.Sensors
+	deleted atomic.Int64 // photos deleted to free disk space
 }
 
 // newApp acquires all resources in order. On failure, those acquired so far
@@ -76,6 +78,9 @@ func newApp(opts options, backend timelapse.Backend) (*app, error) {
 	a := &app{
 		opts: opts, version: versionString(gitCommit, builtAt), level: new(slog.LevelVar), freeBytes: files.FreeBytes,
 		runCommand: rest.RunCommand, thermalFile: thermalFile, cpuFreqDir: health.CPUFreqDir, started: time.Now(),
+	}
+	if l, ok := backend.(timelapse.SensorLister); ok {
+		a.sensors = l.Sensors()
 	}
 	for _, step := range []func() error{a.startLogging, a.markRun, a.openSettings, a.createStorageFolder, a.listen} {
 		if err := step(); err != nil {
@@ -118,15 +123,48 @@ func (a *app) markRun() error {
 	return nil
 }
 
+// openSettings loads the settings. On the first run the photo size is the
+// detected camera's default; a saved size the camera does not offer (e.g.
+// after swapping the camera) is kept, but logged.
 func (a *app) openSettings() error {
-	store, err := conf.OpenStore(conf.SettingsFile, conf.Default(a.opts.secondsBetweenCaptures))
+	defaults := conf.Default(a.opts.secondsBetweenCaptures)
+	sensor, detected := a.detectCamera()
+	if detected {
+		d := sensor.DefaultResolution()
+		defaults.PhotoResolutionWidth, defaults.PhotoResolutionHeight = d.Width, d.Height
+	}
+	store, err := conf.OpenStore(conf.SettingsFile, defaults)
 	if err != nil {
 		return err
 	}
 	a.store = store
 	a.closers = append(a.closers, func() { store.Close() })
-	slog.Info("settings loaded", "settings", store.Get())
+	s := store.Get()
+	slog.Info("settings loaded", "settings", s)
+	if detected && !sensor.Supports(s.PhotoResolutionWidth, s.PhotoResolutionHeight) {
+		slog.Warn("the photo size is not one of the camera's sizes, so photos are scaled; choose one in Settings",
+			"size", fmt.Sprintf("%dx%d", s.PhotoResolutionWidth, s.PhotoResolutionHeight), "supported", sensor.Resolutions())
+	}
 	return nil
+}
+
+// cameraDetectTimeout bounds camera detection at start-up, which must not
+// hold up the web UI for long.
+const cameraDetectTimeout = 15 * time.Second
+
+func (a *app) detectCamera() (timelapse.Sensor, bool) {
+	if a.sensors == nil {
+		return timelapse.Sensor{}, false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), cameraDetectTimeout)
+	defer cancel()
+	sensor, err := a.sensors.Get(ctx)
+	if err != nil {
+		slog.Warn("camera not detected", "err", err)
+		return sensor, false
+	}
+	slog.Info("camera detected", "model", sensor.Model, "resolutions", sensor.Resolutions())
+	return sensor, true
 }
 
 // createStorageFolder creates the photo folder if needed and deletes photos
@@ -344,7 +382,15 @@ func (a *app) api() *rest.Server {
 		DeletedOldest: func() int { return int(a.deleted.Load()) },
 		SetClock:      rest.SetSystemClock,
 		RTCDevice:     rtcDevice,
+		Sensor:        a.sensorFunc(),
 	}
+}
+
+func (a *app) sensorFunc() func(context.Context) (timelapse.Sensor, error) {
+	if a.sensors == nil {
+		return nil
+	}
+	return a.sensors.Get
 }
 
 // serve runs server on listener until ctx is cancelled or serving fails,

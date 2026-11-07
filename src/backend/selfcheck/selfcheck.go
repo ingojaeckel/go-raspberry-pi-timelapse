@@ -84,6 +84,13 @@ const minContrast = 2
 
 // Run runs every check in order and returns their results.
 func Run(ctx context.Context, cfg Config) []Result {
+	pi := fmt.Sprint(cfg.Backend) == rpicamStill
+	sensor, detectErr := detect(ctx, cfg, pi)
+	if detectErr == nil {
+		// Like the app on its first run: the camera's default size.
+		d := sensor.DefaultResolution()
+		cfg.DefaultSettings.PhotoResolutionWidth, cfg.DefaultSettings.PhotoResolutionHeight = d.Width, d.Height
+	}
 	settings, settingsResult := readSettings(cfg)
 	opts := timelapse.PhotoOptions(settings)
 	results := []Result{settingsResult}
@@ -93,8 +100,7 @@ func Run(ctx context.Context, cfg Config) []Result {
 	}
 
 	storage := add(checkStorage(cfg))
-	pi := fmt.Sprint(cfg.Backend) == rpicamStill
-	detected := add(checkDetected(ctx, cfg, pi, opts))
+	detected := add(checkDetected(pi, sensor, detectErr, opts))
 	free := add(checkCameraFree(cfg, pi))
 
 	var photo string
@@ -226,23 +232,27 @@ func formatBytes(b uint64) string {
 	return fmt.Sprintf("%d MB", b>>20)
 }
 
-// cameraLine is a camera in `rpicam-still --list-cameras`:
-// "0 : imx290 [1920x1080 12-bit RGGB] (/base/soc/...)".
-var cameraLine = regexp.MustCompile(`(?m)^\s*\d+ : (\S+) \[(\d+)x(\d+)`)
-
-func checkDetected(ctx context.Context, cfg Config, pi bool, o timelapse.Options) Result {
-	r := Result{Check: "camera detected"}
+// detect lists the cameras on a Pi; errNotPi elsewhere.
+func detect(ctx context.Context, cfg Config, pi bool) (timelapse.Sensor, error) {
 	if !pi {
-		return skipped(r.Check, fmt.Sprintf("using %v, not a Raspberry Pi camera", cfg.Backend))
+		return timelapse.Sensor{}, errNotPi
 	}
 	ctx, cancel := context.WithTimeout(ctx, cfg.CaptureTimeout)
 	defer cancel()
-	out, err := cfg.Run(ctx, rpicamStill, "--list-cameras")
-	m := cameraLine.FindSubmatch(out)
-	if m == nil {
+	return timelapse.NewSensors(timelapse.ListCommand(cfg.Run)).Get(ctx)
+}
+
+var errNotPi = errors.New("not a Raspberry Pi camera")
+
+func checkDetected(pi bool, sensor timelapse.Sensor, err error, o timelapse.Options) Result {
+	r := Result{Check: "camera detected"}
+	if !pi {
+		return skipped(r.Check, "not a Raspberry Pi camera")
+	}
+	if err != nil {
 		r.Status = Fail
 		r.Detail = "rpicam-still --list-cameras finds no camera"
-		if err != nil {
+		if !errors.Is(err, timelapse.ErrNoCamera) {
 			r.Detail += fmt.Sprintf(" (%v)", err)
 		}
 		r.Hint = "check that the ribbon cable is seated firmly at both ends, contacts facing the board. " +
@@ -250,13 +260,15 @@ func checkDetected(ctx context.Context, cfg Config, pi bool, o timelapse.Options
 			"third-party sensors such as Arducam need their overlay, e.g. dtoverlay=imx290 or dtoverlay=imx519, and a reboot"
 		return r
 	}
-	w, _ := strconv.Atoi(string(m[2]))
-	h, _ := strconv.Atoi(string(m[3]))
-	r.Detail = fmt.Sprintf("%s (%dx%d)", m[1], w, h)
-	if o.Width > w || o.Height > h {
+	r.Detail = fmt.Sprintf("%s (%dx%d)", sensor.Model, sensor.Width, sensor.Height)
+	if !sensor.Supports(o.Width, o.Height) {
+		var sizes []string
+		for _, s := range sensor.Resolutions() {
+			sizes = append(sizes, s.String())
+		}
 		r.Status = Warn
-		r.Detail = fmt.Sprintf("%s (%dx%d): photos of %dx%d are larger than the sensor and get scaled up", m[1], w, h, o.Width, o.Height)
-		r.Hint = "choose a lower resolution in Settings"
+		r.Detail += fmt.Sprintf(": photos of %dx%d are not one of its sizes (%s) and get scaled", o.Width, o.Height, strings.Join(sizes, ", "))
+		r.Hint = "choose one of the camera's resolutions in Settings"
 	}
 	return r
 }

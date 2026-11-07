@@ -70,9 +70,9 @@ func TestStoreRejectsInvalidUpdateAndKeepsOldSettings(t *testing.T) {
 	}
 }
 
-func TestStoreUpdateDerivesPhotoResolution(t *testing.T) {
+func TestStoreUpdateKeepsThePhotoSize(t *testing.T) {
 	s := openTestStore(t, filepath.Join(t.TempDir(), "settings.db"))
-	got, err := s.Update(func(c *Settings) { c.ResolutionSetting = 2 })
+	got, err := s.Update(func(c *Settings) { c.PhotoResolutionWidth, c.PhotoResolutionHeight = 1640, 1232 })
 	if err != nil {
 		t.Fatal(err)
 	}

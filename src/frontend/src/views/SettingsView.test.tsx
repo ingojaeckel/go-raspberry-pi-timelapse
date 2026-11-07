@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsView, validate } from './SettingsView';
-import { callsTo, json, mockServer, settings } from '../test/mockServer';
+import { callsTo, json, mockServer, monitoring, settings } from '../test/mockServer';
 import type { Settings } from '../api';
 
 function renderSettings(s: Settings = settings, onSaved = vi.fn()) {
@@ -60,7 +60,7 @@ describe('SettingsView', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Take a photo every' }), '600');
     await user.clear(screen.getByLabelText('First capture at minute'));
     await user.type(screen.getByLabelText('First capture at minute'), '3');
-    await user.click(screen.getByRole('radio', { name: /2 MP/ }));
+    await user.click(await screen.findByRole('radio', { name: /1920×1080/ }));
     await user.click(screen.getByRole('radio', { name: /Upside down/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
@@ -69,7 +69,8 @@ describe('SettingsView', () => {
       ...settings,
       SecondsBetweenCaptures: 600,
       OffsetWithinHour: 180,
-      ResolutionSetting: 2,
+      PhotoResolutionWidth: 1920,
+      PhotoResolutionHeight: 1080,
       RotateBy: 180,
     });
   });
@@ -115,19 +116,74 @@ describe('SettingsView', () => {
     mockServer({ 'POST /configuration': () => json('Quality is out of bounds', 400) });
     renderSettings();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('radio', { name: /2 MP/ }));
+    await user.click(await screen.findByRole('radio', { name: /640×480/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('Settings were not saved. Quality is out of bounds')).toBeInTheDocument();
   });
 
   it('warns when the camera did not apply the chosen resolution', async () => {
     // Safety net: if the server ever keeps a different size than requested, say so.
-    mockServer({ 'POST /configuration': (_u, init) => json({ ...JSON.parse(String(init?.body)) }) });
+    mockServer({ 'POST /configuration': (_u, init) => json({ ...JSON.parse(String(init?.body)), PhotoResolutionWidth: 1640, PhotoResolutionHeight: 1232 }) });
     renderSettings();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('radio', { name: /8 MP/ }));
+    await user.click(await screen.findByRole('radio', { name: /3280×2464/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText(/camera kept 2186×1642 instead of 3280×2464/)).toBeInTheDocument();
+    expect(await screen.findByText(/camera kept 1640×1232 instead of 3280×2464/)).toBeInTheDocument();
+  });
+
+  it("offers only the connected camera's resolutions", async () => {
+    mockServer();
+    renderSettings();
+    expect(await screen.findByText(/imx219 camera/)).toBeInTheDocument();
+    const group = screen.getByRole('radiogroup', { name: 'Resolution' });
+    expect(within(group).getAllByRole('radio').map((r) => r.closest('label')?.textContent)).toEqual([
+      '8.1 MP3280×2464 · 4:3',
+      '2.1 MP1920×1080 · 16:9',
+      '2 MP1640×1232 · 4:3',
+      '0.3 MP640×480 · 4:3',
+    ]);
+    expect(within(group).getByRole('radio', { name: /1640×1232/ })).toBeChecked();
+  });
+
+  it('keeps a saved size the camera does not support, and says so', async () => {
+    mockServer();
+    renderSettings({ ...settings, PhotoResolutionWidth: 2186, PhotoResolutionHeight: 1642 });
+    const saved = await screen.findByRole('radio', { name: /2186×1642/ });
+    expect(saved).toBeChecked();
+    expect(saved.closest('label')).toHaveTextContent('not supported');
+    expect(screen.getByText(/does not support 2186×1642/)).toBeInTheDocument();
+  });
+
+  it('offers the saved size when the camera is not detected', async () => {
+    mockServer({ 'GET /camera': () => json({ Model: '', Width: 0, Height: 0, Resolutions: null, Error: 'no camera detected' }) });
+    renderSettings();
+    expect(await screen.findByText(/couldn't detect the camera \(no camera detected\)/i)).toBeInTheDocument();
+    const radios = within(screen.getByRole('radiogroup', { name: 'Resolution' })).getAllByRole('radio');
+    expect(radios).toHaveLength(1);
+    expect(radios[0]).toBeChecked();
+  });
+
+  it('estimates the photo size and how long the card lasts as quality changes', async () => {
+    mockServer();
+    renderSettings();
+    const user = userEvent.setup();
+    // 1640x1232 at quality 100 with 0.45 bytes per pixel: 0.9 MB, 23.75 GB usable, 48 photos a day
+    const estimate = await screen.findByText(/per photo/);
+    expect(estimate).toHaveTextContent(/About 888 KB per photo, estimated from the last 3 photos\./);
+    expect(estimate).toHaveTextContent(/room for about 28,0\d\d more: \d+ days at 48 photos a day, then the oldest photos are deleted/);
+
+    await user.clear(screen.getByLabelText('JPEG quality'));
+    await user.type(screen.getByLabelText('JPEG quality'), '50');
+    expect(screen.getByText(/per photo/)).toHaveTextContent(/About 115 KB per photo/);
+  });
+
+  it('says the estimate is rough before the first photo', async () => {
+    mockServer({
+      'GET /monitoring': () =>
+        json({ ...monitoring, Storage: { ...monitoring.Storage, Photos: 0, PhotoBytes: 0, SamplePhotos: 0, SampleBytesPerPixel: 0, SampleQuality: 0 } }),
+    });
+    renderSettings();
+    expect(await screen.findByText(/rough estimate until the camera has taken photos/)).toBeInTheDocument();
   });
 
   it('asks before shutting down and only then calls the backend', async () => {

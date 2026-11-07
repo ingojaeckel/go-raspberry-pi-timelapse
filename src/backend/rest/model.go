@@ -3,6 +3,7 @@ package rest
 import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/health"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 )
 
 // Response types. Field names are part of the API (src/frontend/src/api.ts).
@@ -51,7 +52,23 @@ type StorageStatus struct {
 	// oldest ones (DeletedOldest since the app started).
 	StopWhenDiskFull bool
 	DeletedOldest    int
-	Error            string `json:",omitempty"`
+	// SampleBytesPerPixel is the size on disk per pixel of the newest
+	// photos (up to sampleSize) taken at SampleQuality, the quality of the
+	// newest one; SamplePhotos counts them, 0 without photos. The frontend
+	// estimates photo sizes for other settings from it.
+	SampleBytesPerPixel float64
+	SampleQuality       int
+	SamplePhotos        int
+	Error               string `json:",omitempty"`
+}
+
+// CameraResponse is the detected camera (timelapse.Sensor) and the photo
+// sizes it offers, largest first, or Error.
+type CameraResponse struct {
+	Model         string
+	Width, Height int
+	Resolutions   []timelapse.Size
+	Error         string `json:",omitempty"`
 }
 
 // SetTimeRequest sets the camera's clock, e.g. to the browser's.

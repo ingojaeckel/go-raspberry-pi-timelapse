@@ -1,18 +1,30 @@
 import { vi } from 'vitest';
-import type { Monitoring, Photo, Settings } from '../api';
+import type { Camera, Monitoring, Photo, Settings } from '../api';
 
 export const settings: Settings = {
   SecondsBetweenCaptures: 1800,
   OffsetWithinHour: 900,
-  PhotoResolutionWidth: 2186,
-  PhotoResolutionHeight: 1642,
+  PhotoResolutionWidth: 1640,
+  PhotoResolutionHeight: 1232,
   PreviewResolutionWidth: 640,
   PreviewResolutionHeight: 480,
   RotateBy: 0,
-  ResolutionSetting: 1,
   Quality: 100,
   DebugEnabled: false,
   StopWhenDiskFull: false,
+};
+
+/** A Camera Module v2 (IMX219) and its modes. */
+export const camera: Camera = {
+  Model: 'imx219',
+  Width: 3280,
+  Height: 2464,
+  Resolutions: [
+    { Width: 3280, Height: 2464 },
+    { Width: 1920, Height: 1080 },
+    { Width: 1640, Height: 1232 },
+    { Width: 640, Height: 480 },
+  ],
 };
 
 export const photos: Photo[] = [
@@ -41,6 +53,10 @@ export const monitoring: Monitoring = {
     PhotoBytes: 7 * 1024 ** 2,
     StopWhenDiskFull: false,
     DeletedOldest: 0,
+    // 0.45 bytes per pixel at quality 100: about 0.9 MB for 1640x1232
+    SampleBytesPerPixel: 0.45,
+    SampleQuality: 100,
+    SamplePhotos: 3,
   },
 };
 
@@ -56,6 +72,7 @@ export function mockServer(overrides: Record<string, Handler> = {}) {
     'POST /configuration': (_u, init) => json(JSON.parse(String(init?.body))),
     'GET /photos': () => json({ Photos: photos }),
     'GET /monitoring': () => json(monitoring),
+    'GET /camera': () => json(camera),
     'GET /logs': () => json({ Logs: '2026/11/02 10:00:00 started\n2026/11/02 10:15:00 Error during capture: boom\n' }),
     'GET /version': () => new Response('Hello from arm on linux [version:abc]'),
     'DELETE /file': () => json(1),

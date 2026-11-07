@@ -18,6 +18,7 @@ import (
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 )
 
 // diskApp is an app whose photo folder pretends to be on a disk with free
@@ -294,5 +295,67 @@ func TestRunReturnsWhenServingFailsOnItsOwn(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("run hung after the HTTP server failed")
+	}
+}
+
+// listingCamera is a camera whose rpicam-still lists an IMX290.
+type listingCamera struct{ noCamera }
+
+func (listingCamera) Sensors() *timelapse.Sensors {
+	return timelapse.NewSensors(func(context.Context, string, ...string) ([]byte, error) {
+		return []byte("0 : imx290 [1920x1080 12-bit RGGB] (/base/soc/i2c0mux/i2c@1/imx290@1a)\n" +
+			"    Modes: 'SRGGB10_CSI2P' : 1280x720 [30.00 fps - (65535, 65535)/65535x65535 crop]\n" +
+			"                             1920x1080 [30.00 fps - (65535, 65535)/65535x65535 crop]\n"), nil
+	})
+}
+
+func TestFirstRunUsesTheCamerasDefaultSize(t *testing.T) {
+	t.Chdir(t.TempDir())
+	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 600, listen: "127.0.0.1:0"}, listingCamera{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.close()
+	if s := a.store.Get(); s.PhotoResolutionWidth != 1920 || s.PhotoResolutionHeight != 1080 {
+		t.Fatalf("first run saved %dx%d", s.PhotoResolutionWidth, s.PhotoResolutionHeight)
+	}
+	sensor, err := a.api().Sensor(t.Context())
+	if err != nil || sensor.Model != "imx290" {
+		t.Fatalf("API camera: %+v %v", sensor, err)
+	}
+}
+
+func TestSavedUnsupportedSizeIsKeptAndLogged(t *testing.T) {
+	t.Chdir(t.TempDir())
+	s, err := conf.OpenStore(conf.SettingsFile, conf.Default(600)) // 2186x1642
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 600, listen: "127.0.0.1:0", logToFile: true}, listingCamera{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := a.store.Get()
+	a.close()
+	if got.PhotoResolutionWidth != 2186 {
+		t.Fatalf("saved size changed to %dx%d", got.PhotoResolutionWidth, got.PhotoResolutionHeight)
+	}
+	if logs, _ := os.ReadFile(conf.LogFile); !strings.Contains(string(logs), "not one of the camera's sizes") {
+		t.Fatalf("logs:\n%s", logs)
+	}
+}
+
+func TestWithoutCameraDetectionTheAPIHasNoSensor(t *testing.T) {
+	t.Chdir(t.TempDir())
+	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 600, listen: "127.0.0.1:0"}, noCamera{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.close()
+	if a.api().Sensor != nil {
+		t.Fatal("Sensor set for a backend that cannot list cameras")
 	}
 }

@@ -115,9 +115,8 @@ func (s *Store) Subscribe() <-chan struct{} {
 	return ch
 }
 
-// Update applies change to a copy of the current settings, derives the photo
-// size from ResolutionSetting, validates and persists the result and notifies
-// subscribers. Validation errors wrap ErrInvalid and leave the settings as
+// Update applies change to a copy of the current settings, validates and
+// persists the result and notifies subscribers. Validation errors wrap ErrInvalid and leave the settings as
 // they were.
 func (s *Store) Update(change func(*Settings)) (Settings, error) {
 	s.mu.Lock()
@@ -128,7 +127,6 @@ func (s *Store) Update(change func(*Settings)) (Settings, error) {
 	if err := next.Validate(); err != nil {
 		return Settings{}, err
 	}
-	next = next.withResolution()
 	if err := s.put(next); err != nil {
 		return Settings{}, fmt.Errorf("save settings: %w", err)
 	}

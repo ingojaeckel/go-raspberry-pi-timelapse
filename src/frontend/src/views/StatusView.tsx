@@ -6,6 +6,7 @@ import {
   checkClock,
   estimateRunway,
   formatBytes,
+  formatDays,
   formatDuration,
   parseCpuTemp,
   parseDf,
@@ -239,15 +240,9 @@ function Runway({ storage, settings }: { storage: Storage; settings: Settings | 
   return (
     <>
       . Room for about {est.photos.toLocaleString()} more photos
-      {est.days !== null && <> ({runway(est.days)} at the current schedule)</>}, then {then}.{deleted}
+      {est.days !== null && <> ({formatDays(est.days)} at the current schedule)</>}, then {then}.{deleted}
     </>
   );
-}
-
-function runway(days: number): string {
-  if (days >= 730) return `over ${Math.floor(days / 365)} years`;
-  if (days >= 2) return `${Math.floor(days).toLocaleString()} days`;
-  return `${Math.max(1, Math.round(days * 24))} hours`;
 }
 
 /** "396Gi" → "396 GB" */

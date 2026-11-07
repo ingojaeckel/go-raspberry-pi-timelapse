@@ -49,6 +49,9 @@ type Server struct {
 	DeletedOldest func() int
 	// SetClock sets the system clock (SetSystemClock).
 	SetClock func(time.Time) error
+	// Sensor returns the detected camera (timelapse.Sensors.Get); nil
+	// without camera detection.
+	Sensor func(ctx context.Context) (timelapse.Sensor, error)
 	// RTCDevice is the battery-backed clock module, written after the clock
 	// is set if it exists. sudoers allows hwclock for /dev/rtc0 only.
 	RTCDevice string
@@ -72,6 +75,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /archive/zip", s.archive("archive.zip", "application/zip", files.ZipSize, files.WriteZip))
 	mux.HandleFunc("GET /archive/tar", s.archive("archive.tar", "application/tar", files.TarSize, files.WriteTar))
 	mux.HandleFunc("GET /monitoring", s.monitoring)
+	mux.HandleFunc("GET /camera", s.camera)
 	mux.HandleFunc("GET /logs", s.logs)
 	mux.HandleFunc("POST /admin/shutdown", s.command("/usr/bin/sudo", "/sbin/shutdown", "-h", "now"))
 	mux.HandleFunc("POST /admin/restart", s.command("/usr/bin/sudo", "/sbin/shutdown", "-r", "now"))

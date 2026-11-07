@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"encoding/json"
 	"errors"
 	"slices"
 	"testing"
@@ -35,18 +36,19 @@ func TestValidateAcceptsDisabledOffset(t *testing.T) {
 
 func TestValidateRejects(t *testing.T) {
 	cases := map[string]func(*Settings){
-		"interval below minute":       func(s *Settings) { s.SecondsBetweenCaptures = 1 },
-		"interval zero":               func(s *Settings) { s.SecondsBetweenCaptures = 0 },
-		"interval not dividing hour":  func(s *Settings) { s.SecondsBetweenCaptures = 1000 },
-		"interval above hour":         func(s *Settings) { s.SecondsBetweenCaptures = 7200 },
-		"offset equal to interval":    func(s *Settings) { s.SecondsBetweenCaptures = 600; s.OffsetWithinHour = 600 },
-		"offset beyond interval":      func(s *Settings) { s.SecondsBetweenCaptures = 600; s.OffsetWithinHour = 900 },
-		"offset below -1":             func(s *Settings) { s.OffsetWithinHour = -2 },
-		"quality zero":                func(s *Settings) { s.Quality = 0 },
-		"quality above 100":           func(s *Settings) { s.Quality = 101 },
-		"rotation not 0 or 180":       func(s *Settings) { s.RotateBy = 90 },
-		"unknown resolution setting":  func(s *Settings) { s.ResolutionSetting = 99 },
-		"negative resolution setting": func(s *Settings) { s.ResolutionSetting = -1 },
+		"interval below minute":      func(s *Settings) { s.SecondsBetweenCaptures = 1 },
+		"interval zero":              func(s *Settings) { s.SecondsBetweenCaptures = 0 },
+		"interval not dividing hour": func(s *Settings) { s.SecondsBetweenCaptures = 1000 },
+		"interval above hour":        func(s *Settings) { s.SecondsBetweenCaptures = 7200 },
+		"offset equal to interval":   func(s *Settings) { s.SecondsBetweenCaptures = 600; s.OffsetWithinHour = 600 },
+		"offset beyond interval":     func(s *Settings) { s.SecondsBetweenCaptures = 600; s.OffsetWithinHour = 900 },
+		"offset below -1":            func(s *Settings) { s.OffsetWithinHour = -2 },
+		"quality zero":               func(s *Settings) { s.Quality = 0 },
+		"quality above 100":          func(s *Settings) { s.Quality = 101 },
+		"rotation not 0 or 180":      func(s *Settings) { s.RotateBy = 90 },
+		"photo too narrow":           func(s *Settings) { s.PhotoResolutionWidth = 63 },
+		"photo too tall":             func(s *Settings) { s.PhotoResolutionHeight = 16385 },
+		"no photo size":              func(s *Settings) { s.PhotoResolutionWidth, s.PhotoResolutionHeight = 0, 0 },
 	}
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -90,24 +92,26 @@ func TestNormalizedRepairsSettingsFromOlderVersions(t *testing.T) {
 
 func TestNormalizedRepairsPhotoFields(t *testing.T) {
 	s := valid()
-	s.Quality, s.RotateBy, s.ResolutionSetting = 0, 90, 99
+	s.Quality, s.RotateBy, s.PhotoResolutionWidth = 0, 90, 0
 	n := s.Normalized()
-	if n.Quality != 1 || n.RotateBy != 0 || n.ResolutionSetting != 0 {
-		t.Fatalf("got quality=%d rotate=%d resolution=%d", n.Quality, n.RotateBy, n.ResolutionSetting)
+	if n.Quality != 1 || n.RotateBy != 0 {
+		t.Fatalf("got quality=%d rotate=%d", n.Quality, n.RotateBy)
 	}
-	if n.PhotoResolutionWidth != 3280 || n.PhotoResolutionHeight != 2464 {
-		t.Fatalf("resolution 0 must be 3280x2464, got %dx%d", n.PhotoResolutionWidth, n.PhotoResolutionHeight)
+	if n.PhotoResolutionWidth != DefaultPhotoWidth || n.PhotoResolutionHeight != DefaultPhotoHeight {
+		t.Fatalf("a missing size must become the default, got %dx%d", n.PhotoResolutionWidth, n.PhotoResolutionHeight)
 	}
 }
 
-func TestWithResolutionDerivesPhotoSize(t *testing.T) {
-	for setting, want := range map[int][2]int{0: {3280, 2464}, 1: {2186, 1642}, 2: {1640, 1232}} {
-		s := valid()
-		s.ResolutionSetting = setting
-		s = s.withResolution()
-		if s.PhotoResolutionWidth != want[0] || s.PhotoResolutionHeight != want[1] {
-			t.Errorf("setting %d: got %dx%d, want %v", setting, s.PhotoResolutionWidth, s.PhotoResolutionHeight, want)
-		}
+// Versions before the camera's own resolutions were offered saved a
+// ResolutionSetting index next to the size it selected; the size is kept.
+func TestSettingsOfOlderVersionsKeepTheirPhotoSize(t *testing.T) {
+	var s Settings
+	old := `{"SecondsBetweenCaptures":1800,"OffsetWithinHour":900,"PhotoResolutionWidth":1640,"PhotoResolutionHeight":1232,"ResolutionSetting":2,"Quality":90}`
+	if err := json.Unmarshal([]byte(old), &s); err != nil {
+		t.Fatal(err)
+	}
+	if n := s.Normalized(); n.PhotoResolutionWidth != 1640 || n.PhotoResolutionHeight != 1232 {
+		t.Fatalf("got %dx%d", n.PhotoResolutionWidth, n.PhotoResolutionHeight)
 	}
 }
 
@@ -118,7 +122,7 @@ func TestDefaultUsesGivenInterval(t *testing.T) {
 }
 
 func TestSettingsStringIsJSON(t *testing.T) {
-	want := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"ResolutionSetting":0,"Quality":0,"DebugEnabled":false,"StopWhenDiskFull":false}`
+	want := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"Quality":0,"DebugEnabled":false,"StopWhenDiskFull":false}`
 	if got := (Settings{}).String(); got != want {
 		t.Fatalf("got %s", got)
 	}

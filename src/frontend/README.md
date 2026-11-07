@@ -21,7 +21,7 @@ These must not change without changing `src/backend/main.go` and `src/backend/we
 - `GET /` redirects to `/static/frontend/build/index.html`.
 - API calls are same-origin. GET never changes state:
   `GET /photos`, `GET /file/:name`, `GET /file/last`, `GET /archive/{zip,tar}?f=…`, `GET /capture`,
-  `GET|POST /configuration`, `GET /monitoring`, `GET /logs`, `GET /version`,
+  `GET|POST /configuration`, `GET /camera` (detected camera and its photo sizes), `GET /monitoring`, `GET /logs`, `GET /version`,
   `DELETE /file?f=…` (selected photos), `DELETE /photos` (all photos), `POST /admin/{restart,shutdown,time}` (`time` sets the camera clock).
   The server rejects cross-site POST/DELETE requests (`http.CrossOriginProtection`), sends no CORS headers,
   and only answers to local host names (IPs, `localhost`, `*.local`, …; more via `-allowedHosts`) to block DNS rebinding.

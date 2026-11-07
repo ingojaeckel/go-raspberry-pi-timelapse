@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/health"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/logfile"
 )
@@ -73,10 +75,40 @@ func (s *Server) storage() StorageStatus {
 	for _, f := range list {
 		st.PhotoBytes += f.Bytes
 	}
+	st.SampleBytesPerPixel, st.SampleQuality, st.SamplePhotos = samplePhotos(s.Photos.Dir(), list)
 	if st.FreeBytes, err = s.FreeBytes(s.Photos.Dir()); err != nil {
 		st.Error = err.Error()
 	}
 	return st
+}
+
+// sampleSize is how many of the newest photos samplePhotos reads.
+const sampleSize = 20
+
+// samplePhotos measures the size on disk per pixel of the newest photos that
+// share the newest readable photo's JPEG quality. list is oldest first.
+// Only the headers are read.
+func samplePhotos(dir string, list []files.File) (bytesPerPixel float64, quality, n int) {
+	var bytes, pixels int64
+	for i := len(list) - 1; i >= 0 && i >= len(list)-sampleSize; i-- {
+		f, err := os.Open(filepath.Join(dir, list[i].Name))
+		if err != nil {
+			continue
+		}
+		info, err := files.ReadJPEGInfo(f)
+		f.Close()
+		if err != nil || quality != 0 && info.Quality != quality {
+			continue
+		}
+		quality = info.Quality
+		bytes += list[i].Bytes
+		pixels += int64(info.Width) * int64(info.Height)
+		n++
+	}
+	if pixels == 0 {
+		return 0, 0, 0
+	}
+	return float64(bytes) / float64(pixels), quality, n
 }
 
 // Clocks outside this range are rejected: a browser can be wrong too.

@@ -197,3 +197,101 @@ export function estimateRunway(s: Storage, perDay: number): Runway | null {
   const photos = Math.floor(Math.max(s.FreeBytes - s.ReserveBytes, 0) / (s.PhotoBytes / s.Photos));
   return { photos, days: perDay > 0 ? photos / perDay : null };
 }
+
+/**
+ * JPEG size relative to quality 90, measured on Raspberry Pi camera photos
+ * (libjpeg's quality scale, which rpicam-still uses). Sizes in between are
+ * interpolated.
+ */
+const QUALITY_SIZE: readonly (readonly [number, number])[] = [
+  [1, 0.12],
+  [10, 0.17],
+  [20, 0.24],
+  [30, 0.29],
+  [40, 0.34],
+  [50, 0.39],
+  [60, 0.43],
+  [70, 0.52],
+  [75, 0.57],
+  [80, 0.65],
+  [85, 0.78],
+  [90, 1],
+  [95, 1.5],
+  [100, 3],
+];
+
+/** How much larger a photo is at `quality` than at quality 90. */
+export function qualitySizeFactor(quality: number): number {
+  if (!Number.isFinite(quality)) return 1;
+  const q = Math.min(100, Math.max(1, quality));
+  for (let i = 1; i < QUALITY_SIZE.length; i++) {
+    const [q1, f1] = QUALITY_SIZE[i]!;
+    if (q <= q1) {
+      const [q0, f0] = QUALITY_SIZE[i - 1]!;
+      return f0 + ((q - q0) / (q1 - q0)) * (f1 - f0);
+    }
+  }
+  return QUALITY_SIZE[QUALITY_SIZE.length - 1]![1];
+}
+
+/** Bytes per pixel of a typical daylight photo at quality 90, until the camera has taken photos. */
+const TYPICAL_BYTES_PER_PIXEL_Q90 = 0.2;
+
+export interface PhotoSizeEstimate {
+  bytes: number;
+  /** The number of recent photos the estimate is based on; 0 for a typical photo. */
+  fromPhotos: number;
+}
+
+/**
+ * Estimates the size of one photo at a size and quality from the recent
+ * photos' size per pixel (the scene matters more than anything else), or a
+ * typical photo before there are any.
+ */
+export function estimatePhotoBytes(width: number, height: number, quality: number, s: Storage | undefined): PhotoSizeEstimate {
+  const sampled = s && !s.Error && s.SamplePhotos > 0 && s.SampleBytesPerPixel > 0;
+  const perPixelQ90 = sampled ? s.SampleBytesPerPixel / qualitySizeFactor(s.SampleQuality) : TYPICAL_BYTES_PER_PIXEL_Q90;
+  return { bytes: width * height * perPixelQ90 * qualitySizeFactor(quality), fromPhotos: sampled ? s.SamplePhotos : 0 };
+}
+
+export interface Capacity {
+  /** Photos that fit in the free space before the card counts as full. */
+  more: number;
+  /** Days until then at the schedule, or null without one. */
+  days: number | null;
+  /** Deleting the oldest photos: how many photos the card holds in all, and how many days that covers. Null when the camera stops instead. */
+  kept: number | null;
+  keptDays: number | null;
+}
+
+/** How many photos of `photoBytes` fit on the card, and for how long at `perDay` photos a day. */
+export function estimateCapacity(s: Storage, photoBytes: number, perDay: number): Capacity | null {
+  if (s.Error || !(photoBytes > 0)) return null;
+  const usable = Math.max(s.FreeBytes - s.ReserveBytes, 0);
+  const more = Math.floor(usable / photoBytes);
+  const kept = s.StopWhenDiskFull ? null : Math.floor((usable + s.PhotoBytes) / photoBytes);
+  const days = (n: number) => (perDay > 0 ? n / perDay : null);
+  return { more, days: days(more), kept, keptDays: kept === null ? null : days(kept) };
+}
+
+/** "8.1 MP"; whole numbers from 10 MP. */
+export function formatMegapixels(width: number, height: number): string {
+  const mp = (width * height) / 1e6;
+  return `${mp >= 10 ? Math.round(mp) : +mp.toFixed(1)} MP`;
+}
+
+/** "16:9", "4:3", or "1.88:1" for unusual shapes. */
+export function aspectRatio(width: number, height: number): string {
+  const ratio = width / height;
+  for (const [w, h] of [[1, 1], [4, 3], [3, 2], [16, 9], [3, 4], [9, 16]] as const) {
+    if (Math.abs(ratio - w / h) < 0.01) return `${w}:${h}`;
+  }
+  return `${+ratio.toFixed(2)}:1`;
+}
+
+/** A stretch of days for estimates: "584 days", "over 3 years", "5 hours". */
+export function formatDays(days: number): string {
+  if (days >= 730) return `over ${Math.floor(days / 365)} years`;
+  if (days >= 2) return `${Math.floor(days).toLocaleString()} days`;
+  return `${Math.max(1, Math.round(days * 24))} hours`;
+}

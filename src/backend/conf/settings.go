@@ -13,6 +13,15 @@ const (
 	// OffsetDisabled turns off alignment to the hour: captures then run every
 	// SecondsBetweenCaptures counted from start-up.
 	OffsetDisabled = -1
+
+	// DefaultPhotoWidth x DefaultPhotoHeight is the photo size until one is
+	// chosen, unless the app detects the camera and picks one of its modes.
+	DefaultPhotoWidth  = 2186
+	DefaultPhotoHeight = 1642
+	// MinPhotoSide and MaxPhotoSide bound the photo width and height; which
+	// sizes the camera supports is checked by the API (timelapse.Sensor).
+	MinPhotoSide = 64
+	MaxPhotoSide = 16384
 )
 
 // ErrInvalid is wrapped by every validation error.
@@ -30,11 +39,9 @@ type Settings struct {
 	PreviewResolutionWidth  int
 	PreviewResolutionHeight int
 	// RotateBy is 0 or 180.
-	RotateBy int
-	// ResolutionSetting selects PhotoResolutionWidth/Height, see resolutions.
-	ResolutionSetting int
-	Quality           int
-	DebugEnabled      bool
+	RotateBy     int
+	Quality      int
+	DebugEnabled bool
 	// StopWhenDiskFull stops taking photos when the disk is full. By default
 	// (false) the oldest photos are deleted to make room, like a ring buffer.
 	StopWhenDiskFull bool
@@ -45,26 +52,17 @@ func (s Settings) String() string {
 	return string(b)
 }
 
-// resolutions maps ResolutionSetting to the photo size: 4:3 sizes of the
-// Camera Module v2 (3280x2464 sensor). A sensor with another aspect ratio,
-// such as the 16:9 Camera Module 3, is cropped to 4:3 by rpicam-still
-// (libcamera crops to the requested aspect ratio rather than stretching).
-var resolutions = [...][2]int{
-	0: {3280, 2464}, // 8 MP
-	1: {2186, 1642}, // 3.5 MP
-	2: {1640, 1232}, // 2 MP
-}
-
 // Default returns the settings used when nothing has been saved yet.
 func Default(secondsBetweenCaptures int) Settings {
 	return Settings{
 		SecondsBetweenCaptures:  secondsBetweenCaptures,
 		OffsetWithinHour:        DefaultOffsetWithinHour % secondsBetweenCaptures,
+		PhotoResolutionWidth:    DefaultPhotoWidth,
+		PhotoResolutionHeight:   DefaultPhotoHeight,
 		PreviewResolutionWidth:  640,
 		PreviewResolutionHeight: 480,
-		ResolutionSetting:       1,
 		Quality:                 100,
-	}.withResolution()
+	}
 }
 
 // ValidInterval reports whether seconds is an allowed capture interval: at
@@ -104,8 +102,9 @@ func (s Settings) Validate() error {
 	if s.RotateBy != 0 && s.RotateBy != 180 {
 		return invalid("RotateBy must be 0 or 180, got %d", s.RotateBy)
 	}
-	if !validResolution(s.ResolutionSetting) {
-		return invalid("ResolutionSetting must be between 0 and %d, got %d", len(resolutions)-1, s.ResolutionSetting)
+	if !validSide(s.PhotoResolutionWidth) || !validSide(s.PhotoResolutionHeight) {
+		return invalid("the photo size must be between %d and %d pixels on each side, got %dx%d",
+			MinPhotoSide, MaxPhotoSide, s.PhotoResolutionWidth, s.PhotoResolutionHeight)
 	}
 	return nil
 }
@@ -128,10 +127,10 @@ func (s Settings) Normalized() Settings {
 	if s.RotateBy != 180 {
 		s.RotateBy = 0 // only 180 ever had an effect on the camera
 	}
-	if !validResolution(s.ResolutionSetting) {
-		s.ResolutionSetting = 0 // unknown values always meant 3280x2464
+	if !validSide(s.PhotoResolutionWidth) || !validSide(s.PhotoResolutionHeight) {
+		s.PhotoResolutionWidth, s.PhotoResolutionHeight = DefaultPhotoWidth, DefaultPhotoHeight
 	}
-	return s.withResolution()
+	return s
 }
 
 // roundUpInterval returns the smallest valid interval >= seconds, or the
@@ -148,13 +147,6 @@ func validOffset(offset, interval int) bool {
 	return offset == OffsetDisabled || (offset >= 0 && offset < interval)
 }
 
-func validResolution(setting int) bool {
-	return setting >= 0 && setting < len(resolutions)
-}
-
-// withResolution sets the photo size from ResolutionSetting, which must be valid.
-func (s Settings) withResolution() Settings {
-	r := resolutions[s.ResolutionSetting]
-	s.PhotoResolutionWidth, s.PhotoResolutionHeight = r[0], r[1]
-	return s
+func validSide(pixels int) bool {
+	return pixels >= MinPhotoSide && pixels <= MaxPhotoSide
 }

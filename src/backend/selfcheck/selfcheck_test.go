@@ -84,6 +84,8 @@ const imx219 = `Available cameras
 -----------------
 0 : imx219 [3280x2464 10-bit RGGB] (/base/soc/i2c0mux/i2c@1/imx219@10)
     Modes: 'SRGGB10_CSI2P' : 640x480 [206.65 fps - (1000, 752)/1280x960 crop]
+                             1640x1232 [83.70 fps - (0, 0)/3280x2464 crop]
+                             3280x2464 [21.19 fps - (0, 0)/3280x2464 crop]
 `
 
 // healthyPi is a working Pi: a camera, good power, cool, powersave.
@@ -307,11 +309,19 @@ func TestNoCameraDetected(t *testing.T) {
 	}
 }
 
-func TestAPhotoLargerThanTheSensorIsAWarning(t *testing.T) {
+func TestAPhotoSizeTheCameraLacksIsAWarning(t *testing.T) {
 	cfg, _ := healthyPi(t)
 	cfg.Run = commands{"rpicam-still --list-cameras": imx290, "vcgencmd get_throttled": "throttled=0x0"}.run
+	s, err := conf.OpenStore(cfg.SettingsFile, conf.Default(1800))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Update(func(v *conf.Settings) { v.PhotoResolutionWidth, v.PhotoResolutionHeight = 1640, 1232 }); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
 	r := find(t, Run(t.Context(), cfg), "camera detected")
-	if r.Status != Warn || !strings.Contains(r.Detail, "1640x1232") || !strings.Contains(r.Detail, "1920x1080") {
+	if r.Status != Warn || !strings.Contains(r.Detail, "1640x1232") || !strings.Contains(r.Detail, "1920x1080, 1280x720") {
 		t.Fatalf("got %s %q", r.Status, r.Detail)
 	}
 }
@@ -334,7 +344,7 @@ func TestSavedSettingsAreUsed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Update(func(v *conf.Settings) { v.ResolutionSetting = 2; v.RotateBy = 180 }); err != nil {
+	if _, err := s.Update(func(v *conf.Settings) { v.PhotoResolutionWidth, v.PhotoResolutionHeight, v.RotateBy = 1640, 1232, 180 }); err != nil {
 		t.Fatal(err)
 	}
 	s.Close()
@@ -441,5 +451,17 @@ func TestBrightnessOfAColorPhoto(t *testing.T) {
 	}
 	if mean, sd := brightness(gray); mean < 199 || mean > 201 || sd != 0 {
 		t.Fatalf("rgba: mean %v sd %v", mean, sd)
+	}
+}
+
+func TestWithoutSavedSettingsTheCamerasDefaultSizeIsUsed(t *testing.T) {
+	cfg, cam := healthyPi(t)
+	cfg.Run = commands{"rpicam-still --list-cameras": imx290, "vcgencmd get_throttled": "throttled=0x0"}.run
+	results := Run(t.Context(), cfg)
+	if cam.got.Width != 1920 || cam.got.Height != 1080 {
+		t.Fatalf("captured %dx%d", cam.got.Width, cam.got.Height)
+	}
+	if r := find(t, results, "camera detected"); r.Status != Pass {
+		t.Fatalf("%s %q", r.Status, r.Detail)
 	}
 }
