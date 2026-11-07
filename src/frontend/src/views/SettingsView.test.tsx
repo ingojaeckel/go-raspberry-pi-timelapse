@@ -145,13 +145,36 @@ describe('SettingsView', () => {
     expect(within(group).getByRole('radio', { name: /1640×1232/ })).toBeChecked();
   });
 
-  it('keeps a saved size the camera does not support, and says so', async () => {
+  it('keeps a saved size that is not one of the camera sizes, and says it is scaled', async () => {
     mockServer();
     renderSettings({ ...settings, PhotoResolutionWidth: 2186, PhotoResolutionHeight: 1642 });
     const saved = await screen.findByRole('radio', { name: /2186×1642/ });
     expect(saved).toBeChecked();
-    expect(saved.closest('label')).toHaveTextContent('not supported');
-    expect(screen.getByText(/does not support 2186×1642/)).toBeInTheDocument();
+    expect(saved.closest('label')).toHaveTextContent('2186×1642 · scaled');
+    expect(screen.getByText(/2186×1642 isn't one of the camera's own sizes, so photos are scaled to it\./)).toBeInTheDocument();
+  });
+
+  it('warns that a saved size larger than the sensor enlarges photos', async () => {
+    mockServer({
+      'GET /camera': () =>
+        json({
+          Model: 'imx290',
+          Width: 1920,
+          Height: 1080,
+          Resolutions: [
+            { Width: 1920, Height: 1080 },
+            { Width: 1280, Height: 720 },
+          ],
+        }),
+    });
+    renderSettings({ ...settings, PhotoResolutionWidth: 3280, PhotoResolutionHeight: 2464 });
+    const saved = await screen.findByRole('radio', { name: /3280×2464/ });
+    expect(saved.closest('label')).toHaveTextContent('3280×2464 · too large');
+    expect(
+      screen.getByText(
+        '3280×2464 is larger than the camera can take (1920×1080), so photos are enlarged: bigger files, no extra detail. Choose 1920×1080.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('offers the saved size when the camera is not detected', async () => {

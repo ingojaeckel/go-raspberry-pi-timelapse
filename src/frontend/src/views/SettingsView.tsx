@@ -533,21 +533,31 @@ function ResolutionField({ camera, loading, error, value, saved, onChange }: Res
     if (extra && !options.some((o) => sameSize(o, extra))) options.push(extra);
   }
   const isSupported = (s: Size) => !detected || supported.some((o) => sameSize(o, s));
+  const tooLarge = (s: Size) => !!detected && (s.Width > detected.Width || s.Height > detected.Height);
+  const note = (s: Size) => (isSupported(s) ? aspectRatio(s.Width, s.Height) : tooLarge(s) ? 'too large' : 'scaled');
 
   let help: ReactNode;
   if (detected) {
+    const largest = supported[0] ?? detected;
     help = (
       <>
         Sizes of the {detected.Model} camera ({detected.Width}×{detected.Height} sensor). Lower resolutions fit more photos
         on the card.
-        {!isSupported(value) && (
-          <>
-            {' '}
-            <strong>
-              The camera does not support {value.Width}×{value.Height}: photos are scaled. Choose one of its sizes.
-            </strong>
-          </>
-        )}
+        {!isSupported(value) &&
+          (tooLarge(value) ? (
+            <>
+              {' '}
+              <strong>
+                {value.Width}×{value.Height} is larger than the camera can take ({detected.Width}×{detected.Height}), so
+                photos are enlarged: bigger files, no extra detail. Choose {largest.Width}×{largest.Height}.
+              </strong>
+            </>
+          ) : (
+            <>
+              {' '}
+              {value.Width}×{value.Height} isn't one of the camera's own sizes, so photos are scaled to it.
+            </>
+          ))}
       </>
     );
   } else if (loading) {
@@ -567,7 +577,7 @@ function ResolutionField({ camera, loading, error, value, saved, onChange }: Res
             <input type="radio" name="resolution" checked={sameSize(value, r)} onChange={() => onChange(r)} />
             <span>
               <strong>{formatMegapixels(r.Width, r.Height)}</strong>
-              {r.Width}×{r.Height} · {isSupported(r) ? aspectRatio(r.Width, r.Height) : 'not supported'}
+              {r.Width}×{r.Height} · {note(r)}
             </span>
           </label>
         ))}
