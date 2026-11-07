@@ -109,7 +109,7 @@ func healthyPi(t *testing.T) (Config, *fakeCamera) {
 		Backend:         cam,
 		CaptureTimeout:  time.Minute,
 		StorageFolder:   filepath.Join(dir, "photos"),
-		SettingsFile:    filepath.Join(dir, "settings.db"),
+		SettingsFile:    filepath.Join(dir, "settings.json"),
 		DefaultSettings: defaults,
 		MinFreeBytes:    256 << 20,
 		MinBrightness:   10,

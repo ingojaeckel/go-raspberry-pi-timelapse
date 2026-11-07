@@ -26,7 +26,7 @@ import (
 func diskApp(t *testing.T, minFreeMB int, free uint64) (*app, string) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "a.jpg"), nil, 0o600)
-	store, err := conf.OpenStore(filepath.Join(t.TempDir(), "settings.db"), conf.Default(600))
+	store, err := conf.OpenStore(filepath.Join(t.TempDir(), "settings.json"), conf.Default(600))
 	if err != nil {
 		t.Fatal(err)
 	}

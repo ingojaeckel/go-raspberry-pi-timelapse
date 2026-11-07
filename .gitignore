@@ -7,7 +7,8 @@
 src/backend/go-raspberry-pi-timelapse
 src/backend/timelapse-linux-arm64
 timelapse-pictures/
-timelapse-settings.db
+timelapse-settings.json
+timelapse-settings.json.lock
 
 # Frontend build output, written by Vite and embedded by src/backend/web
 src/backend/web/dist/

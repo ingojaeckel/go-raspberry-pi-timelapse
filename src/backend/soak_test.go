@@ -71,7 +71,7 @@ const (
 
 func startSim(t testing.TB) *sim {
 	dir := t.TempDir()
-	store, err := conf.OpenStore(filepath.Join(dir, "settings.db"), conf.Default(60))
+	store, err := conf.OpenStore(filepath.Join(dir, "settings.json"), conf.Default(60))
 	if err != nil {
 		t.Fatal(err)
 	}

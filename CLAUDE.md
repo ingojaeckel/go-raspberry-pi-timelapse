@@ -76,7 +76,7 @@ If ldflags are not set, the version comes from the VCS info Go embeds (`debug.Re
 
 CLI flags: `-port`, `-logToFile`, `-storageFolder`, `-secondsBetweenCaptures` (first-run default only; once settings are saved the database wins), `-captureRetries` (default 2), `-minFreeDiskMB` (default 256), `-allowedHosts` (extra public host names; IPs, localhost, single-label and .local/.lan/.home.arpa/.internal names are always allowed), `-pprof`, `-version`, `-selfcheck` (with `-selfcheckKeep`, `-selfcheckMinBrightness`, default 10)
 
-Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. Dependencies: `golang.org/x/sys` only.
+Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. No dependencies outside the standard library (keep it that way: `syscall` covers `Statfs` and `Settimeofday`).
 
 ## Testing Conventions
 

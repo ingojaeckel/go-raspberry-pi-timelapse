@@ -2,13 +2,13 @@
 
 package files
 
-import "golang.org/x/sys/unix"
+import "syscall"
 
 // FreeBytes returns the bytes available to unprivileged users on the file
 // system holding dir.
 func FreeBytes(dir string) (uint64, error) {
-	var st unix.Statfs_t
-	if err := unix.Statfs(dir, &st); err != nil {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(dir, &st); err != nil {
 		return 0, err
 	}
 	return uint64(st.Bavail) * uint64(st.Bsize), nil
