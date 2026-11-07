@@ -23,6 +23,10 @@ PI64_APP := $(CURDIR)/$(BACKEND)/timelapse-linux-arm64
 
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 BUILT_AT   := $(shell date)
+# nethttpomithttp2 leaves Go's HTTP/2 out of net/http (about 400 KB): the
+# server speaks plain HTTP without TLS, where browsers only use HTTP/1.1, so
+# the HTTP/2 code could never run. Tests use the same tags as the builds.
+GOTAGS     := nethttpomithttp2
 LDFLAGS    := -X 'main.gitCommit=$(GIT_COMMIT)' -X 'main.builtAt=$(BUILT_AT)'
 
 .PHONY: all dev pi pi64 image test test-frontend test-go test-long test-e2e lint-sh vet frontend run loadtest clean
@@ -44,15 +48,15 @@ test-frontend: $(FRONTEND)/node_modules
 ## Backend -------------------------------------------------------------------
 
 vet: frontend
-	cd $(BACKEND) && go vet ./...
+	cd $(BACKEND) && go vet -tags $(GOTAGS) ./...
 
 # -race needs cgo, which the Pi cross-compile does not use; tests run natively.
 # -short skips the tests that take a minute (multi-day soak, zip64, restarts).
 test-go: frontend
-	cd $(BACKEND) && go test -short -race -shuffle=on -cover ./...
+	cd $(BACKEND) && go test -tags $(GOTAGS) -short -race -shuffle=on -cover ./...
 
 test-long: frontend
-	cd $(BACKEND) && go test -race -shuffle=on ./...
+	cd $(BACKEND) && go test -tags $(GOTAGS) -race -shuffle=on ./...
 
 # Builds the frontend and the Go server, runs it on a free port and drives it
 # with Chromium (src/frontend/e2e).
@@ -71,12 +75,12 @@ test: test-frontend vet test-go
 
 # Development build for quick local iteration.
 dev: test
-	cd $(BACKEND) && go build -v -trimpath -o go-raspberry-pi-timelapse -ldflags="$(LDFLAGS)" .
+	cd $(BACKEND) && go build -tags $(GOTAGS) -v -trimpath -o go-raspberry-pi-timelapse -ldflags="$(LDFLAGS)" .
 
 # Release build for the Pi Zero W, into the image module (see image).
 pi: test
 	cd $(BACKEND) && GOOS=linux GOARCH=arm GOARM=6 CGO_ENABLED=0 \
-		go build -v -a -trimpath -o $(PI_APP) -ldflags="-s -w $(LDFLAGS)" .
+		go build -tags $(GOTAGS) -v -a -trimpath -o $(PI_APP) -ldflags="-s -w $(LDFLAGS)" .
 	file $(PI_APP)
 	du $(PI_APP)
 
@@ -84,7 +88,7 @@ pi: test
 # to a Pi by hand. The image is 32-bit and uses the pi build above.
 pi64: test
 	cd $(BACKEND) && GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
-		go build -v -a -trimpath -o $(PI64_APP) -ldflags="-s -w $(LDFLAGS)" .
+		go build -tags $(GOTAGS) -v -a -trimpath -o $(PI64_APP) -ldflags="-s -w $(LDFLAGS)" .
 	file $(PI64_APP)
 	du $(PI64_APP)
 
@@ -93,7 +97,7 @@ image: pi
 	DIST_VERSION=$(shell git describe --tags --always --dirty) src/installer/custompios/build-image.sh
 
 run: frontend
-	cd $(BACKEND) && go run . -port :8080
+	cd $(BACKEND) && go run -tags $(GOTAGS) . -port :8080
 
 loadtest:
 	src/perf-testing/k6/run-load-test.sh

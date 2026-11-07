@@ -1,5 +1,9 @@
 /// <reference types="vitest/config" />
-import { defineConfig, loadEnv } from 'vite';
+import { readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // The Go server embeds the build output (src/backend/web, //go:embed dist) and
@@ -9,6 +13,27 @@ import react from '@vitejs/plugin-react';
 const BASE = '/static/frontend/build/';
 const OUT_DIR = '../backend/web/dist';
 
+/**
+ * Replaces each text file of the build by name.gz (gzip -9): the Go server
+ * embeds only those and sends them as they are to browsers (src/backend/web,
+ * Handler). Fonts are compressed already and stay as they are.
+ */
+function gzipBuild(): Plugin {
+  const outDir = fileURLToPath(new URL(OUT_DIR, import.meta.url));
+  return {
+    name: 'gzip-build',
+    apply: 'build',
+    closeBundle() {
+      for (const file of readdirSync(outDir, { recursive: true, encoding: 'utf8' })) {
+        if (!/\.(html|js|css|svg)$/.test(file)) continue;
+        const path = join(outDir, file);
+        writeFileSync(`${path}.gz`, gzipSync(readFileSync(path), { level: 9 }));
+        unlinkSync(path);
+      }
+    },
+  };
+}
+
 // Backend endpoints, proxied to a locally running Go server during `npm start`.
 const API_PATHS = ['/photos', '/file', '/archive', '/capture', '/configuration', '/monitoring', '/logs', '/admin', '/version'];
 
@@ -17,7 +42,7 @@ export default defineConfig(({ mode }) => {
   const backend = env.VITE_BACKEND ?? 'http://localhost:8080';
 
   return {
-    plugins: [react()],
+    plugins: [react(), gzipBuild()],
     base: BASE,
     build: {
       outDir: OUT_DIR,

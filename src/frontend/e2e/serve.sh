@@ -5,6 +5,6 @@
 set -eu
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
-(cd "$(dirname "$0")/../../backend" && go build -o "$dir/timelapse" .)
+(cd "$(dirname "$0")/../../backend" && go build -tags nethttpomithttp2 -o "$dir/timelapse" .)
 cd "$dir"
 PATH=/usr/bin:/bin ./timelapse -port "127.0.0.1:${E2E_PORT:-18080}" -storageFolder photos

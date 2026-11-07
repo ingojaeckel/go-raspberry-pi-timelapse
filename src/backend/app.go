@@ -378,8 +378,8 @@ func (a *app) httpServer() *http.Server {
 // handler routes the frontend, the API and optionally pprof.
 func (a *app) handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("GET "+frontendPath, web.WithCacheHeaders(http.StripPrefix(frontendPath, http.FileServerFS(web.Dist()))))
-	mux.Handle("GET /{$}", http.RedirectHandler(frontendPath+"index.html", http.StatusMovedPermanently))
+	mux.Handle("GET "+frontendPath, web.WithCacheHeaders(http.StripPrefix(frontendPath, web.Handler(web.Dist()))))
+	mux.Handle("GET /{$}", http.RedirectHandler(frontendPath, http.StatusMovedPermanently))
 	a.api().Register(mux)
 	if a.opts.pprof {
 		slog.Info("profiling enabled at /debug/pprof/")

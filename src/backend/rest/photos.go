@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/internal/accept"
 	"io"
 	"log/slog"
 	"mime"
@@ -12,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -53,7 +53,7 @@ func (s *Server) photos(w http.ResponseWriter, r *http.Request) {
 	h.Set("Cache-Control", "no-cache") // always revalidate
 	h.Set("Vary", "Accept-Encoding")
 	data, etag := body.plain, body.etag
-	if acceptsGzip(r) {
+	if accept.Gzip(r) {
 		data, etag = body.gzipped, body.etag+"-gz"
 		h.Set("Content-Encoding", "gzip")
 	}
@@ -106,20 +106,6 @@ func gzipBytes(plain []byte) []byte {
 	zw.Write(plain)
 	zw.Close()
 	return gz.Bytes()
-}
-
-// acceptsGzip reports whether the client accepts gzip, ignoring q-values
-// other than q=0.
-func acceptsGzip(r *http.Request) bool {
-	for _, v := range r.Header.Values("Accept-Encoding") {
-		for part := range strings.SplitSeq(v, ",") {
-			coding, params, _ := strings.Cut(strings.TrimSpace(part), ";")
-			if strings.EqualFold(strings.TrimSpace(coding), "gzip") && strings.ReplaceAll(params, " ", "") != "q=0" {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (s *Server) listFiles(w http.ResponseWriter, _ *http.Request) {
