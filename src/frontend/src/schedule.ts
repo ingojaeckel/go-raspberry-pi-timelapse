@@ -21,6 +21,9 @@ export const VALID_INTERVALS: readonly number[] = Array.from(
   (_, i) => MIN_INTERVAL + i,
 ).filter(isValidInterval);
 
+/** The intervals Settings offers: whole minutes (the camera accepts any valid interval). */
+export const OFFERED_INTERVALS: readonly number[] = VALID_INTERVALS.filter((seconds) => seconds % 60 === 0);
+
 /** An interval as "1 min 12 s" or "1 hour": one unit throughout, so a list of them reads in order. */
 export function formatInterval(seconds: number): string {
   if (seconds % 3600 === 0) return seconds === 3600 ? '1 hour' : `${seconds / 3600} hours`;

@@ -6,7 +6,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { ConfirmDialog, MessageNotice, Notice, PageHeader, Spinner, type Message } from '../components/ui';
 import { formatPastHours, formatSize } from '../format';
 import { useBusy, useNow, useResource, type Resource } from '../hooks';
-import { capturesPerDay, captureSlots, formatInterval, isValidInterval, photosPerDay, skipsNights, VALID_INTERVALS } from '../schedule';
+import { capturesPerDay, captureSlots, formatInterval, isValidInterval, OFFERED_INTERVALS, photosPerDay, skipsNights } from '../schedule';
 import { noLocation } from '../sun';
 import { NightFields, type SettingsErrors } from './NightFields';
 import { QualityField, ResolutionField, RotationField } from './PhotoFields';
@@ -214,7 +214,7 @@ function IntervalField({ draft, errors, now, onChange }: FieldsProps & { now: Da
             {formatInterval(seconds)} (not supported)
           </option>
         )}
-        {VALID_INTERVALS.map((v) => (
+        {intervalChoices(seconds).map((v) => (
           <option key={v} value={v}>
             {formatInterval(v)}
           </option>
@@ -225,6 +225,12 @@ function IntervalField({ draft, errors, now, onChange }: FieldsProps & { now: Da
       </Help>
     </div>
   );
+}
+
+/** The offered intervals, plus the current one if it is valid but not offered (a saved interval of seconds). */
+function intervalChoices(current: number): number[] {
+  if (!isValidInterval(current) || OFFERED_INTERVALS.includes(current)) return [...OFFERED_INTERVALS];
+  return [...OFFERED_INTERVALS, current].sort((a, b) => a - b);
 }
 
 function photosADay(s: Settings, now: Date): string {

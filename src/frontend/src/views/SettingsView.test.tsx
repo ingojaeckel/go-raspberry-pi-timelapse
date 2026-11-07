@@ -42,12 +42,20 @@ describe('SettingsView', () => {
     expect(screen.getByText('Captures at :15, :45.')).toBeInTheDocument();
   });
 
-  it('only offers intervals that divide an hour evenly', async () => {
-    await setup();
-    const options = within(screen.getByRole('combobox', { name: 'Take a photo every' }))
+  const intervalOptions = () =>
+    within(screen.getByRole('combobox', { name: 'Take a photo every' }))
       .getAllByRole('option')
       .map((o) => Number((o as HTMLOptionElement).value));
-    expect(options).toEqual([60, 72, 75, 80, 90, 100, 120, 144, 150, 180, 200, 225, 240, 300, 360, 400, 450, 600, 720, 900, 1200, 1800, 3600]);
+
+  it('offers whole minutes that divide an hour evenly', async () => {
+    await setup();
+    expect(intervalOptions()).toEqual([60, 120, 180, 240, 300, 360, 600, 720, 900, 1200, 1800, 3600]);
+  });
+
+  it('keeps a saved interval of seconds that the list does not offer', async () => {
+    await setup({ ...settings, SecondsBetweenCaptures: 90, OffsetWithinHour: 0 });
+    expect(intervalOptions()).toEqual([60, 90, 120, 180, 240, 300, 360, 600, 720, 900, 1200, 1800, 3600]);
+    expect(screen.getByRole('combobox', { name: 'Take a photo every' })).toHaveDisplayValue('1 min 30 s');
   });
 
   it('keeps the offset within the new interval when the interval gets shorter', async () => {
