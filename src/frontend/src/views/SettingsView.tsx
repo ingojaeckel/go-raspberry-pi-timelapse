@@ -14,18 +14,8 @@ import {
   formatPastHour,
 } from '../format';
 import { useNow, useResource } from '../hooks';
-import { capturesPerDay, captureSlots, formatInterval, isValidInterval, VALID_INTERVALS } from '../schedule';
-import { daylightFraction, nextSunrise, nextSunset } from '../sun';
-
-/**
- * Photos a day at the schedule; with nights skipped, the share of the coming
- * 24 hours with the sun up. Null while the location is invalid.
- */
-function photosPerDay(s: Settings, now: Date): number {
-  const all = capturesPerDay(s);
-  if (!s.SkipNightPhotos || Object.keys(validate(s)).some((k) => k === 'Latitude' || k === 'Longitude')) return all;
-  return Math.round(all * daylightFraction(now, s.Latitude, s.Longitude));
-}
+import { capturesPerDay, captureSlots, formatInterval, isValidInterval, photosPerDay, VALID_INTERVALS } from '../schedule';
+import { nextSunrise, nextSunset } from '../sun';
 
 function offsetHint(interval: number): string {
   const last = (interval - 1) / 60;

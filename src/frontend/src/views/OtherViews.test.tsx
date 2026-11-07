@@ -26,6 +26,17 @@ describe('StatusView', () => {
     expect(screen.queryByText(/clock/i)).not.toBeInTheDocument();
   });
 
+  it('counts only daylight photos in the runway when nights are skipped, like Settings', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-02T11:00:00Z'));
+    mockServer();
+    render(<StatusView settings={{ ...settings, SkipNightPhotos: true, Latitude: 51.5074, Longitude: -0.1278 }} />);
+    const text = await screen.findByText(/Room for about 10,422 more photos/);
+    const days = Number(text.textContent!.match(/\((\d+) days at the current schedule, nights skipped\)/)?.[1]);
+    expect(days).toBeGreaterThan(217 * 2); // about 9 of 24 hours of daylight in London in November
+    vi.useRealTimers();
+  });
+
   it('warns when the camera clock is wrong', async () => {
     mockServer({ 'GET /monitoring': () => json({ ...monitoring, UnixMillis: 0 }) });
     render(<StatusView settings={settings} />);

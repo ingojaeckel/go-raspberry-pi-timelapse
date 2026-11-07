@@ -196,6 +196,30 @@ func TestTheDarknessThresholdIsConfigurable(t *testing.T) {
 	}
 }
 
+func TestADarkPhotoAtNightIsAWarning(t *testing.T) {
+	cfg, cam := healthyPi(t)
+	cam.img = scene(64, 48, 3, 3)
+	cfg.DefaultSettings.SkipNightPhotos, cfg.DefaultSettings.Latitude, cfg.DefaultSettings.Longitude = true, 51.5074, -0.1278
+	cfg.Now = func() time.Time { return time.Date(2026, 11, 7, 22, 0, 0, 0, time.UTC) } // night in London
+	r := find(t, Run(t.Context(), cfg), "photo")
+	if r.Status != Warn || !strings.Contains(r.Detail, "too dark") || !strings.Contains(r.Detail, "night at the camera") {
+		t.Fatalf("got %s %q", r.Status, r.Detail)
+	}
+	if !strings.Contains(r.Hint, "after sunrise") {
+		t.Errorf("hint %q should say when to check again", r.Hint)
+	}
+}
+
+func TestADarkPhotoInDaylightFailsEvenWithALocation(t *testing.T) {
+	cfg, cam := healthyPi(t)
+	cam.img = scene(64, 48, 3, 3)
+	cfg.DefaultSettings.SkipNightPhotos, cfg.DefaultSettings.Latitude, cfg.DefaultSettings.Longitude = true, 51.5074, -0.1278
+	cfg.Now = func() time.Time { return time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC) }
+	if r := find(t, Run(t.Context(), cfg), "photo"); r.Status != Fail {
+		t.Fatalf("got %s %q", r.Status, r.Detail)
+	}
+}
+
 func TestAUniformPhotoFails(t *testing.T) {
 	cfg, cam := healthyPi(t)
 	cam.img = scene(64, 48, 128, 0) // a sensor that returns a flat grey frame

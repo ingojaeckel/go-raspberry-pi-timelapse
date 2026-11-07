@@ -16,7 +16,7 @@ import {
   primaryDisk,
 } from '../format';
 import { useInterval, useResource } from '../hooks';
-import { capturesPerDay } from '../schedule';
+import { photosPerDay } from '../schedule';
 
 interface Snapshot {
   monitoring: Monitoring;
@@ -223,7 +223,7 @@ function isFull(s: Storage): boolean {
 }
 
 function Runway({ storage, settings }: { storage: Storage; settings: Settings | undefined }) {
-  const est = estimateRunway(storage, settings ? capturesPerDay(settings) : 0);
+  const est = estimateRunway(storage, settings ? photosPerDay(settings, new Date()) : 0);
   const then = storage.StopWhenDiskFull ? 'the camera stops taking photos' : 'the oldest photos are deleted to make room';
   const deleted =
     storage.DeletedOldest > 0 ? (
@@ -240,7 +240,12 @@ function Runway({ storage, settings }: { storage: Storage; settings: Settings | 
   return (
     <>
       . Room for about {est.photos.toLocaleString()} more photos
-      {est.days !== null && <> ({formatDays(est.days)} at the current schedule)</>}, then {then}.{deleted}
+      {est.days !== null && (
+        <>
+          {' '}
+          ({formatDays(est.days)} at the current schedule{settings?.SkipNightPhotos ? ', nights skipped' : ''})
+        </>
+      )}, then {then}.{deleted}
     </>
   );
 }

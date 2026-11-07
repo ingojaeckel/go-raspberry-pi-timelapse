@@ -23,6 +23,7 @@ import (
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/health"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/sun"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 	berrors "go.etcd.io/bbolt/errors"
 )
@@ -73,6 +74,9 @@ type Config struct {
 	// ProcDir is /proc, scanned for other programs using the camera; empty
 	// skips the scan.
 	ProcDir string
+	// Now is the time of the test photo, to tell night at the saved location
+	// from a covered lens; nil means time.Now.
+	Now func() time.Time
 }
 
 const rpicamStill = "rpicam-still"
@@ -119,7 +123,7 @@ func Run(ctx context.Context, cfg Config) []Result {
 	if photo == "" {
 		add(skipped("photo", "no photo taken"))
 	} else {
-		add(checkPhoto(cfg, photo, opts))
+		add(checkPhoto(cfg, settings, photo, opts))
 		if !cfg.Keep {
 			os.RemoveAll(filepath.Dir(photo))
 		}
@@ -411,7 +415,7 @@ func captureHint(out string) string {
 	return ""
 }
 
-func checkPhoto(cfg Config, path string, o timelapse.Options) Result {
+func checkPhoto(cfg Config, set conf.Settings, path string, o timelapse.Options) Result {
 	r := Result{Check: "photo"}
 	f, err := os.Open(path)
 	if err != nil {
@@ -433,6 +437,11 @@ func checkPhoto(cfg Config, path string, o timelapse.Options) Result {
 		r.Detail = fmt.Sprintf("too dark: brightness %.0f of 255 (at least %.0f expected)", mean, cfg.MinBrightness)
 		r.Hint = "remove the lens cap, point the camera at something lit, and check the lens focus; " +
 			"testing in the dark? lower -selfcheckMinBrightness"
+		if rise, night := nightAt(cfg, set); night {
+			r.Status = Warn
+			r.Detail += "; it is night at the camera's location"
+			r.Hint = "run the self-check again after sunrise" + rise
+		}
 	case sd < minContrast:
 		r.Status = Fail
 		r.Detail = fmt.Sprintf("every pixel has the same brightness (%.0f of 255): the sensor returns a blank frame", mean)
@@ -516,4 +525,23 @@ func checkCPU(cfg Config) Result {
 		return skipped("cpu", "no CPU clock reading")
 	}
 	return Result{Check: "cpu", Detail: fmt.Sprintf("%d MHz (%s, %d–%d MHz)", c.CurrentMHz, c.Governor, c.MinMHz, c.MaxMHz)}
+}
+
+// nightAt reports whether the sun is down at the saved location (only known
+// when one is set, for SkipNightPhotos), and " (HH:MM)" of the next sunrise.
+func nightAt(cfg Config, set conf.Settings) (string, bool) {
+	if set.Latitude == 0 && set.Longitude == 0 {
+		return "", false
+	}
+	now := time.Now()
+	if cfg.Now != nil {
+		now = cfg.Now()
+	}
+	if sun.Up(now, set.Latitude, set.Longitude) {
+		return "", false
+	}
+	if rise, ok := sun.NextSunrise(now, set.Latitude, set.Longitude); ok {
+		return " (" + rise.Local().Format("15:04") + ")", true
+	}
+	return "", true
 }

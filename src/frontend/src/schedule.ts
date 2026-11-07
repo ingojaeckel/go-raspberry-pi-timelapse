@@ -1,5 +1,5 @@
 import type { Settings } from './api';
-import { nextSunrise, sunUp } from './sun';
+import { daylightFraction, nextSunrise, sunUp, validLocation } from './sun';
 
 type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'>;
 
@@ -65,6 +65,17 @@ export function capturesPerDay(s: Schedule): number {
 }
 
 type NightSchedule = Schedule & Partial<Pick<Settings, 'SkipNightPhotos' | 'Latitude' | 'Longitude'>>;
+
+/**
+ * Photos a day: with nights skipped (and a valid location), only the share of
+ * the coming 24 hours with the sun up.
+ */
+export function photosPerDay(s: NightSchedule, now: Date): number {
+  const all = capturesPerDay(s);
+  const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = s;
+  if (!SkipNightPhotos || !validLocation(lat, lon) || (lat === 0 && lon === 0)) return all;
+  return Math.round(all * daylightFraction(now, lat, lon));
+}
 
 /**
  * When the camera takes its next photo. With nights skipped, a slot at night
