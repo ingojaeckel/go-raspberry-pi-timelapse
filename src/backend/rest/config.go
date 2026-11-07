@@ -70,6 +70,8 @@ func applyEditable(c *conf.Settings, req conf.Settings) {
 	}
 	c.DebugEnabled = req.DebugEnabled
 	c.StopWhenDiskFull = req.StopWhenDiskFull
+	c.SkipNightPhotos = req.SkipNightPhotos
+	c.Latitude, c.Longitude = req.Latitude, req.Longitude
 }
 
 // updateErrorStatus is 400 for invalid settings and 500 for anything else.

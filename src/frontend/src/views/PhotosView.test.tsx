@@ -12,7 +12,20 @@ describe('PhotosView', () => {
     const groups = screen.getAllByRole('group');
     expect(groups).toHaveLength(2);
     expect(screen.getByText('3 photos', { exact: false })).toBeInTheDocument();
-    expect(screen.getByAltText('Most recent capture')).toHaveAttribute('src', '/file/last?v=20261102-091500.jpg');
+  });
+
+  it('says when night photos are skipped', async () => {
+    mockServer();
+    render(<PhotosView settings={{ ...settings, SkipNightPhotos: true, Latitude: 51.5, Longitude: -0.1 }} />);
+    expect(await screen.findByText(/Every 30 min.*, daytime only/)).toBeInTheDocument();
+  });
+
+  it('loads no photo until one is opened: the list only', async () => {
+    const f = mockServer();
+    const { container } = render(<PhotosView settings={settings} />);
+    expect(await screen.findByText('20261102-091500.jpg')).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
+    expect(f.mock.calls.filter(([u]) => String(u).includes('/file/'))).toHaveLength(0);
   });
 
   it('offers archives of everything, then of the selection', async () => {

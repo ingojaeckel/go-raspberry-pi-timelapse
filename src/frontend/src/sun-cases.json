@@ -1,0 +1,400 @@
+{
+ "description": "Shared by src/frontend/src/sun.test.ts and src/backend/sun/sun_test.go. Sunrise and sunset (Unix seconds, upper limb with standard refraction) generated with the Python astral 3.2 library, independent of both implementations; they must agree within toleranceSeconds. 'polar' lists instants of polar day (up) and night.",
+ "toleranceSeconds": 120,
+ "days": [
+  {
+   "place": "London",
+   "lat": 51.5074,
+   "lon": -0.1278,
+   "date": "2026-03-20",
+   "sunrise": 1773986619,
+   "sunset": 1774030394
+  },
+  {
+   "place": "London",
+   "lat": 51.5074,
+   "lon": -0.1278,
+   "date": "2026-06-21",
+   "sunrise": 1782013407,
+   "sunset": 1782073272
+  },
+  {
+   "place": "London",
+   "lat": 51.5074,
+   "lon": -0.1278,
+   "date": "2026-09-22",
+   "sunrise": 1790056006,
+   "sunset": 1790099924
+  },
+  {
+   "place": "London",
+   "lat": 51.5074,
+   "lon": -0.1278,
+   "date": "2026-11-07",
+   "sunrise": 1794035086,
+   "sunset": 1794068570
+  },
+  {
+   "place": "London",
+   "lat": 51.5074,
+   "lon": -0.1278,
+   "date": "2026-12-21",
+   "sunrise": 1797840246,
+   "sunset": 1797868383
+  },
+  {
+   "place": "New York",
+   "lat": 40.7128,
+   "lon": -74.006,
+   "date": "2026-03-20",
+   "sunrise": 1774004370,
+   "sunset": 1774048077
+  },
+  {
+   "place": "New York",
+   "lat": 40.7128,
+   "lon": -74.006,
+   "date": "2026-06-21",
+   "sunrise": 1782033917,
+   "sunset": 1782088229
+  },
+  {
+   "place": "New York",
+   "lat": 40.7128,
+   "lon": -74.006,
+   "date": "2026-09-22",
+   "sunrise": 1790073832,
+   "sunset": 1790117570
+  },
+  {
+   "place": "New York",
+   "lat": 40.7128,
+   "lon": -74.006,
+   "date": "2026-11-07",
+   "sunrise": 1794051221,
+   "sunset": 1794087909
+  },
+  {
+   "place": "New York",
+   "lat": 40.7128,
+   "lon": -74.006,
+   "date": "2026-12-21",
+   "sunrise": 1797855411,
+   "sunset": 1797888693
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "date": "2026-03-20",
+   "sunrise": 1773950289,
+   "sunset": 1773994003
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "date": "2026-06-21",
+   "sunrise": 1781989211,
+   "sunset": 1782024815
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "date": "2026-09-22",
+   "sunrise": 1790019934,
+   "sunset": 1790063463
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "date": "2026-11-07",
+   "sunrise": 1793990992,
+   "sunset": 1794040089
+  },
+  {
+   "place": "Sydney",
+   "lat": -33.8688,
+   "lon": 151.2093,
+   "date": "2026-12-21",
+   "sunrise": 1797792053,
+   "sunset": 1797843911
+  },
+  {
+   "place": "Honolulu",
+   "lat": 21.3069,
+   "lon": -157.8583,
+   "date": "2026-03-20",
+   "sunrise": 1774024522,
+   "sunset": 1774068144
+  },
+  {
+   "place": "Honolulu",
+   "lat": 21.3069,
+   "lon": -157.8583,
+   "date": "2026-06-21",
+   "sunrise": 1782057036,
+   "sunset": 1782105365
+  },
+  {
+   "place": "Honolulu",
+   "lat": 21.3069,
+   "lon": -157.8583,
+   "date": "2026-09-22",
+   "sunrise": 1790094031,
+   "sunset": 1790137632
+  },
+  {
+   "place": "Honolulu",
+   "lat": 21.3069,
+   "lon": -157.8583,
+   "date": "2026-11-07",
+   "sunrise": 1794069475,
+   "sunset": 1794109921
+  },
+  {
+   "place": "Honolulu",
+   "lat": 21.3069,
+   "lon": -157.8583,
+   "date": "2026-12-21",
+   "sunrise": 1797872688,
+   "sunset": 1797911678
+  },
+  {
+   "place": "Quito",
+   "lat": -0.1807,
+   "lon": -78.4678,
+   "date": "2026-03-20",
+   "sunrise": 1774005489,
+   "sunset": 1774049059
+  },
+  {
+   "place": "Quito",
+   "lat": -0.1807,
+   "lon": -78.4678,
+   "date": "2026-06-21",
+   "sunrise": 1782040353,
+   "sunset": 1782083935
+  },
+  {
+   "place": "Quito",
+   "lat": -0.1807,
+   "lon": -78.4678,
+   "date": "2026-09-22",
+   "sunrise": 1790075008,
+   "sunset": 1790118576
+  },
+  {
+   "place": "Quito",
+   "lat": -0.1807,
+   "lon": -78.4678,
+   "date": "2026-11-07",
+   "sunrise": 1794048839,
+   "sunset": 1794092462
+  },
+  {
+   "place": "Quito",
+   "lat": -0.1807,
+   "lon": -78.4678,
+   "date": "2026-12-21",
+   "sunrise": 1797851290,
+   "sunset": 1797894956
+  },
+  {
+   "place": "Reykjavik",
+   "lat": 64.1466,
+   "lon": -21.9426,
+   "date": "2026-03-20",
+   "sunrise": 1773991739,
+   "sunset": 1774035782
+  },
+  {
+   "place": "Reykjavik",
+   "lat": 64.1466,
+   "lon": -21.9426,
+   "date": "2026-06-21",
+   "sunrise": 1782010580,
+   "sunset": 1782000158
+  },
+  {
+   "place": "Reykjavik",
+   "lat": 64.1466,
+   "lon": -21.9426,
+   "date": "2026-09-22",
+   "sunrise": 1790061063,
+   "sunset": 1790105295
+  },
+  {
+   "place": "Reykjavik",
+   "lat": 64.1466,
+   "lon": -21.9426,
+   "date": "2026-11-07",
+   "sunrise": 1794043853,
+   "sunset": 1794070256
+  },
+  {
+   "place": "Reykjavik",
+   "lat": 64.1466,
+   "lon": -21.9426,
+   "date": "2026-12-21",
+   "sunrise": 1797852191,
+   "sunset": 1797866913
+  },
+  {
+   "place": "Auckland",
+   "lat": -36.8485,
+   "lon": 174.7633,
+   "date": "2026-03-20",
+   "sunrise": 1773944619,
+   "sunset": 1773988367
+  },
+  {
+   "place": "Auckland",
+   "lat": -36.8485,
+   "lon": 174.7633,
+   "date": "2026-06-21",
+   "sunrise": 1781984035,
+   "sunset": 1782018684
+  },
+  {
+   "place": "Auckland",
+   "lat": -36.8485,
+   "lon": 174.7633,
+   "date": "2026-09-22",
+   "sunrise": 1790014287,
+   "sunset": 1790057810
+  },
+  {
+   "place": "Auckland",
+   "lat": -36.8485,
+   "lon": 174.7633,
+   "date": "2026-11-07",
+   "sunrise": 1793985015,
+   "sunset": 1794034765
+  },
+  {
+   "place": "Auckland",
+   "lat": -36.8485,
+   "lon": 174.7633,
+   "date": "2026-12-21",
+   "sunrise": 1797785895,
+   "sunset": 1797838759
+  }
+ ],
+ "polar": [
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1782000000,
+   "up": true
+  },
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1782021600,
+   "up": true
+  },
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1782043200,
+   "up": true
+  },
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1782064800,
+   "up": true
+  },
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1797811200,
+   "up": false
+  },
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1797832800,
+   "up": false
+  },
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1797854400,
+   "up": false
+  },
+  {
+   "place": "Troms\u00f8",
+   "lat": 69.6492,
+   "lon": 18.9553,
+   "unix": 1797876000,
+   "up": false
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1782000000,
+   "up": false
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1782021600,
+   "up": false
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1782043200,
+   "up": false
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1782064800,
+   "up": false
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1797811200,
+   "up": true
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1797832800,
+   "up": true
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1797854400,
+   "up": true
+  },
+  {
+   "place": "McMurdo",
+   "lat": -77.8419,
+   "lon": 166.6863,
+   "unix": 1797876000,
+   "up": true
+  }
+ ]
+}

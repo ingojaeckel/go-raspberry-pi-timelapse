@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/sun"
 )
 
 const (
@@ -50,6 +51,10 @@ type Scheduler struct {
 	// Heartbeat, if set, runs every time the loop wakes up: at least every
 	// maxSleep while waiting, and after every capture (with its retries).
 	Heartbeat func()
+
+	// pausedUntil is the sunrise captures wait for with SkipNightPhotos,
+	// remembered to log the pause once.
+	pausedUntil time.Time
 }
 
 // Run captures photos until ctx is cancelled. Settings changes take effect
@@ -100,11 +105,39 @@ func (s *Scheduler) sleep(ctx context.Context, changed <-chan struct{}, next tim
 
 func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) time.Time {
 	interval := time.Duration(set.SecondsBetweenCaptures) * time.Second
+	var next time.Time
 	if set.OffsetWithinHour == conf.OffsetDisabled {
-		return nextUnaligned(now, anchor, interval)
+		next = nextUnaligned(now, anchor, interval)
+	} else {
+		from := alignedSearchStart(now, lastSlot, interval)
+		next = NextAligned(from.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour)
 	}
-	from := alignedSearchStart(now, lastSlot, interval)
-	return NextAligned(from.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour)
+	if !set.SkipNightPhotos || sun.Up(next, set.Latitude, set.Longitude) {
+		return next
+	}
+	return s.afterNight(set, next)
+}
+
+// noSunriseRecheck is when to look again where the sun does not rise
+// within a year (only at the poles, and only if the date is wrong).
+const noSunriseRecheck = 24 * time.Hour
+
+// afterNight is the first capture after the night that slot falls into:
+// sunrise for unaligned captures (then every interval from there), else the
+// first aligned slot after sunrise.
+func (s *Scheduler) afterNight(set conf.Settings, slot time.Time) time.Time {
+	rise, ok := sun.NextSunrise(slot, set.Latitude, set.Longitude)
+	if !ok {
+		return slot.Add(noSunriseRecheck)
+	}
+	if !rise.Equal(s.pausedUntil) {
+		s.pausedUntil = rise
+		slog.Info("night: no photos until sunrise", "sunrise", rise.In(s.location()))
+	}
+	if set.OffsetWithinHour == conf.OffsetDisabled {
+		return rise
+	}
+	return NextAligned(rise.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour)
 }
 
 // nextUnaligned is one interval after anchor. If the clock moved backwards,

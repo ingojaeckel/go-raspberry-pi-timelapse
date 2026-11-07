@@ -10,10 +10,22 @@ import {
   formatBytes,
   formatDays,
   formatMegapixels,
+  formatClock,
   formatPastHour,
 } from '../format';
 import { useNow, useResource } from '../hooks';
 import { capturesPerDay, captureSlots, formatInterval, isValidInterval, VALID_INTERVALS } from '../schedule';
+import { daylightFraction, nextSunrise, nextSunset } from '../sun';
+
+/**
+ * Photos a day at the schedule; with nights skipped, the share of the coming
+ * 24 hours with the sun up. Null while the location is invalid.
+ */
+function photosPerDay(s: Settings, now: Date): number {
+  const all = capturesPerDay(s);
+  if (!s.SkipNightPhotos || Object.keys(validate(s)).some((k) => k === 'Latitude' || k === 'Longitude')) return all;
+  return Math.round(all * daylightFraction(now, s.Latitude, s.Longitude));
+}
 
 function offsetHint(interval: number): string {
   const last = (interval - 1) / 60;
@@ -33,6 +45,15 @@ export function validate(s: Settings): Partial<Record<keyof Settings, string>> {
   }
   if (!Number.isInteger(s.Quality) || s.Quality < 1 || s.Quality > 100) {
     errors.Quality = 'Use a value from 1 to 100.';
+  }
+  if (!(s.Latitude >= -90 && s.Latitude <= 90)) {
+    errors.Latitude = 'Latitude goes from -90 (south) to 90 (north).';
+  }
+  if (!(s.Longitude >= -180 && s.Longitude <= 180)) {
+    errors.Longitude = 'Longitude goes from -180 (west) to 180 (east).';
+  }
+  if (s.SkipNightPhotos && !errors.Latitude && !errors.Longitude && s.Latitude === 0 && s.Longitude === 0) {
+    errors.Latitude = "Enter the camera's location.";
   }
   return errors;
 }
@@ -183,7 +204,11 @@ export function SettingsView({ settings, error, onSaved }: Props) {
                 </select>
                 <p id="interval-help" className={errors.SecondsBetweenCaptures ? 'help error' : 'help'}>
                   {errors.SecondsBetweenCaptures ??
-                    `${capturesPerDay(draft).toLocaleString()} photos a day. Intervals divide the hour evenly so every hour has the same capture times.`}
+                    `${
+                      draft.SkipNightPhotos
+                        ? `About ${photosPerDay(draft, now).toLocaleString()} photos a day with nights skipped`
+                        : `${capturesPerDay(draft).toLocaleString()} photos a day`
+                    }. Intervals divide the hour evenly so every hour has the same capture times.`}
                 </p>
               </div>
 
@@ -204,6 +229,8 @@ export function SettingsView({ settings, error, onSaved }: Props) {
                     : 'Photos are taken at even intervals, counted from when the camera starts.'}
                 </p>
               </div>
+
+              <NightFields draft={draft} errors={errors} now={now} onChange={(patch) => setDraft({ ...draft, ...patch })} />
 
               {aligned && (
                 <div className="field">
@@ -396,6 +423,92 @@ export function SettingsView({ settings, error, onSaved }: Props) {
   );
 }
 
+interface NightProps {
+  draft: Settings;
+  errors: Partial<Record<keyof Settings, string>>;
+  now: Date;
+  onChange: (patch: Partial<Settings>) => void;
+}
+
+/** "Skip night photos" and the camera's location, which sunrise and sunset are computed from (offline). */
+function NightFields({ draft, errors, now, onChange }: NightProps) {
+  const located = draft.SkipNightPhotos && !errors.Latitude && !errors.Longitude;
+  // The next sunrise and sunset, not today's: what happens next matters.
+  const rise = located ? nextSunrise(now, draft.Latitude, draft.Longitude) : null;
+  const set = located ? nextSunset(now, draft.Latitude, draft.Longitude) : null;
+  const coordinate = (key: 'Latitude' | 'Longitude', hint: string) => (
+    <Coordinate name={key} hint={hint} value={draft[key]} invalid={!!errors[key]} onChange={(v) => onChange({ [key]: v })} />
+  );
+  let help: string;
+  if (!draft.SkipNightPhotos) {
+    help = 'Photos are taken around the clock.';
+  } else if (errors.Latitude || errors.Longitude) {
+    help = [errors.Latitude, errors.Longitude].filter(Boolean).join(' ');
+  } else if (rise && set) {
+    help = `Here the sun rises at ${formatClock(rise)} and sets at ${formatClock(set)} (next times, in this device's time zone). No photos are taken in between. Computed on the camera, without internet.`;
+  } else {
+    help = rise ? 'The sun does not set here for now: photos are taken around the clock.' : 'The sun does not rise here for now: no photos until it does.';
+  }
+  return (
+    <div className="field">
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={draft.SkipNightPhotos}
+          onChange={(e) => onChange({ SkipNightPhotos: e.target.checked })}
+        />
+        Skip night photos
+      </label>
+      {draft.SkipNightPhotos && (
+        <div className="inline coordinates">
+          {coordinate('Latitude', 'e.g. 51.5074')}
+          {coordinate('Longitude', 'e.g. -0.1278')}
+        </div>
+      )}
+      <p id="night-help" className={draft.SkipNightPhotos && (errors.Latitude || errors.Longitude) ? 'help error' : 'help'}>
+        {help}
+        {draft.SkipNightPhotos && ' Location in decimal degrees: north and east positive, e.g. from a map app.'}
+      </p>
+    </div>
+  );
+}
+
+/** Shows a coordinate as typed ("-", "-0.") while saving the number; empty means 0 (no location). */
+function Coordinate(props: { name: string; hint: string; value: number; invalid: boolean; onChange: (v: number) => void }) {
+  const { name, hint, value, invalid, onChange } = props;
+  const [text, setText] = useState(value === 0 ? '' : String(value));
+  // Follow changes from outside (Discard, saved settings).
+  useEffect(() => {
+    setText((t) => (Object.is(parseCoordinate(t), value) ? t : value === 0 ? '' : String(value)));
+  }, [value]);
+  const id = name.toLowerCase();
+  return (
+    <div className="coordinate">
+      <label htmlFor={id}>{name}</label>
+      <input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        placeholder={hint}
+        value={text}
+        aria-invalid={invalid}
+        aria-describedby="night-help"
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(parseCoordinate(e.target.value));
+        }}
+      />
+    </div>
+  );
+}
+
+/** "" is 0, a number is itself, anything else (e.g. "-" while typing) NaN. */
+function parseCoordinate(text: string): number {
+  const t = text.trim().replace(',', '.');
+  if (t === '') return 0;
+  return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(t) ? Number(t) : NaN;
+}
+
 const sameSize = (a: Size, b: Size) => a.Width === b.Width && a.Height === b.Height;
 
 interface ResolutionProps {
@@ -467,13 +580,16 @@ function ResolutionField({ camera, loading, error, value, saved, onChange }: Res
 /** Photo size at the chosen size and quality, and how long the card lasts at the chosen schedule. */
 function StorageEstimate({ draft, storage }: { draft: Settings; storage: Storage | undefined }) {
   const photo = estimatePhotoBytes(draft.PhotoResolutionWidth, draft.PhotoResolutionHeight, draft.Quality, storage);
-  const perDay = capturesPerDay(draft);
+  const perDay = photosPerDay(draft, new Date());
   const capacity = storage && estimateCapacity(storage, photo.bytes, perDay);
   const basis =
     photo.fromPhotos > 0
       ? `estimated from the last ${photo.fromPhotos.toLocaleString()} photo${photo.fromPhotos === 1 ? '' : 's'}`
       : 'a rough estimate until the camera has taken photos';
-  const atSchedule = (days: number | null) => (days === null ? '' : `: ${formatDays(days)} at ${perDay.toLocaleString()} photos a day`);
+  const atSchedule = (days: number | null) =>
+    days === null
+      ? ''
+      : `: ${formatDays(days)} at ${perDay.toLocaleString()} photos a day${draft.SkipNightPhotos ? ' (nights skipped)' : ''}`;
   return (
     <p className="help estimate">
       About {formatBytes(photo.bytes)} per photo, {basis}.

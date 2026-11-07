@@ -63,16 +63,8 @@ export function PhotosView({ settings }: { settings: Settings | undefined }) {
         </button>
       </PageHeader>
 
+      {/* No image here: photos load only when opened (the Preview page shows the camera's view). */}
       <section className="hero" aria-label="Latest capture">
-        <div className="hero-frame">
-          {latest ? (
-            <button type="button" className="hero-photo" onClick={() => setViewing(0)}>
-              <img src={urls.latestPhoto(latest.name)} alt="Most recent capture" />
-            </button>
-          ) : (
-            <div className="hero-empty">{photos.loading ? 'Loading…' : 'No photos yet'}</div>
-          )}
-        </div>
         <div className="hero-side">
           {settings ? <HourDial schedule={settings} now={now} /> : <div className="dial placeholder" />}
           <dl className="facts">
@@ -175,11 +167,12 @@ export function PhotosView({ settings }: { settings: Settings | undefined }) {
 }
 
 function describeSchedule(s: Settings): string {
+  const daytime = s.SkipNightPhotos ? ', daytime only' : '';
   const every = `Every ${formatDuration(s.SecondsBetweenCaptures)}`;
   const slots = captureSlots(s);
-  if (!slots) return every;
-  if (slots.length <= 4) return `${every} at ${slots.map(formatPastHour).join(', ')}`;
-  return `${every}, from ${formatPastHour(s.OffsetWithinHour % 3600)}`;
+  if (!slots) return every + daytime;
+  if (slots.length <= 4) return `${every} at ${slots.map(formatPastHour).join(', ')}${daytime}`;
+  return `${every}, from ${formatPastHour(s.OffsetWithinHour % 3600)}${daytime}`;
 }
 
 interface DayProps {

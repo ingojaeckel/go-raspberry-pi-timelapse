@@ -1,8 +1,18 @@
 import type { Settings } from '../api';
-import { formatCountdown, formatDuration, formatPastHour } from '../format';
+import { formatClock, formatCountdown, formatDuration, formatPastHour } from '../format';
 import { captureSlots, secondsToNextCapture } from '../schedule';
+import { nextSunrise, sunUp } from '../sun';
 
-type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'>;
+type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'> &
+  Partial<Pick<Settings, 'SkipNightPhotos' | 'Latitude' | 'Longitude'>>;
+
+/** With nights skipped, the sunrise the next capture waits for if it falls at night (like the camera's scheduler). */
+function resumesAt(schedule: Schedule, now: Date, wait: number | null): Date | null {
+  const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = schedule;
+  if (!SkipNightPhotos) return null;
+  const next = new Date(now.getTime() + (wait ?? 0) * 1000);
+  return sunUp(next, lat, lon) ? null : nextSunrise(next, lat, lon);
+}
 
 interface Props {
   schedule: Schedule;
@@ -24,6 +34,7 @@ function polar(secondsIntoHour: number, radius: number): [number, number] {
 export function HourDial({ schedule, now, label }: Props) {
   const slots = captureSlots(schedule);
   const wait = secondsToNextCapture(schedule, now);
+  const resume = resumesAt(schedule, now, wait);
   const into = now.getMinutes() * 60 + now.getSeconds();
   const dense = slots !== null && slots.length > 90;
   const [hx, hy] = polar(into, R - 16);
@@ -32,7 +43,11 @@ export function HourDial({ schedule, now, label }: Props) {
     slots === null
       ? `Captures every ${formatDuration(schedule.SecondsBetweenCaptures)}, counted from when the camera started.`
       : `Captures at ${slots.length > 6 ? `${slots.length} times` : slots.map(formatPastHour).join(', ')} past each hour.` +
-        (wait !== null && !label ? ` Next capture in ${formatCountdown(wait)}.` : '');
+        (resume && !label
+          ? ` Night: photos resume at ${formatClock(resume)}.`
+          : wait !== null && !label
+            ? ` Next capture in ${formatCountdown(wait)}.`
+            : '');
 
   return (
     <figure className="dial">
@@ -57,6 +72,11 @@ export function HourDial({ schedule, now, label }: Props) {
       <figcaption>
         {label ? (
           <span className="dial-caption">{label}</span>
+        ) : resume ? (
+          <>
+            <span className="dial-count small">Night</span>
+            <span className="dial-caption">photos resume at {formatClock(resume)}</span>
+          </>
         ) : wait !== null ? (
           <>
             <span className="dial-count">{wait === 0 ? 'Now' : formatCountdown(wait)}</span>

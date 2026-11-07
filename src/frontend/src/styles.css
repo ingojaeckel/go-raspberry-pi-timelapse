@@ -527,39 +527,7 @@ fieldset.panel > legend + * {
 /* ---------- Photos ---------- */
 
 .hero {
-  display: grid;
-  gap: 16px;
   margin-bottom: 20px;
-}
-.hero-frame {
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--ink);
-  aspect-ratio: 4 / 3;
-}
-.hero-photo {
-  display: block;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: zoom-in;
-}
-.hero-photo img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.hero-empty {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: var(--bg);
-  font-family: var(--display);
-  font-size: 1.5rem;
-  opacity: 0.7;
 }
 .hero-side {
   display: grid;
@@ -586,17 +554,8 @@ fieldset.panel > legend + * {
 }
 
 @media (min-width: 720px) {
-  .hero {
-    grid-template-columns: 3fr 2fr;
-    align-items: center;
-  }
   .hero-side {
-    grid-template-columns: 1fr;
-    justify-items: center;
-  }
-  .facts {
-    width: 100%;
-    max-width: 280px;
+    grid-template-columns: 200px minmax(0, 360px);
   }
 }
 
@@ -1068,9 +1027,21 @@ meter {
 .affix {
   color: var(--muted);
 }
+.coordinates {
+  margin-top: 8px;
+  gap: 12px;
+}
+.coordinate {
+  display: grid;
+  gap: 4px;
+}
+.coordinate input {
+  width: 11ch;
+}
 
 input[type='number'],
 input[type='search'],
+input[type='text'],
 select {
   min-height: 44px;
   padding: 0 12px;

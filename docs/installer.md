@@ -110,6 +110,10 @@ For a camera nobody looks at for weeks, the app's log (`timelapse.log`, `/logs` 
 
 By default the camera deletes its oldest photos when less than `-minFreeDiskMB` (256 MB) is free, so the card always holds the most recent photos. Settings, "When the card is full", can stop taking photos instead, so no photo is ever deleted. Status shows how long until the card is full at the current schedule, what happens then, and how many photos were deleted to make room since the camera started.
 
+## Night photos
+
+By default the camera takes photos around the clock. Settings, "Skip night photos", pauses captures from sunset to sunrise at the location entered there (latitude and longitude in decimal degrees, e.g. from a map app). Sunrise and sunset are computed on the Pi from the date and location, without internet, to within about a minute (also during the polar day and night). With captures lined up with the clock, the first photo of the day is the first slot after sunrise; otherwise it is taken at sunrise. The log notes `night: no photos until sunrise` once per night. The times follow the Pi's clock, so set it (see [Real-time clock](#real-time-clock)).
+
 ## Power profiles
 
 Most of the Pi's power goes to hardware that stays on between photos, so the image turns off what the camera never uses. `TIMELAPSEPI_PROFILE` in `src/installer/custompios/config.local` decides about HDMI:

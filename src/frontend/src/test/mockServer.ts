@@ -12,6 +12,9 @@ export const settings: Settings = {
   Quality: 100,
   DebugEnabled: false,
   StopWhenDiskFull: false,
+  SkipNightPhotos: false,
+  Latitude: 0,
+  Longitude: 0,
 };
 
 /** A Camera Module v2 (IMX219) and its modes. */

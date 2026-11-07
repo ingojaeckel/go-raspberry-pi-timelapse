@@ -847,3 +847,21 @@ func TestMonitoringWithoutPhotosHasNoSample(t *testing.T) {
 		t.Fatalf("got %+v", m.Storage)
 	}
 }
+
+func TestUpdateConfigurationSavesNightSkipping(t *testing.T) {
+	e := newEnv(t)
+	res, out := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"SkipNightPhotos":true,"Latitude":51.5074,"Longitude":-0.1278}`)
+	wantStatus(t, res, out, 200)
+	if got := e.store.Get(); !got.SkipNightPhotos || got.Latitude != 51.5074 || got.Longitude != -0.1278 {
+		t.Fatalf("stored %s", got)
+	}
+}
+
+func TestUpdateConfigurationNeedsALocationToSkipNights(t *testing.T) {
+	e := newEnv(t)
+	res, out := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"SkipNightPhotos":true}`)
+	wantStatus(t, res, out, 400)
+	if !strings.Contains(out, "location") {
+		t.Fatalf("got %s", out)
+	}
+}

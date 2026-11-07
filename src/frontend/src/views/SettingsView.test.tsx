@@ -224,6 +224,48 @@ describe('SettingsView', () => {
   });
 });
 
+describe('SettingsView night photos', () => {
+  it('takes photos around the clock unless nights are skipped', async () => {
+    const f = mockServer();
+    const onSaved = renderSettings();
+    const user = userEvent.setup();
+    const skip = screen.getByRole('checkbox', { name: 'Skip night photos' });
+    expect(skip).not.toBeChecked();
+    expect(screen.queryByLabelText('Latitude')).not.toBeInTheDocument();
+
+    await user.click(skip);
+    expect(screen.getByText(/Enter the camera's location\./)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+
+    await user.type(screen.getByLabelText('Latitude'), '51.5074');
+    await user.type(screen.getByLabelText('Longitude'), '-0.1278');
+    expect(screen.getByText(/the sun rises at \d\d:\d\d and sets at \d\d:\d\d/)).toBeInTheDocument();
+    expect(screen.getByText(/photos a day with nights skipped/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(posted(f)).toEqual({ ...settings, SkipNightPhotos: true, Latitude: 51.5074, Longitude: -0.1278 });
+  });
+
+  it('rejects a location that is not on Earth', async () => {
+    mockServer();
+    renderSettings({ ...settings, SkipNightPhotos: true, Latitude: 51.5, Longitude: 0 });
+    const user = userEvent.setup();
+    await user.clear(screen.getByLabelText('Latitude'));
+    await user.type(screen.getByLabelText('Latitude'), '95');
+    expect(screen.getByText(/Latitude goes from -90 \(south\) to 90 \(north\)\./)).toBeInTheDocument();
+  });
+
+  it('counts only daytime photos in the storage estimate', async () => {
+    mockServer();
+    renderSettings({ ...settings, SkipNightPhotos: true, Latitude: 69.6492, Longitude: 18.9553 });
+    // The estimate uses the coming 24 hours; Tromsø has no night in summer and
+    // no day in winter, so only check that the schedule says nights are skipped.
+    expect(await screen.findByText(/per photo/)).toBeInTheDocument();
+    expect(screen.getByText(/with nights skipped/)).toBeInTheDocument();
+  });
+});
+
 describe('validate', () => {
   it('matches the backend validator', () => {
     expect(validate(settings)).toEqual({});
@@ -231,5 +273,8 @@ describe('validate', () => {
     expect(Object.keys(validate({ ...settings, OffsetWithinHour: 1800, Quality: 101 }))).toEqual(['OffsetWithinHour', 'Quality']);
     expect(Object.keys(validate({ ...settings, SecondsBetweenCaptures: 1000 }))).toEqual(['SecondsBetweenCaptures']);
     expect(Object.keys(validate({ ...settings, SecondsBetweenCaptures: 7200 }))).toEqual(['SecondsBetweenCaptures']);
+    expect(Object.keys(validate({ ...settings, SkipNightPhotos: true }))).toEqual(['Latitude']);
+    expect(Object.keys(validate({ ...settings, Latitude: 91, Longitude: 181 }))).toEqual(['Latitude', 'Longitude']);
+    expect(validate({ ...settings, SkipNightPhotos: true, Latitude: 51.5, Longitude: -0.1 })).toEqual({});
   });
 });

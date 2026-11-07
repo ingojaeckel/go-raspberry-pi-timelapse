@@ -23,6 +23,10 @@ export interface Settings {
   DebugEnabled: boolean;
   /** When the card is full: true stops taking photos, false deletes the oldest ones. */
   StopWhenDiskFull: boolean;
+  /** Pauses captures between sunset and sunrise at Latitude/Longitude (degrees, north and east positive). Off by default. */
+  SkipNightPhotos: boolean;
+  Latitude: number;
+  Longitude: number;
 }
 
 /** Command output, or the error message if the command failed. */
@@ -190,8 +194,6 @@ export const api = {
 
 export const urls = {
   photo: (name: string) => `${API_BASE}/file/${encodeURIComponent(name)}`,
-  /** `key` busts the browser cache whenever the newest photo changes. */
-  latestPhoto: (key: string) => `${API_BASE}/file/last?v=${encodeURIComponent(key)}`,
   preview: (key: number) => `${API_BASE}/capture?t=${key}`,
   archive: (format: 'zip' | 'tar', names: readonly string[] = []) =>
     `${API_BASE}/archive/${format}${filesQuery(names)}`,

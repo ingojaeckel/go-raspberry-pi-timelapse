@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/sun"
 )
 
 // All scheduler tests run in a synctest bubble: time starts at
@@ -414,5 +415,69 @@ func TestCapturedReportsEverySlotOnce(t *testing.T) {
 		if len(results) != 2 || results[0] == nil || results[1] != nil {
 			t.Fatalf("Captured got %v, want [error, nil]", results)
 		}
+	})
+}
+
+// london skips night photos in London. The bubble starts at 2000-01-01
+// 00:00 UTC: sunrise is about 08:06, sunset about 16:02.
+func london(h *harness) {
+	h.settings.s.SkipNightPhotos, h.settings.s.Latitude, h.settings.s.Longitude = true, 51.5074, -0.1278
+}
+
+func TestNightPhotosAreSkippedWhenAligned(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := start(t, 3600, 0, london)
+		advance(h, 24*time.Hour)
+		h.stop()
+		assertTimes(t, h.camera.times(), secs(9*3600, 10*3600, 11*3600, 12*3600, 13*3600, 14*3600, 15*3600, 16*3600))
+	})
+}
+
+func TestNightPhotosAreSkippedWhenUnaligned(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		start0 := time.Now()
+		h := start(t, 1800, conf.OffsetDisabled, london)
+		advance(h, 12*time.Hour)
+		h.stop()
+		rise, ok := sun.NextSunrise(start0, 51.5074, -0.1278)
+		if !ok {
+			t.Fatal("no sunrise")
+		}
+		got := h.camera.times()
+		if len(got) == 0 || got[0] != rise.Sub(start0) {
+			t.Fatalf("first capture at %v, want sunrise at %v", got, rise.Sub(start0))
+		}
+		// then every 30 minutes from sunrise until noon
+		for i := 1; i < len(got); i++ {
+			if got[i]-got[i-1] != 30*time.Minute {
+				t.Fatalf("captures at %v", got)
+			}
+		}
+		if len(got) != 8 { // about 08:06 to 12:00
+			t.Fatalf("%d captures: %v", len(got), got)
+		}
+	})
+}
+
+func TestSkippingNightsAppliesWhileWaiting(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := start(t, 600, 0)
+		advance(h, 30*time.Minute+time.Second) // 00:00, 00:10, 00:20, 00:30
+		h.settings.mu.Lock()
+		london(h)
+		h.settings.mu.Unlock()
+		h.settings.set(600, 0) // notify
+		advance(h, 6*time.Hour)
+		h.stop()
+		assertTimes(t, h.camera.times(), secs(0, 600, 1200, 1800))
+	})
+}
+
+func TestNightPhotosAreTakenWhenNotSkipped(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := start(t, 3600, 0)
+		advance(h, 3*time.Hour+time.Second)
+		h.stop()
+		assertTimes(t, h.camera.times(), secs(0, 3600, 7200, 10800))
 	})
 }

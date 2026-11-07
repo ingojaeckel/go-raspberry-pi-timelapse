@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+
+	"github.com/ingojaeckel/go-raspberry-pi-timelapse/sun"
 )
 
 const (
@@ -45,6 +47,12 @@ type Settings struct {
 	// StopWhenDiskFull stops taking photos when the disk is full. By default
 	// (false) the oldest photos are deleted to make room, like a ring buffer.
 	StopWhenDiskFull bool
+	// SkipNightPhotos pauses captures between sunset and sunrise at
+	// Latitude/Longitude (degrees; north and east positive), computed
+	// offline (package sun). Off by default: photos are taken around the
+	// clock.
+	SkipNightPhotos     bool
+	Latitude, Longitude float64
 }
 
 func (s Settings) String() string {
@@ -101,6 +109,12 @@ func (s Settings) Validate() error {
 	}
 	if s.RotateBy != 0 && s.RotateBy != 180 {
 		return invalid("RotateBy must be 0 or 180, got %d", s.RotateBy)
+	}
+	if !sun.ValidLocation(s.Latitude, s.Longitude) {
+		return invalid("Latitude must be between -90 and 90 and Longitude between -180 and 180, got %v, %v", s.Latitude, s.Longitude)
+	}
+	if s.SkipNightPhotos && s.Latitude == 0 && s.Longitude == 0 {
+		return invalid("SkipNightPhotos needs the camera's location (Latitude and Longitude)")
 	}
 	if !validSide(s.PhotoResolutionWidth) || !validSide(s.PhotoResolutionHeight) {
 		return invalid("the photo size must be between %d and %d pixels on each side, got %dx%d",
