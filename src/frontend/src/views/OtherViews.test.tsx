@@ -176,15 +176,47 @@ describe('App', () => {
     expect(await screen.findByText('Next shot')).toBeInTheDocument();
   });
 
-  it('shows when the next shot is taken after a skipped night, not a countdown', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-06-21T23:11:00Z'));
-    const night = { ...settings, SecondsBetweenCaptures: 120, OffsetWithinHour: 0, SkipNightPhotos: true, Latitude: 51.5074, Longitude: -0.1278 };
-    mockServer({ 'GET /configuration': () => json(night) });
+  it("counts down to the camera's planned next shot, whatever this device's clock says", async () => {
+    // The camera's clock is an hour behind this device; its next shot is 72 s after its now.
+    const cameraNow = Date.now() - 3600_000;
+    mockServer({ 'GET /schedule': () => json({ UnixMillis: cameraNow, NextMillis: cameraNow + 72_000, Night: false, ZoneOffsetSeconds: 0 }) });
+    render(<App />);
+    const pill = (await screen.findByText('Next shot')).closest('.next-pill')!;
+    await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^1:1\d$/));
+  });
+
+  it('shows when photos resume after a skipped night, not a countdown', async () => {
+    const cameraNow = Date.now();
+    mockServer({ 'GET /schedule': () => json({ UnixMillis: cameraNow, NextMillis: cameraNow + 11 * 3600_000, Night: true, ZoneOffsetSeconds: 0 }) });
     render(<App />);
     const pill = (await screen.findByText('Next shot')).closest('.next-pill')!;
     await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^at \d\d:\d\d$/));
     expect(pill).toHaveAttribute('title', expect.stringMatching(/^Nights are skipped: photos resume at \d\d:\d\d$/));
-    vi.useRealTimers();
+  });
+
+  it('counts down for captures every N minutes from start-up too', async () => {
+    const cameraNow = Date.now();
+    mockServer({
+      'GET /configuration': () => json({ ...settings, OffsetWithinHour: -1 }),
+      'GET /schedule': () => json({ UnixMillis: cameraNow, NextMillis: cameraNow + 300_000, Night: false, ZoneOffsetSeconds: 0 }),
+    });
+    render(<App />);
+    const pill = (await screen.findByText('Next shot')).closest('.next-pill')!;
+    await waitFor(() => expect(pill.querySelector('strong')?.textContent).toMatch(/^[45]:\d\d$/));
+  });
+
+  it('asks the camera again after saving settings', async () => {
+    const f = mockServer();
+    render(<App />);
+    await screen.findByText('Next shot');
+    const before = callsTo(f, 'GET', '/schedule').length;
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('link', { name: 'Settings' }));
+    const quality = await screen.findByLabelText('JPEG quality');
+    await user.clear(quality);
+    await user.type(quality, '80');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(callsTo(f, 'POST', '/configuration')).toHaveLength(1));
+    await waitFor(() => expect(callsTo(f, 'GET', '/schedule').length).toBeGreaterThan(before));
   });
 });

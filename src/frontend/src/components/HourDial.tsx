@@ -1,27 +1,15 @@
 import type { Settings } from '../api';
 import { formatClock, formatCountdown, formatDuration, formatPastHour } from '../format';
-import { captureSlots, isAligned, nextCapture, secondsToNextCapture } from '../schedule';
-import { nextSunrise, sunUp } from '../sun';
+import type { NextShot } from '../nextShot';
+import { captureSlots } from '../schedule';
 
-type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'> &
-  Partial<Pick<Settings, 'SkipNightPhotos' | 'Latitude' | 'Longitude'>>;
-
-/**
- * With nights skipped, when photos resume if the next capture falls at night:
- * the first aligned slot after sunrise, or sunrise itself for unaligned captures
- * (like the camera's scheduler).
- */
-function resumesAt(schedule: Schedule, now: Date): Date | null {
-  const next = nextCapture(schedule, now);
-  if (next) return next.night ? next.at : null;
-  const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = schedule;
-  if (!SkipNightPhotos || isAligned(schedule) || sunUp(now, lat, lon)) return null;
-  return nextSunrise(now, lat, lon);
-}
+type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'>;
 
 interface Props {
   schedule: Schedule;
   now: Date;
+  /** The camera's planned next capture (GET /schedule); null or absent shows no countdown. */
+  next?: NextShot | null;
   /** Hide the countdown, e.g. when previewing unsaved settings. */
   label?: string;
 }
@@ -36,23 +24,22 @@ function polar(secondsIntoHour: number, radius: number): [number, number] {
 }
 
 /** A clock face for one hour: amber marks show when the camera fires. */
-export function HourDial({ schedule, now, label }: Props) {
+export function HourDial({ schedule, now, next, label }: Props) {
   const slots = captureSlots(schedule);
-  const wait = secondsToNextCapture(schedule, now);
-  const resume = resumesAt(schedule, now);
-  const into = now.getMinutes() * 60 + now.getSeconds();
+  const shot = label ? null : (next ?? null);
+  const wait = shot && Math.max(0, Math.round((shot.at.getTime() - now.getTime()) / 1000));
+  // Minutes past the hour on the camera's clock, which the capture marks refer to.
+  const into = shot
+    ? (((Math.floor(now.getTime() / 1000) + shot.zoneOffsetSeconds) % 3600) + 3600) % 3600
+    : now.getMinutes() * 60 + now.getSeconds();
   const dense = slots !== null && slots.length > 90;
   const [hx, hy] = polar(into, R - 16);
 
   const description =
-    slots === null
+    (slots === null
       ? `Captures every ${formatDuration(schedule.SecondsBetweenCaptures)}, counted from when the camera started.`
-      : `Captures at ${slots.length > 6 ? `${slots.length} times` : slots.map(formatPastHour).join(', ')} past each hour.` +
-        (resume && !label
-          ? ` Night: photos resume at ${formatClock(resume)}.`
-          : wait !== null && !label
-            ? ` Next capture in ${formatCountdown(wait)}.`
-            : '');
+      : `Captures at ${slots.length > 6 ? `${slots.length} times` : slots.map(formatPastHour).join(', ')} past each hour.`) +
+    (shot?.night ? ` Night: photos resume at ${formatClock(shot.at)}.` : wait !== null ? ` Next capture in ${formatCountdown(wait)}.` : '');
 
   return (
     <figure className="dial">
@@ -77,10 +64,10 @@ export function HourDial({ schedule, now, label }: Props) {
       <figcaption>
         {label ? (
           <span className="dial-caption">{label}</span>
-        ) : resume ? (
+        ) : shot?.night ? (
           <>
             <span className="dial-count small">Night</span>
-            <span className="dial-caption">photos resume at {formatClock(resume)}</span>
+            <span className="dial-caption">photos resume at {formatClock(shot.at)}</span>
           </>
         ) : wait !== null ? (
           <>
@@ -90,7 +77,7 @@ export function HourDial({ schedule, now, label }: Props) {
         ) : (
           <>
             <span className="dial-count small">Every {formatDuration(schedule.SecondsBetweenCaptures)}</span>
-            <span className="dial-caption">since start-up</span>
+            <span className="dial-caption">{slots === null ? 'since start-up' : 'at the marked minutes'}</span>
           </>
         )}
       </figcaption>

@@ -6,12 +6,13 @@ import { PhotoViewer } from '../components/PhotoViewer';
 import { ConfirmDialog, Notice, PageHeader, Spinner } from '../components/ui';
 import { formatClock, formatDay, formatDuration, formatPastHour, formatRelative } from '../format';
 import { useInterval, useNow, useResource } from '../hooks';
+import type { NextShot } from '../nextShot';
 import { captureSlots } from '../schedule';
 import { groupByDay, toItems, type Day } from './photoItems';
 
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
 
-export function PhotosView({ settings }: { settings: Settings | undefined }) {
+export function PhotosView({ settings, next = null }: { settings: Settings | undefined; next?: NextShot | null }) {
   const photos = useResource((signal) => api.photos(signal));
   const items = useMemo(() => toItems(photos.data ?? []), [photos.data]);
   const days = useMemo(() => groupByDay(items), [items]);
@@ -66,7 +67,7 @@ export function PhotosView({ settings }: { settings: Settings | undefined }) {
       {/* No image here: photos load only when opened (the Preview page shows the camera's view). */}
       <section className="hero" aria-label="Latest capture">
         <div className="hero-side">
-          {settings ? <HourDial schedule={settings} now={now} /> : <div className="dial placeholder" />}
+          {settings ? <HourDial schedule={settings} now={now} next={next} /> : <div className="dial placeholder" />}
           <dl className="facts">
             <div>
               <dt>Last capture</dt>

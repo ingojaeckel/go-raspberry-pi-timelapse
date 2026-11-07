@@ -142,6 +142,14 @@ function filesQuery(names: readonly string[]): string {
   return s ? `?${s}` : '';
 }
 
+/** GET /schedule: the scheduler's next capture (NextMillis 0 before it planned one) and the camera's clock and zone. */
+export interface CameraSchedule {
+  UnixMillis: number;
+  NextMillis: number;
+  Night: boolean;
+  ZoneOffsetSeconds: number;
+}
+
 export const api = {
   async photos(signal?: AbortSignal): Promise<Photo[]> {
     const r = await json<PhotosResponse>('/photos', { signal });
@@ -159,6 +167,9 @@ export const api = {
   },
   camera(signal?: AbortSignal): Promise<Camera> {
     return json<Camera>('/camera', { signal });
+  },
+  schedule(signal?: AbortSignal): Promise<CameraSchedule> {
+    return json<CameraSchedule>('/schedule', { signal });
   },
   monitoring(signal?: AbortSignal): Promise<Monitoring> {
     return json<Monitoring>('/monitoring', { signal });

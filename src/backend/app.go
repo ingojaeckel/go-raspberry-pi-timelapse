@@ -70,6 +70,8 @@ type app struct {
 	// sensors detects the camera; nil for backends that cannot list cameras.
 	sensors *timelapse.Sensors
 	deleted atomic.Int64 // photos deleted to free disk space
+	// sched is the running scheduler, for the API's next capture.
+	sched atomic.Pointer[timelapse.Scheduler]
 }
 
 // newApp acquires all resources in order. On failure, those acquired so far
@@ -201,8 +203,9 @@ func (a *app) close() {
 func (a *app) run(ctx context.Context, ready func(addr string)) error {
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()
-	server := a.httpServer()
 	sched := a.scheduler()
+	a.sched.Store(sched) // before serving: /schedule reports its plan
+	server := a.httpServer()
 	var wg sync.WaitGroup
 	wg.Go(func() { followDebugSetting(ctx, a.store, a.level) })
 	if interval, ok := watchdogInterval(); ok {
@@ -383,7 +386,16 @@ func (a *app) api() *rest.Server {
 		SetClock:      rest.SetSystemClock,
 		RTCDevice:     rtcDevice,
 		Sensor:        a.sensorFunc(),
+		NextCapture:   a.nextCapture,
 	}
+}
+
+// nextCapture is the running scheduler's next capture.
+func (a *app) nextCapture() (timelapse.Plan, bool) {
+	if s := a.sched.Load(); s != nil {
+		return s.Next()
+	}
+	return timelapse.Plan{}, false
 }
 
 func (a *app) sensorFunc() func(context.Context) (timelapse.Sensor, error) {

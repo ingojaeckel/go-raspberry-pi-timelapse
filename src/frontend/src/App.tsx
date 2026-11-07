@@ -2,7 +2,7 @@ import { api } from './api';
 import { Icon, type IconName } from './components/Icon';
 import { formatClock, formatCountdown } from './format';
 import { useNow, useResource, useRoute, type Route } from './hooks';
-import { nextCapture } from './schedule';
+import { useNextShot } from './nextShot';
 import { LogsView } from './views/LogsView';
 import { PhotosView } from './views/PhotosView';
 import { PreviewView } from './views/PreviewView';
@@ -21,7 +21,7 @@ export function App() {
   const route = useRoute();
   const settings = useResource((signal) => api.settings(signal));
   const now = useNow();
-  const next = settings.data ? nextCapture(settings.data, now) : null;
+  const next = useNextShot(settings.data, now);
   const wait = next && Math.max(0, Math.round((next.at.getTime() - now.getTime()) / 1000));
 
   return (
@@ -56,7 +56,7 @@ export function App() {
       </nav>
 
       <main className="main">
-        {route === 'photos' && <PhotosView settings={settings.data} />}
+        {route === 'photos' && <PhotosView settings={settings.data} next={next} />}
         {route === 'preview' && <PreviewView settings={settings.data} />}
         {route === 'status' && <StatusView settings={settings.data} />}
         {route === 'settings' && <SettingsView settings={settings.data} error={settings.error} onSaved={settings.set} />}

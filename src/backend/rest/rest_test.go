@@ -88,6 +88,8 @@ type env struct {
 	handler  http.Handler // mux + middleware, as served at url
 	// sensor is the detected camera; nil means none detected.
 	sensor *timelapse.Sensor
+	// plan is the scheduler's next capture; nil means none planned yet.
+	plan *timelapse.Plan
 }
 
 func newEnv(t testing.TB) *env {
@@ -123,6 +125,12 @@ func newEnv(t testing.TB) *env {
 			return timelapse.Sensor{}, timelapse.ErrNoCamera
 		}
 		return *e.sensor, nil
+	}
+	e.srv.NextCapture = func() (timelapse.Plan, bool) {
+		if e.plan == nil {
+			return timelapse.Plan{}, false
+		}
+		return *e.plan, true
 	}
 	mux := http.NewServeMux()
 	e.srv.Register(mux)
@@ -862,6 +870,37 @@ func TestUpdateConfigurationNeedsALocationToSkipNights(t *testing.T) {
 	res, out := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90,"SkipNightPhotos":true}`)
 	wantStatus(t, res, out, 400)
 	if !strings.Contains(out, "location") {
+		t.Fatalf("got %s", out)
+	}
+}
+
+func TestScheduleReportsTheNextCapture(t *testing.T) {
+	e := newEnv(t)
+	at := time.Now().Add(11 * time.Hour).Truncate(time.Millisecond)
+	e.plan = &timelapse.Plan{At: at, Night: true}
+	before := time.Now().UnixMilli()
+	res, out := do(t, "GET", e.url+"/schedule", "")
+	wantStatus(t, res, out, 200)
+	var got ScheduleResponse
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	_, offset := time.Now().Zone()
+	if got.NextMillis != at.UnixMilli() || !got.Night || got.UnixMillis < before || got.UnixMillis > time.Now().UnixMilli() || got.ZoneOffsetSeconds != offset {
+		t.Fatalf("got %s", out)
+	}
+	if res.Header.Get("Cache-Control") != "no-store" {
+		t.Errorf("Cache-Control %q", res.Header.Get("Cache-Control"))
+	}
+}
+
+func TestScheduleBeforeTheFirstPlan(t *testing.T) {
+	e := newEnv(t)
+	res, out := do(t, "GET", e.url+"/schedule", "")
+	wantStatus(t, res, out, 200)
+	var got ScheduleResponse
+	json.Unmarshal([]byte(out), &got)
+	if got.NextMillis != 0 || got.UnixMillis == 0 {
 		t.Fatalf("got %s", out)
 	}
 }

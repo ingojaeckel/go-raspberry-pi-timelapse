@@ -52,6 +52,9 @@ type Server struct {
 	// Sensor returns the detected camera (timelapse.Sensors.Get); nil
 	// without camera detection.
 	Sensor func(ctx context.Context) (timelapse.Sensor, error)
+	// NextCapture is the scheduler's next capture (timelapse.Scheduler.Next);
+	// nil without a scheduler.
+	NextCapture func() (timelapse.Plan, bool)
 	// RTCDevice is the battery-backed clock module, written after the clock
 	// is set if it exists. sudoers allows hwclock for /dev/rtc0 only.
 	RTCDevice string
@@ -76,6 +79,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /archive/tar", s.archive("archive.tar", "application/tar", files.TarSize, files.WriteTar))
 	mux.HandleFunc("GET /monitoring", s.monitoring)
 	mux.HandleFunc("GET /camera", s.camera)
+	mux.HandleFunc("GET /schedule", s.schedule)
 	mux.HandleFunc("GET /logs", s.logs)
 	mux.HandleFunc("POST /admin/shutdown", s.command("/usr/bin/sudo", "/sbin/shutdown", "-h", "now"))
 	mux.HandleFunc("POST /admin/restart", s.command("/usr/bin/sudo", "/sbin/shutdown", "-r", "now"))

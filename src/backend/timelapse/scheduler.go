@@ -4,6 +4,7 @@ package timelapse
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
@@ -55,6 +56,25 @@ type Scheduler struct {
 	// pausedUntil is the sunrise captures wait for with SkipNightPhotos,
 	// remembered to log the pause once.
 	pausedUntil time.Time
+	// planned is the next capture, for Next.
+	planned atomic.Pointer[Plan]
+}
+
+// Plan is when the scheduler takes its next photo. Night means the slot was
+// moved past the night (SkipNightPhotos).
+type Plan struct {
+	At    time.Time
+	Night bool
+}
+
+// Next is the capture the running scheduler waits for (or is taking, if At
+// has passed); false before Run has planned one. Safe for concurrent use.
+func (s *Scheduler) Next() (Plan, bool) {
+	p := s.planned.Load()
+	if p == nil {
+		return Plan{}, false
+	}
+	return *p, true
 }
 
 // Run captures photos until ctx is cancelled. Settings changes take effect
@@ -75,7 +95,9 @@ func (s *Scheduler) Run(ctx context.Context) {
 		if s.Heartbeat != nil {
 			s.Heartbeat()
 		}
-		next := s.next(s.Settings.Get(), time.Now(), anchor, lastSlot)
+		plan := s.plan(s.Settings.Get(), time.Now(), anchor, lastSlot)
+		s.planned.Store(&plan)
+		next := plan.At
 		if wait := time.Until(next); wait > 0 {
 			s.sleep(ctx, changed, next, wait) // then re-evaluate settings and clock
 			continue
@@ -104,6 +126,10 @@ func (s *Scheduler) sleep(ctx context.Context, changed <-chan struct{}, next tim
 }
 
 func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) time.Time {
+	return s.plan(set, now, anchor, lastSlot).At
+}
+
+func (s *Scheduler) plan(set conf.Settings, now, anchor, lastSlot time.Time) Plan {
 	interval := time.Duration(set.SecondsBetweenCaptures) * time.Second
 	var next time.Time
 	if set.OffsetWithinHour == conf.OffsetDisabled {
@@ -113,9 +139,9 @@ func (s *Scheduler) next(set conf.Settings, now, anchor, lastSlot time.Time) tim
 		next = NextAligned(from.In(s.location()), set.SecondsBetweenCaptures, set.OffsetWithinHour)
 	}
 	if !set.SkipNightPhotos || sun.Up(next, set.Latitude, set.Longitude) {
-		return next
+		return Plan{At: next}
 	}
-	return s.afterNight(set, next)
+	return Plan{At: s.afterNight(set, next), Night: true}
 }
 
 // noSunriseRecheck is when to look again where the sun does not rise

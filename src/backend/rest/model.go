@@ -71,6 +71,17 @@ type CameraResponse struct {
 	Error         string `json:",omitempty"`
 }
 
+// ScheduleResponse is the scheduler's next capture (NextMillis, 0 before
+// the first is planned; Night when it was moved past the night), the camera's
+// clock (UnixMillis) and its time zone's offset from UTC, so the browser
+// can count down and place the clock hand even if its own clock or zone differs.
+type ScheduleResponse struct {
+	UnixMillis        int64
+	NextMillis        int64
+	Night             bool
+	ZoneOffsetSeconds int
+}
+
 // SetTimeRequest sets the camera's clock, e.g. to the browser's.
 type SetTimeRequest struct {
 	UnixMillis int64

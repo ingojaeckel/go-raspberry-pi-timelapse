@@ -1,5 +1,5 @@
 import type { Settings } from './api';
-import { daylightFraction, nextSunrise, sunUp, validLocation } from './sun';
+import { daylightFraction, validLocation } from './sun';
 
 type Schedule = Pick<Settings, 'SecondsBetweenCaptures' | 'OffsetWithinHour'>;
 
@@ -35,21 +35,6 @@ function usable(s: Schedule): boolean {
   return isValidInterval(s.SecondsBetweenCaptures) && s.OffsetWithinHour < s.SecondsBetweenCaptures;
 }
 
-/**
- * Seconds until the next capture. A port of timelapse.NextAligned in
- * src/backend/timelapse/schedule.go; both are tested against
- * schedule-cases.json. Returns null when captures are not aligned to the hour
- * (they then run every N seconds since start-up) or the schedule is invalid.
- */
-export function secondsToNextCapture(s: Schedule, now: Date): number | null {
-  if (!isAligned(s) || !usable(s)) return null;
-  const interval = s.SecondsBetweenCaptures;
-  const sinceFirst = now.getMinutes() * 60 + now.getSeconds() - s.OffsetWithinHour;
-  // offset < interval, so this is never more than one interval before the first slot.
-  const k = Math.max(0, Math.ceil(sinceFirst / interval));
-  return k * interval - sinceFirst;
-}
-
 /** Capture times as seconds past the hour (0..3599), sorted. Null when not aligned or invalid. */
 export function captureSlots(s: Schedule): number[] | null {
   if (!isAligned(s) || !usable(s)) return null;
@@ -75,21 +60,4 @@ export function photosPerDay(s: NightSchedule, now: Date): number {
   const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = s;
   if (!SkipNightPhotos || !validLocation(lat, lon) || (lat === 0 && lon === 0)) return all;
   return Math.round(all * daylightFraction(now, lat, lon));
-}
-
-/**
- * When the camera takes its next photo. With nights skipped, a slot at night
- * moves to the first slot at or after sunrise, as in the scheduler
- * (timelapse.Scheduler afterNight); `night` says so. Null when captures are not
- * aligned to the hour, the schedule is invalid, or there is no sunrise within a year.
- */
-export function nextCapture(s: NightSchedule, now: Date): { at: Date; night: boolean } | null {
-  const wait = secondsToNextCapture(s, now);
-  if (wait === null) return null;
-  const at = new Date(now.getTime() + wait * 1000);
-  const { SkipNightPhotos, Latitude: lat = 0, Longitude: lon = 0 } = s;
-  if (!SkipNightPhotos || sunUp(at, lat, lon)) return { at, night: false };
-  const rise = nextSunrise(at, lat, lon);
-  if (!rise) return null;
-  return { at: new Date(rise.getTime() + (secondsToNextCapture(s, rise) ?? 0) * 1000), night: true };
 }

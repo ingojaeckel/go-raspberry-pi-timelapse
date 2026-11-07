@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 )
@@ -92,5 +93,18 @@ func (s *Server) camera(w http.ResponseWriter, r *http.Request) {
 	} else {
 		res = CameraResponse{Model: sensor.Model, Width: sensor.Width, Height: sensor.Height, Resolutions: sensor.Resolutions()}
 	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (s *Server) schedule(w http.ResponseWriter, _ *http.Request) {
+	now := time.Now()
+	_, offset := now.Zone()
+	res := ScheduleResponse{UnixMillis: now.UnixMilli(), ZoneOffsetSeconds: offset}
+	if s.NextCapture != nil {
+		if p, ok := s.NextCapture(); ok {
+			res.NextMillis, res.Night = p.At.UnixMilli(), p.Night
+		}
+	}
+	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, res)
 }

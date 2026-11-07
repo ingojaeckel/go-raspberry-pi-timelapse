@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"image"
 	"image/jpeg"
@@ -127,6 +128,15 @@ func TestRunServesTheAppAndShutsDownCleanly(t *testing.T) {
 	}
 	if code, _ := get("/debug/pprof/"); code == 200 {
 		t.Error("pprof must be off unless requested")
+	}
+	// The scheduler's plan reaches the API (the page shows it as "Next shot").
+	var sched struct{ NextMillis int64 }
+	for deadline := time.Now().Add(5 * time.Second); sched.NextMillis == 0 && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		_, body := get("/schedule")
+		json.Unmarshal([]byte(body), &sched)
+	}
+	if next := time.UnixMilli(sched.NextMillis); time.Until(next) > 10*time.Minute || time.Until(next) < -time.Minute {
+		t.Errorf("/schedule next capture %v, want within the 10 minute interval", next)
 	}
 
 	cancel()

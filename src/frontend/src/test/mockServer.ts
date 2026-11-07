@@ -76,6 +76,7 @@ export function mockServer(overrides: Record<string, Handler> = {}) {
     'GET /photos': () => json({ Photos: photos }),
     'GET /monitoring': () => json(monitoring),
     'GET /camera': () => json(camera),
+    'GET /schedule': () => json({ UnixMillis: Date.now(), NextMillis: Date.now() + 600_000, Night: false, ZoneOffsetSeconds: 0 }),
     'GET /logs': () => json({ Logs: '2026/11/02 10:00:00 started\n2026/11/02 10:15:00 Error during capture: boom\n' }),
     'GET /version': () => new Response('Hello from arm on linux [version:abc]'),
     'DELETE /file': () => json(1),

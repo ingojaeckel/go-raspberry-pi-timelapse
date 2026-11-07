@@ -481,3 +481,41 @@ func TestNightPhotosAreTakenWhenNotSkipped(t *testing.T) {
 		assertTimes(t, h.camera.times(), secs(0, 3600, 7200, 10800))
 	})
 }
+
+func TestNextIsUnknownBeforeTheSchedulerRuns(t *testing.T) {
+	if _, ok := (&Scheduler{}).Next(); ok {
+		t.Fatal("a plan before Run")
+	}
+}
+
+func TestNextIsThePlannedCapture(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := start(t, 3600, 0)
+		advance(h, 10*time.Minute)
+		p, ok := h.sched.Next()
+		if want := h.camera.start.Add(time.Hour); !ok || !p.At.Equal(want) || p.Night {
+			t.Fatalf("Next() = %+v %v, want %v by day", p, ok, want)
+		}
+	})
+}
+
+func TestNextIsUnalignedFromStartUp(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := start(t, 600, conf.OffsetDisabled)
+		advance(h, time.Minute)
+		if p, ok := h.sched.Next(); !ok || !p.At.Equal(h.camera.start.Add(10*time.Minute)) {
+			t.Fatalf("Next() = %+v %v", p, ok)
+		}
+	})
+}
+
+func TestNextIsAfterSunriseAtNight(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := start(t, 3600, 0, london) // midnight in London on 2000-01-01; sunrise about 08:06
+		advance(h, 10*time.Minute)
+		p, ok := h.sched.Next()
+		if want := h.camera.start.Add(9 * time.Hour); !ok || !p.At.Equal(want) || !p.Night {
+			t.Fatalf("Next() = %+v %v, want %v after the night", p, ok, want)
+		}
+	})
+}

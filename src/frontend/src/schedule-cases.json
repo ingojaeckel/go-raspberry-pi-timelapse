@@ -1,5 +1,5 @@
 {
-  "description": "Shared by src/frontend/src/schedule.test.ts and src/backend/timelapse/schedule_test.go so the UI predicts exactly what the camera does. 'wait' is the number of seconds from minute:second past the hour until the next capture; 0 means capture now.",
+  "description": "Valid and invalid intervals are shared by src/frontend/src/schedule.test.ts and src/backend/timelapse/schedule_test.go so the UI offers exactly what the camera accepts; 'cases' test timelapse.NextAligned. 'wait' is the number of seconds from minute:second past the hour until the next capture; 0 means capture now. The UI shows the camera's own plan (GET /schedule) rather than predicting it.",
   "validIntervals": [60, 72, 75, 80, 90, 100, 120, 144, 150, 180, 200, 225, 240, 300, 360, 400, 450, 600, 720, 900, 1200, 1800, 3600],
   "invalidIntervals": [0, 1, 59, 61, 1000, 3599, 3601, 7200],
   "cases": [
