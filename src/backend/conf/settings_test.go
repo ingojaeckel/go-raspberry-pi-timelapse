@@ -105,6 +105,37 @@ func TestNormalizedRepairsPhotoFields(t *testing.T) {
 	}
 }
 
+func TestNormalizedRepairsTheLocation(t *testing.T) {
+	s := valid()
+	s.SkipNightPhotos, s.Latitude, s.Longitude = true, 200, -0.1278
+	if n := s.Normalized(); n.SkipNightPhotos || n.Latitude != 0 || n.Longitude != 0 {
+		t.Fatalf("an impossible location must be cleared and nights not skipped, got %s", n)
+	}
+	s.Latitude, s.Longitude = 0, 0
+	if n := s.Normalized(); n.SkipNightPhotos {
+		t.Fatal("nights cannot be skipped without a location")
+	}
+}
+
+// Whatever was saved, the repaired settings pass validation: the camera
+// never runs with settings the API would reject.
+func FuzzNormalizedIsValid(f *testing.F) {
+	f.Add(1800, 900, 1640, 1232, 0, 100, true, 51.5, -0.1)
+	f.Add(0, -5, 0, 0, 90, 0, true, 0.0, 0.0)
+	f.Add(7200, 3700, 70000, 10, 180, 101, false, 91.0, 181.0)
+	f.Fuzz(func(t *testing.T, interval, offset, width, height, rotate, quality int, skip bool, lat, lon float64) {
+		s := Settings{SecondsBetweenCaptures: interval, OffsetWithinHour: offset, PhotoResolutionWidth: width,
+			PhotoResolutionHeight: height, RotateBy: rotate, Quality: quality, SkipNightPhotos: skip, Latitude: lat, Longitude: lon}
+		n := s.Normalized()
+		if err := n.Validate(); err != nil {
+			t.Fatalf("Normalized(%s) = %s: %v", s, n, err)
+		}
+		if n.Normalized() != n {
+			t.Fatalf("Normalized is not stable for %s", n)
+		}
+	})
+}
+
 // Versions before the camera's own resolutions were offered saved a
 // ResolutionSetting index next to the size it selected; the size is kept.
 func TestSettingsOfOlderVersionsKeepTheirPhotoSize(t *testing.T) {
@@ -139,7 +170,7 @@ func TestDefaultUsesGivenInterval(t *testing.T) {
 }
 
 func TestSettingsStringIsJSON(t *testing.T) {
-	want := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"PreviewResolutionWidth":0,"PreviewResolutionHeight":0,"RotateBy":0,"Quality":0,"DebugEnabled":false,"StopWhenDiskFull":false,"SkipNightPhotos":false,"Latitude":0,"Longitude":0}`
+	want := `{"SecondsBetweenCaptures":0,"OffsetWithinHour":0,"PhotoResolutionWidth":0,"PhotoResolutionHeight":0,"RotateBy":0,"Quality":0,"DebugEnabled":false,"StopWhenDiskFull":false,"SkipNightPhotos":false,"Latitude":0,"Longitude":0}`
 	if got := (Settings{}).String(); got != want {
 		t.Fatalf("got %s", got)
 	}

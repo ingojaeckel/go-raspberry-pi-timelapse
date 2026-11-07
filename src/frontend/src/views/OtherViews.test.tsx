@@ -165,8 +165,9 @@ describe('LogsView', () => {
 
 describe('PreviewView', () => {
   it('requests a fresh capture each time', async () => {
-    render(<PreviewView settings={settings} />);
+    render(<PreviewView />);
     const user = userEvent.setup();
+    expect(screen.getByText(/Taken at 640×480\./)).toBeInTheDocument();
     const img = screen.getByAltText('Camera preview');
     const first = img.getAttribute('src');
     expect(first).toMatch(/^\/capture\?t=\d+$/);
@@ -178,7 +179,7 @@ describe('PreviewView', () => {
   });
 
   it('says when the camera could not take a preview, and allows a retry', async () => {
-    render(<PreviewView settings={settings} />);
+    render(<PreviewView />);
     fireEvent.error(screen.getByAltText('Camera preview'));
     expect(await screen.findByText(/The camera couldn't take a preview/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Take preview' })).toBeEnabled();

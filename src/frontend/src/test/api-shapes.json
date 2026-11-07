@@ -17,8 +17,6 @@
     "OffsetWithinHour": "number",
     "PhotoResolutionHeight": "number",
     "PhotoResolutionWidth": "number",
-    "PreviewResolutionHeight": "number",
-    "PreviewResolutionWidth": "number",
     "Quality": "number",
     "RotateBy": "number",
     "SecondsBetweenCaptures": "number",

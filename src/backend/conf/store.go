@@ -4,119 +4,86 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
-
-	bolt "go.etcd.io/bbolt"
-	berrors "go.etcd.io/bbolt/errors"
 )
 
-var (
-	bucketName  = []byte("settings")
-	settingsKey = []byte("s")
-)
+// ErrInUse means another Store, i.e. another running app, has the settings
+// open.
+var ErrInUse = errors.New("the settings are in use by another running app")
 
-// Store owns the settings: it keeps the database open for the lifetime of the
-// process, serves the current value from memory and notifies subscribers
-// whenever it changes. It is safe for concurrent use.
+// errDamaged means the settings file is not valid JSON.
+var errDamaged = errors.New("the settings file is damaged")
+
+// Store owns the settings: a JSON file, replaced atomically on every update,
+// so that after a power cut it holds either the old or the new settings. It
+// serves the current value from memory and notifies subscribers whenever it
+// changes. While open it holds a lock (path.lock), so only one app at a time
+// runs the camera. It is safe for concurrent use.
 type Store struct {
-	db      *bolt.DB
-	mu      sync.Mutex // serializes Update
+	path    string
+	lock    *os.File
 	current atomic.Pointer[Settings]
 
-	subsMu sync.Mutex
-	subs   []chan struct{}
+	mu   sync.Mutex // serializes Update, guards subs
+	subs []chan struct{}
 }
 
-// OpenStore opens (or creates) the settings database at path. A missing or
-// unreadable value is replaced by defaults. A corrupt database file, e.g.
-// after a power cut, is moved aside to path.corrupt-<unix time> and replaced
-// so the camera keeps working.
+// OpenStore opens the settings file at path, creating it with defaults if
+// nothing was saved yet. Invalid saved settings are repaired (Normalized). A
+// damaged file is moved aside to path.corrupt-<unix time> and replaced by the
+// defaults so the camera keeps working; a file that cannot be read (e.g.
+// permissions) is left alone and the error returned, as its settings may be
+// fine.
 func OpenStore(path string, defaults Settings) (*Store, error) {
-	db, err := openOrReplaceDB(path)
+	lock, err := lockFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("open settings: %w", err)
 	}
-	s := &Store{db: db}
+	s := &Store{path: path, lock: lock}
 	current, err := s.initialSettings(defaults)
-	if errors.Is(err, errCorruptPage) { // the file opened, but its pages are damaged
-		db.Close()
-		if s.db, err = replaceDB(path, err); err != nil {
-			return nil, fmt.Errorf("open settings: %w", err)
-		}
-		current, err = s.initialSettings(defaults)
-	}
 	if err != nil {
-		s.db.Close()
-		return nil, fmt.Errorf("save settings: %w", err)
+		lock.Close()
+		return nil, fmt.Errorf("open settings: %w", err)
 	}
 	s.current.Store(&current)
 	return s, nil
 }
 
-// openOrReplaceDB opens the database. A file whose content bbolt cannot
-// read is moved aside and replaced by a new one. A file that cannot be
-// opened, locked or examined (permissions, another process holds it) is left
-// alone and the error returned: its settings may be fine.
-func openOrReplaceDB(path string) (*bolt.DB, error) {
-	db, err := openDB(path, false)
-	if err == nil || !isCorrupt(err) {
-		return db, err
-	}
-	return replaceDB(path, err)
-}
-
-// replaceDB moves the unreadable database at path aside and creates a new
-// one; err is why it is unreadable.
-func replaceDB(path string, err error) (*bolt.DB, error) {
-	aside := fmt.Sprintf("%s.corrupt-%d", path, time.Now().Unix())
-	slog.Error("settings database is unreadable, starting with defaults", "path", path, "movedTo", aside, "err", err)
-	if rerr := os.Rename(path, aside); rerr != nil {
-		return nil, fmt.Errorf("%w (and moving it aside failed: %v)", err, rerr)
-	}
-	return openDB(path, false)
-}
-
-// initialSettings loads the saved settings, or defaults if there are none,
-// and saves them back if they had to be repaired.
+// initialSettings loads the saved settings, or the defaults if there are
+// none, and saves them back if they had to be repaired.
 func (s *Store) initialSettings(defaults Settings) (Settings, error) {
-	loaded, err := s.load()
-	if errors.Is(err, errCorruptPage) {
-		return Settings{}, err // writing to the file would panic too
+	saved, err := readFile(s.path)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		slog.Info("no settings saved yet, using the defaults")
+		return s.save(defaults.Normalized())
+	case errors.Is(err, errDamaged):
+		if err := moveAside(s.path, err); err != nil {
+			return Settings{}, err
+		}
+		return s.save(defaults.Normalized())
+	case err != nil:
+		return Settings{}, err
 	}
-	if err != nil {
-		slog.Warn("no usable saved settings, using defaults", "err", err)
-		normalized := defaults.Normalized()
-		return normalized, s.put(normalized)
+	if repaired := saved.Normalized(); repaired != saved {
+		slog.Warn("saved settings were invalid and have been adjusted", "from", saved, "to", repaired)
+		return s.save(repaired)
 	}
-	normalized := loaded.Normalized()
-	if normalized == loaded {
-		return loaded, nil
-	}
-	slog.Warn("saved settings were invalid and have been adjusted", "from", loaded, "to", normalized)
-	return normalized, s.put(normalized)
+	return saved, nil
 }
 
-// isCorrupt reports whether an error from bolt.Open is about the file's
-// content, as opposed to an operating system error or a lock timeout.
-func isCorrupt(err error) bool {
-	var pathErr *fs.PathError
-	var errno syscall.Errno
-	return !errors.Is(err, berrors.ErrTimeout) && !errors.As(err, &pathErr) && !errors.As(err, &errno)
+func (s *Store) save(v Settings) (Settings, error) {
+	return v, writeSettings(s.path, v)
 }
 
-// openDB waits at most a second for another process's lock on the file.
-func openDB(path string, readOnly bool) (*bolt.DB, error) {
-	return bolt.Open(path, 0o600, &bolt.Options{Timeout: time.Second, ReadOnly: readOnly})
-}
-
-// Close closes the database.
-func (s *Store) Close() error { return s.db.Close() }
+// Close releases the lock; the settings are saved already.
+func (s *Store) Close() error { return s.lock.Close() }
 
 // Get returns the current settings.
 func (s *Store) Get() Settings { return *s.current.Load() }
@@ -126,14 +93,14 @@ func (s *Store) Get() Settings { return *s.current.Load() }
 // and should then call Get for the latest settings.
 func (s *Store) Subscribe() <-chan struct{} {
 	ch := make(chan struct{}, 1)
-	s.subsMu.Lock()
+	s.mu.Lock()
 	s.subs = append(s.subs, ch)
-	s.subsMu.Unlock()
+	s.mu.Unlock()
 	return ch
 }
 
 // Update applies change to a copy of the current settings, validates and
-// persists the result and notifies subscribers. Validation errors wrap
+// saves the result and notifies subscribers. Validation errors wrap
 // ErrInvalid and leave the settings as they were.
 func (s *Store) Update(change func(*Settings)) (Settings, error) {
 	s.mu.Lock()
@@ -144,80 +111,126 @@ func (s *Store) Update(change func(*Settings)) (Settings, error) {
 	if err := next.Validate(); err != nil {
 		return Settings{}, err
 	}
-	if err := s.put(next); err != nil {
+	if err := writeSettings(s.path, next); err != nil {
 		return Settings{}, fmt.Errorf("save settings: %w", err)
 	}
 	s.current.Store(&next)
 	slog.Info("settings updated", "settings", next)
-	s.notify()
-	return next, nil
-}
-
-// notify signals every subscriber without blocking.
-func (s *Store) notify() {
-	s.subsMu.Lock()
-	defer s.subsMu.Unlock()
 	for _, ch := range s.subs {
 		select {
 		case ch <- struct{}{}:
 		default: // a signal is already pending
 		}
 	}
+	return next, nil
 }
 
-func (s *Store) put(v Settings) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	return s.db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists(bucketName)
-		if err != nil {
-			return err
-		}
-		return bucket.Put(settingsKey, b)
-	})
-}
-
-// errCorruptPage is a page bbolt panicked on while reading the settings.
-var errCorruptPage = errors.New("settings database is damaged")
-
-func (s *Store) load() (v Settings, err error) {
-	defer func() {
-		// bbolt panics on some forms of page corruption.
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%w: %v", errCorruptPage, r)
-		}
-	}()
-	err = s.db.View(func(tx *bolt.Tx) error {
-		var raw []byte
-		if bucket := tx.Bucket(bucketName); bucket != nil {
-			raw = bucket.Get(settingsKey)
-		}
-		if raw == nil {
-			return errors.New("settings not found")
-		}
-		return json.Unmarshal(raw, &v)
-	})
-	return v, err
-}
-
-// ReadSettings reads the settings saved at path without creating, repairing
-// or locking the file for writing, for tools that run next to the app. It
-// fails with os.ErrNotExist when nothing was saved yet, and with a lock
-// timeout while the app has the file open.
+// ReadSettings reads the settings saved at path, repaired like OpenStore
+// would, without creating, changing or locking anything: for tools that run
+// next to the app. It fails with os.ErrNotExist when nothing was saved yet.
 func ReadSettings(path string) (Settings, error) {
-	if _, err := os.Stat(path); err != nil {
-		return Settings{}, err
-	}
-	db, err := openDB(path, true)
-	if err != nil {
-		return Settings{}, err
-	}
-	defer db.Close()
-	v, err := (&Store{db: db}).load()
+	v, err := readFile(path)
 	if err != nil {
 		return Settings{}, err
 	}
 	return v.Normalized(), nil
+}
+
+// InUse reports whether a Store has the settings at path open, e.g. the
+// running app.
+func InUse(path string) bool {
+	f, err := os.OpenFile(path+".lock", os.O_RDWR, 0)
+	if err != nil {
+		return false // never opened
+	}
+	defer f.Close() // releases the lock if tryLock got it
+	return errors.Is(tryLock(f), ErrInUse)
+}
+
+func readFile(path string) (Settings, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return Settings{}, err
+	}
+	var v Settings
+	if err := json.Unmarshal(b, &v); err != nil {
+		return Settings{}, fmt.Errorf("%w: %v", errDamaged, err)
+	}
+	return v, nil
+}
+
+func moveAside(path string, why error) error {
+	aside := fmt.Sprintf("%s.corrupt-%d", path, time.Now().Unix())
+	slog.Error("settings file is damaged, starting with the defaults", "path", path, "movedTo", aside, "err", why)
+	if err := os.Rename(path, aside); err != nil {
+		return fmt.Errorf("%w (and moving it aside failed: %v)", why, err)
+	}
+	return nil
+}
+
+// writeSettings saves v as indented JSON, readable and editable by hand.
+func writeSettings(path string, v Settings) error {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(path, append(b, '\n'))
+}
+
+// writeFileAtomic replaces path with data: written to a temporary file in
+// the same folder, synced, renamed over path, and the folder synced, so that
+// after a power cut path is either the old or the new version.
+func writeFileAtomic(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	f, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name()) // fails harmlessly once renamed
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Sync()
+	}
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(f.Name(), path)
+	}
+	if err == nil {
+		err = syncDir(dir)
+	}
+	return err
+}
+
+func syncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	return d.Sync()
+}
+
+// lockFile opens path.lock and locks it, or fails with ErrInUse.
+func lockFile(path string) (*os.File, error) {
+	f, err := os.OpenFile(path+".lock", os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	if err := tryLock(f); err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
+// tryLock takes an exclusive lock on f without waiting; closing f releases
+// it, as does the process ending, however it ends.
+func tryLock(f *os.File) error {
+	err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if errors.Is(err, syscall.EWOULDBLOCK) {
+		return ErrInUse
+	}
+	return err
 }

@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 [Service]
 User=pi
 Group=pi
-# timelapse-settings.db and timelapse.log are created here. The binary in
+# timelapse-settings.json and timelapse.log are created here. The binary in
 # /opt/timelapse is part of the image (see docs/installer.md).
 WorkingDirectory=/home/pi
 ExecStart=/opt/timelapse/timelapse -port=:8080 -logToFile=true -secondsBetweenCaptures=1800 -storageFolder=/home/pi/timelapse-pictures/

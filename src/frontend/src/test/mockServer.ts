@@ -6,8 +6,6 @@ export const settings: Settings = {
   OffsetWithinHour: 900,
   PhotoResolutionWidth: 1640,
   PhotoResolutionHeight: 1232,
-  PreviewResolutionWidth: 640,
-  PreviewResolutionHeight: 480,
   RotateBy: 0,
   Quality: 100,
   DebugEnabled: false,

@@ -25,7 +25,6 @@ import (
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/health"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/sun"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
-	berrors "go.etcd.io/bbolt/errors"
 )
 
 // Status is the outcome of one check. Only Fail makes the self-check fail.
@@ -188,13 +187,14 @@ func readSettings(cfg Config) (conf.Settings, Result) {
 	switch {
 	case err == nil:
 		r.Detail = "saved settings: " + describe(s)
+		if conf.InUse(cfg.SettingsFile) {
+			r.Status = Warn
+			r.Detail += "; the timelapse app is running"
+			r.Hint = "a scheduled capture can collide with this test photo; stop the app for a clean check (in the image: sudo systemctl stop timelapse)"
+		}
 		return s, r
 	case errors.Is(err, os.ErrNotExist):
 		r.Detail = "nothing saved yet"
-	case errors.Is(err, berrors.ErrTimeout):
-		r.Status = Warn
-		r.Detail = "the timelapse app is running (it holds " + cfg.SettingsFile + ")"
-		r.Hint = "a scheduled capture can collide with this test photo; stop the app for a clean check (in the image: sudo systemctl stop timelapse)"
 	default:
 		r.Status = Warn
 		r.Detail = fmt.Sprintf("cannot read %s (%v)", cfg.SettingsFile, err)

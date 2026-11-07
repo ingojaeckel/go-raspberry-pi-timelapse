@@ -51,21 +51,13 @@ func (s *Server) checkPhotoSize(ctx context.Context, req conf.Settings) error {
 		req.PhotoResolutionWidth, req.PhotoResolutionHeight, sensor.ResolutionList())
 }
 
-// applyEditable copies the schedule and photo fields of req into c. The
-// preview size is not editable through the API; a request without a photo
+// applyEditable replaces c by req, except that a request without a photo
 // size keeps the saved one.
 func applyEditable(c *conf.Settings, req conf.Settings) {
-	c.SecondsBetweenCaptures = req.SecondsBetweenCaptures
-	c.OffsetWithinHour = req.OffsetWithinHour
-	c.Quality = req.Quality
-	c.RotateBy = req.RotateBy
-	if req.PhotoResolutionWidth != 0 || req.PhotoResolutionHeight != 0 {
-		c.PhotoResolutionWidth, c.PhotoResolutionHeight = req.PhotoResolutionWidth, req.PhotoResolutionHeight
+	if req.PhotoResolutionWidth == 0 && req.PhotoResolutionHeight == 0 {
+		req.PhotoResolutionWidth, req.PhotoResolutionHeight = c.PhotoResolutionWidth, c.PhotoResolutionHeight
 	}
-	c.DebugEnabled = req.DebugEnabled
-	c.StopWhenDiskFull = req.StopWhenDiskFull
-	c.SkipNightPhotos = req.SkipNightPhotos
-	c.Latitude, c.Longitude = req.Latitude, req.Longitude
+	*c = req
 }
 
 // updateErrorStatus is 400 for invalid settings and 500 for anything else.

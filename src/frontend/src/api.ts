@@ -15,8 +15,6 @@ export interface Settings {
   OffsetWithinHour: number;
   PhotoResolutionWidth: number;
   PhotoResolutionHeight: number;
-  PreviewResolutionWidth: number;
-  PreviewResolutionHeight: number;
   /** 0 or 180. */
   RotateBy: number;
   Quality: number;

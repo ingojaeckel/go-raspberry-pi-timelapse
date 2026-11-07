@@ -91,7 +91,7 @@ func (s *Server) version(w http.ResponseWriter, _ *http.Request) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		slog.Warn("writing response", "err", err)

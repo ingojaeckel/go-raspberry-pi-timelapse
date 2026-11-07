@@ -78,14 +78,16 @@ func (c *fakeClock) set(t time.Time) error {
 }
 
 type env struct {
-	clock    *fakeClock
-	srv      *Server
-	url      string
-	folder   string
-	store    *conf.Store
-	camera   *fakeCamera
-	commands *commands
-	handler  http.Handler // mux + middleware, as served at url
+	clock  *fakeClock
+	srv    *Server
+	url    string
+	folder string
+	store  *conf.Store
+	// settingsFile is where store saves, alone in its folder.
+	settingsFile string
+	camera       *fakeCamera
+	commands     *commands
+	handler      http.Handler // mux + middleware, as served at url
 	// sensor is the detected camera; nil means none detected.
 	sensor *timelapse.Sensor
 	// plan is the scheduler's next capture; nil means none planned yet.
@@ -95,12 +97,14 @@ type env struct {
 func newEnv(t testing.TB) *env {
 	t.Helper()
 	dir := t.TempDir()
-	store, err := conf.OpenStore(filepath.Join(dir, "settings.db"), conf.Default(1800))
+	settingsFile := filepath.Join(dir, "settings", "settings.json")
+	os.Mkdir(filepath.Dir(settingsFile), 0o700)
+	store, err := conf.OpenStore(settingsFile, conf.Default(1800))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	e := &env{store: store, folder: filepath.Join(dir, "photos"), camera: &fakeCamera{}, clock: &fakeClock{},
+	e := &env{store: store, settingsFile: settingsFile, folder: filepath.Join(dir, "photos"), camera: &fakeCamera{}, clock: &fakeClock{},
 		commands: &commands{hwclock: func() ([]byte, error) { return nil, nil }}}
 	os.Mkdir(e.folder, 0o700)
 	os.Mkdir(filepath.Join(dir, "tmp"), 0o700)
@@ -224,9 +228,6 @@ func TestUpdateConfiguration(t *testing.T) {
 	}
 	if !got.SkipNightPhotos || got.Latitude != 51.5074 || got.Longitude != -0.1278 {
 		t.Fatalf("night skipping not stored: %s", got)
-	}
-	if got.PreviewResolutionWidth != 640 {
-		t.Fatal("preview resolution is not editable through the API")
 	}
 	var echoed conf.Settings
 	json.Unmarshal([]byte(out), &echoed)

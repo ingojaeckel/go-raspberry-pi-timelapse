@@ -1,16 +1,14 @@
 package conf
 
 import (
-	"encoding/binary"
+	"bytes"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	bolt "go.etcd.io/bbolt"
-	berrors "go.etcd.io/bbolt/errors"
 )
 
 func openTestStore(t *testing.T, path string) *Store {
@@ -23,16 +21,40 @@ func openTestStore(t *testing.T, path string) *Store {
 	return s
 }
 
-func TestStoreCreatesDefaultsWhenMissing(t *testing.T) {
-	s := openTestStore(t, filepath.Join(t.TempDir(), "settings.db"))
-	if got := s.Get(); got != Default(1800) {
+func settingsPath(t *testing.T) string {
+	return filepath.Join(t.TempDir(), "settings.json")
+}
+
+// captureLogs records slog output for the rest of the test.
+func captureLogs(t *testing.T) *bytes.Buffer {
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &logs
+}
+
+func movedAside(path string) []string {
+	matches, _ := filepath.Glob(path + ".corrupt-*")
+	return matches
+}
+
+func TestStoreSavesTheDefaultsOnTheFirstRun(t *testing.T) {
+	logs := captureLogs(t)
+	path := settingsPath(t)
+	if got := openTestStore(t, path).Get(); got != Default(1800) {
 		t.Fatalf("Get() = %s, want defaults", got)
+	}
+	if saved, err := ReadSettings(path); err != nil || saved != Default(1800) {
+		t.Fatalf("saved %s, %v", saved, err)
+	}
+	if !strings.Contains(logs.String(), `level=INFO msg="no settings saved yet, using the defaults"`) {
+		t.Fatalf("a first run is not a problem, logged:\n%s", logs)
 	}
 }
 
 func TestStoreUsesGivenDefaultsOnFirstRun(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
-	s, err := OpenStore(path, Default(600))
+	s, err := OpenStore(settingsPath(t), Default(600))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +65,7 @@ func TestStoreUsesGivenDefaultsOnFirstRun(t *testing.T) {
 }
 
 func TestStorePersistsUpdatesAcrossReopen(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
+	path := settingsPath(t)
 	s, err := OpenStore(path, Default(1800))
 	if err != nil {
 		t.Fatal(err)
@@ -53,14 +75,31 @@ func TestStorePersistsUpdatesAcrossReopen(t *testing.T) {
 	}
 	s.Close()
 
-	again := openTestStore(t, path)
-	if got := again.Get(); got.Quality != 85 || got.RotateBy != 180 {
+	if got := openTestStore(t, path).Get(); got.Quality != 85 || got.RotateBy != 180 {
 		t.Fatalf("reloaded %s", got)
 	}
 }
 
+func TestStoreWritesReadableJSONAndNoTemporaryFiles(t *testing.T) {
+	path := settingsPath(t)
+	s := openTestStore(t, path)
+	if _, err := s.Update(func(c *Settings) { c.Quality = 85 }); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(path)
+	if !strings.Contains(string(b), "\n  \"Quality\": 85,\n") {
+		t.Fatalf("saved %s", b)
+	}
+	entries, _ := os.ReadDir(filepath.Dir(path))
+	for _, e := range entries {
+		if name := e.Name(); name != "settings.json" && name != "settings.json.lock" {
+			t.Errorf("left %s behind", name)
+		}
+	}
+}
+
 func TestStoreRejectsInvalidUpdateAndKeepsOldSettings(t *testing.T) {
-	s := openTestStore(t, filepath.Join(t.TempDir(), "settings.db"))
+	s := openTestStore(t, settingsPath(t))
 	before := s.Get()
 	_, err := s.Update(func(c *Settings) { c.SecondsBetweenCaptures = 1 })
 	if !errors.Is(err, ErrInvalid) {
@@ -72,7 +111,7 @@ func TestStoreRejectsInvalidUpdateAndKeepsOldSettings(t *testing.T) {
 }
 
 func TestStoreUpdateKeepsThePhotoSize(t *testing.T) {
-	s := openTestStore(t, filepath.Join(t.TempDir(), "settings.db"))
+	s := openTestStore(t, settingsPath(t))
 	got, err := s.Update(func(c *Settings) { c.PhotoResolutionWidth, c.PhotoResolutionHeight = 1640, 1232 })
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +122,7 @@ func TestStoreUpdateKeepsThePhotoSize(t *testing.T) {
 }
 
 func TestStoreNotifiesEverySubscriberOfEveryUpdate(t *testing.T) {
-	s := openTestStore(t, filepath.Join(t.TempDir(), "settings.db"))
+	s := openTestStore(t, settingsPath(t))
 	a, b := s.Subscribe(), s.Subscribe()
 	// Two quick updates must never leave a subscriber with stale settings:
 	// the signal coalesces, Get() always returns the latest value.
@@ -101,55 +140,38 @@ func TestStoreNotifiesEverySubscriberOfEveryUpdate(t *testing.T) {
 	}
 }
 
-func TestStoreNormalizesInvalidStoredSettings(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
-	s := openTestStore(t, path)
-	// Simulate a value written by an older version that accepted anything.
-	old := Default(1800)
-	old.SecondsBetweenCaptures, old.OffsetWithinHour = 10, 900
-	if err := s.put(old); err != nil {
-		t.Fatal(err)
+func TestStoreRepairsInvalidSavedSettings(t *testing.T) {
+	path := settingsPath(t)
+	// Written by an older version that accepted anything.
+	os.WriteFile(path, []byte(`{"SecondsBetweenCaptures":10,"OffsetWithinHour":900,"Quality":90,"PhotoResolutionWidth":1640,"PhotoResolutionHeight":1232}`), 0o600)
+	if got := openTestStore(t, path).Get(); got.SecondsBetweenCaptures != 60 || got.OffsetWithinHour != 0 || got.Quality != 90 {
+		t.Fatalf("got %s", got)
 	}
-	s.Close()
-
-	again := openTestStore(t, path)
-	if got := again.Get(); got.SecondsBetweenCaptures != 60 || got.OffsetWithinHour != 0 {
-		t.Fatalf("got interval=%d offset=%d", got.SecondsBetweenCaptures, got.OffsetWithinHour)
+	if saved, _ := ReadSettings(path); saved.SecondsBetweenCaptures != 60 {
+		t.Fatalf("the repair was not saved: %s", saved)
 	}
 }
 
-func TestStoreRecoversFromCorruptFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "settings.db")
-	if err := os.WriteFile(path, []byte(strings.Repeat("garbage", 1000)), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	s := openTestStore(t, path)
-	if s.Get() != Default(1800) {
-		t.Fatalf("expected defaults after recovering, got %s", s.Get())
-	}
-	matches, _ := filepath.Glob(filepath.Join(dir, "settings.db.corrupt-*"))
-	if len(matches) != 1 {
-		t.Fatalf("corrupt file should be kept aside for inspection, found %v", matches)
-	}
-}
-
-func TestStoreUsesDefaultsWhenTheSavedValueIsNotJSON(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
-	s := openTestStore(t, path)
-	s.db.Update(func(tx *bolt.Tx) error { return tx.Bucket(bucketName).Put(settingsKey, []byte("{not json")) })
-	s.Close()
-
-	again := openTestStore(t, path)
-	if again.Get() != Default(1800) {
-		t.Fatalf("got %s", again.Get())
+func TestStoreReplacesADamagedFile(t *testing.T) {
+	for name, content := range map[string]string{"garbage": strings.Repeat("garbage", 1000), "empty": "", "cut off": `{"Quality":`} {
+		t.Run(name, func(t *testing.T) {
+			path := settingsPath(t)
+			os.WriteFile(path, []byte(content), 0o600)
+			if got := openTestStore(t, path).Get(); got != Default(1800) {
+				t.Fatalf("expected defaults, got %s", got)
+			}
+			if aside := movedAside(path); len(aside) != 1 {
+				t.Fatalf("the damaged file should be kept aside for inspection, found %v", aside)
+			}
+		})
 	}
 }
 
 func TestStoreUpdateReportsStorageErrors(t *testing.T) {
-	s := openTestStore(t, filepath.Join(t.TempDir(), "settings.db"))
+	path := settingsPath(t)
+	s := openTestStore(t, path)
 	before := s.Get()
-	s.db.Close() // the SD card went away
+	os.RemoveAll(filepath.Dir(path)) // the SD card went away
 	_, err := s.Update(func(c *Settings) { c.Quality = 50 })
 	if err == nil || errors.Is(err, ErrInvalid) {
 		t.Fatalf("err = %v, want a storage error", err)
@@ -159,24 +181,37 @@ func TestStoreUpdateReportsStorageErrors(t *testing.T) {
 	}
 }
 
-func TestOpenStoreFailsWhileAnotherProcessHoldsTheFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
-	openTestStore(t, path)
-	if _, err := OpenStore(path, Default(1800)); !errors.Is(err, berrors.ErrTimeout) {
-		t.Fatalf("err = %v, want a lock timeout (and the file must not be treated as corrupt)", err)
-	}
-	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 0 {
-		t.Fatal("a locked file was moved aside")
+func TestOpenStoreFailsWhileAnotherStoreHasItOpen(t *testing.T) {
+	path := settingsPath(t)
+	openTestStore(t, path) // the running app
+	if _, err := OpenStore(path, Default(1800)); !errors.Is(err, ErrInUse) {
+		t.Fatalf("err = %v, want ErrInUse: two apps must not run the camera at once", err)
 	}
 }
 
-func TestOpenStoreFailsWhenACorruptFileCannotBeMovedAside(t *testing.T) {
+func TestInUseWhileAStoreHasTheFileOpen(t *testing.T) {
+	path := settingsPath(t)
+	if InUse(path) {
+		t.Fatal("in use before anything opened it")
+	}
+	s := openTestStore(t, path)
+	if !InUse(path) {
+		t.Fatal("not in use while the store is open")
+	}
+	s.Close()
+	if InUse(path) {
+		t.Fatal("still in use after Close")
+	}
+}
+
+func TestOpenStoreFailsWhenADamagedFileCannotBeMovedAside(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores directory permissions")
 	}
-	dir := t.TempDir()
-	path := filepath.Join(dir, "settings.db")
-	os.WriteFile(path, []byte(strings.Repeat("garbage", 1000)), 0o600)
+	path := settingsPath(t)
+	dir := filepath.Dir(path)
+	os.WriteFile(path, []byte("garbage"), 0o600)
+	os.WriteFile(path+".lock", nil, 0o600)
 	os.Chmod(dir, 0o500)
 	defer os.Chmod(dir, 0o700)
 	if _, err := OpenStore(path, Default(1800)); err == nil {
@@ -184,24 +219,23 @@ func TestOpenStoreFailsWhenACorruptFileCannotBeMovedAside(t *testing.T) {
 	}
 }
 
-func TestStoreKeepsASettingsFileItCannotOpen(t *testing.T) {
+func TestOpenStoreKeepsASettingsFileItCannotRead(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores file permissions")
 	}
-	dir := t.TempDir()
-	path := filepath.Join(dir, "settings.db")
+	path := settingsPath(t)
 	s := openTestStore(t, path)
 	if _, err := s.Update(func(c *Settings) { c.Quality = 85 }); err != nil {
 		t.Fatal(err)
 	}
 	s.Close()
 
-	os.Chmod(path, 0o400) // e.g. wrong owner after copying it around: intact, just not writable
+	os.Chmod(path, 0o000) // e.g. wrong owner after copying it around: intact, just not readable
 	if _, err := OpenStore(path, Default(1800)); err == nil {
 		t.Fatal("expected an error so the service fails and the problem gets noticed")
 	}
-	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 0 {
-		t.Fatalf("an intact settings file was moved aside: %v", matches)
+	if aside := movedAside(path); len(aside) != 0 {
+		t.Fatalf("an intact settings file was moved aside: %v", aside)
 	}
 	os.Chmod(path, 0o600)
 	if got := openTestStore(t, path).Get().Quality; got != 85 {
@@ -209,94 +243,24 @@ func TestStoreKeepsASettingsFileItCannotOpen(t *testing.T) {
 	}
 }
 
-func TestStoreRecoversFromALargeCorruptFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "settings.db")
-	os.WriteFile(path, []byte(strings.Repeat("garbage!", 64<<10)), 0o600) // big enough to pass the size check
-	if openTestStore(t, path).Get() != Default(1800) {
-		t.Fatal("expected defaults")
-	}
-	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 1 {
-		t.Fatalf("found %v", matches)
-	}
-}
-
-func TestReadSettingsReturnsTheSavedSettings(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
-	s := openTestStore(t, path)
+func TestReadSettingsReadsWhileTheAppHasTheFileOpen(t *testing.T) {
+	path := settingsPath(t)
+	s := openTestStore(t, path) // stays open, like the running app
 	if _, err := s.Update(func(v *Settings) { v.Quality = 42 }); err != nil {
 		t.Fatal(err)
 	}
-	want := s.Get()
-	s.Close()
 	got, err := ReadSettings(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != want {
-		t.Fatalf("got %+v, want %+v", got, want)
+	if err != nil || got != s.Get() {
+		t.Fatalf("got %s, %v, want %s", got, err, s.Get())
 	}
 }
 
 func TestReadSettingsDoesNotCreateAMissingFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
+	path := settingsPath(t)
 	if _, err := ReadSettings(path); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("err %v, want ErrNotExist", err)
 	}
-	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("ReadSettings created the file")
-	}
-}
-
-func TestReadSettingsGivesUpWhileTheAppHoldsTheFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.db")
-	openTestStore(t, path) // stays open, like the running app
-	start := time.Now()
-	if _, err := ReadSettings(path); !errors.Is(err, berrors.ErrTimeout) {
-		t.Fatalf("err %v, want a lock timeout", err)
-	}
-	if d := time.Since(start); d > 5*time.Second {
-		t.Fatalf("took %v", d)
-	}
-}
-
-// corruptRootPage overwrites the type of the database's root page: the file
-// still opens (its meta pages are intact), but bbolt panics when it reads a
-// bucket.
-func corruptRootPage(t *testing.T, path string) {
-	t.Helper()
-	b, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Meta pages 0 and 1: a 16-byte page header, then magic, version and page
-	// size (uint32 each), flags, the root page id (uint64 at 32) and, at 64,
-	// the transaction id; the newer of the two is current.
-	pageSize := int(binary.LittleEndian.Uint32(b[24:]))
-	meta := 0
-	if binary.LittleEndian.Uint64(b[pageSize+64:]) > binary.LittleEndian.Uint64(b[64:]) {
-		meta = pageSize
-	}
-	root := int(binary.LittleEndian.Uint64(b[meta+32:])) * pageSize
-	binary.LittleEndian.PutUint16(b[root+8:], 0xff) // page flags: no such page type
-	if err := os.WriteFile(path, b, 0o600); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestStoreRecoversFromAPageBboltPanicsOn(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "settings.db")
-	s := openTestStore(t, path)
-	if _, err := s.Update(func(c *Settings) { c.Quality = 85 }); err != nil {
-		t.Fatal(err)
-	}
-	s.Close()
-	corruptRootPage(t, path)
-	if got := openTestStore(t, path).Get(); got != Default(1800) {
-		t.Fatalf("expected defaults after recovering, got %s", got)
-	}
-	if matches, _ := filepath.Glob(path + ".corrupt-*"); len(matches) != 1 {
-		t.Fatalf("corrupt file should be kept aside, found %v", matches)
+	if entries, _ := os.ReadDir(filepath.Dir(path)); len(entries) != 0 {
+		t.Fatalf("ReadSettings created %v", entries)
 	}
 }

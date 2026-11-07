@@ -24,6 +24,13 @@ type options struct {
 	selfCheckMinBrightness int
 }
 
+const (
+	defaultListenAddress  = ":8080"
+	defaultStorageFolder  = "timelapse-pictures"
+	defaultCaptureRetries = 2
+	defaultMinFreeDiskMB  = 256
+)
+
 // defaultSelfCheckMinBrightness is the lowest mean brightness (0..255) the
 // self-check accepts: lower is a black photo (lens cap, no light, no signal).
 const defaultSelfCheckMinBrightness = 10
@@ -40,12 +47,12 @@ func parseFlags(args []string) (options, error) {
 
 func (o *options) register(fs *flag.FlagSet) {
 	fs.BoolVar(&o.version, "version", false, "Print version and exit.")
-	fs.StringVar(&o.listen, "port", conf.DefaultListenAddress, "HTTP address to listen on.")
-	fs.BoolVar(&o.logToFile, "logToFile", conf.DefaultLogToFile, "Log to "+conf.LogFile+" (rotated at 10 MB) instead of stdout. Recommended for long term operation.")
-	fs.StringVar(&o.storageFolder, "storageFolder", conf.DefaultStorageFolder, "Folder for storage of timelapse pictures.")
+	fs.StringVar(&o.listen, "port", defaultListenAddress, "HTTP address to listen on.")
+	fs.BoolVar(&o.logToFile, "logToFile", false, "Log to "+logFile+" (rotated at 10 MB) instead of stdout. Recommended for long term operation.")
+	fs.StringVar(&o.storageFolder, "storageFolder", defaultStorageFolder, "Folder for storage of timelapse pictures.")
 	fs.IntVar(&o.secondsBetweenCaptures, "secondsBetweenCaptures", conf.DefaultSecondsBetweenCaptures, "Seconds between captures used until settings are saved in the UI. Must divide an hour evenly, between 60 and 3600.")
-	fs.IntVar(&o.captureRetries, "captureRetries", conf.DefaultCaptureRetries, "Additional attempts within the same slot when a capture fails.")
-	fs.IntVar(&o.minFreeDiskMB, "minFreeDiskMB", conf.DefaultMinFreeDiskMB, "Free disk space to keep. The oldest photos are deleted before a capture to keep at least this much free.")
+	fs.IntVar(&o.captureRetries, "captureRetries", defaultCaptureRetries, "Additional attempts within the same slot when a capture fails.")
+	fs.IntVar(&o.minFreeDiskMB, "minFreeDiskMB", defaultMinFreeDiskMB, "Free disk space to keep. The oldest photos are deleted before a capture to keep at least this much free.")
 	fs.BoolVar(&o.pprof, "pprof", false, "Enable pprof profiling endpoints at /debug/pprof/")
 	fs.BoolVar(&o.selfCheck, "selfcheck", false, "Take one test photo with the saved settings, check it and the Pi (camera detected and free, storage, power, temperature), print the results and exit: 0 when no check failed, 1 otherwise. Run it after installing or changing the hardware.")
 	fs.BoolVar(&o.selfCheckKeep, "selfcheckKeep", false, "With -selfcheck, keep the test photo and print its path.")

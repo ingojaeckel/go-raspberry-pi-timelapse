@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ingojaeckel/go-raspberry-pi-timelapse/conf"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/files"
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/timelapse"
 )
@@ -50,7 +49,7 @@ func (s *Server) photos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h := w.Header()
-	h.Set(conf.HeaderContentType, conf.HeaderContentTypeJSON)
+	h.Set("Content-Type", "application/json")
 	h.Set("Cache-Control", "no-cache") // always revalidate
 	h.Set("Vary", "Accept-Encoding")
 	data, etag := body.plain, body.etag
@@ -180,15 +179,18 @@ func (s *Server) serveFromFolder(w http.ResponseWriter, r *http.Request, name st
 	serveFile(w, r, f)
 }
 
-// serveFile serves a regular file up to conf.MaxFileSizeBytes as a download.
+// maxDownloadBytes is the largest file served as a download.
+const maxDownloadBytes = 100 << 20
+
+// serveFile serves a regular file up to maxDownloadBytes as a download.
 func serveFile(w http.ResponseWriter, r *http.Request, f *os.File) {
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > conf.MaxFileSizeBytes {
+	if err != nil || !info.Mode().IsRegular() || info.Size() > maxDownloadBytes {
 		http.NotFound(w, r)
 		return
 	}
 	name := filepath.Base(f.Name())
-	w.Header().Set(conf.HeaderContentDisposition, mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
 	http.ServeContent(newDeadlineWriter(w), r, name, info.ModTime(), f)
 }
 
@@ -239,8 +241,8 @@ func (s *Server) archive(filename, contentType string, size func([]files.File) (
 			return
 		}
 		h := w.Header()
-		h.Set(conf.HeaderContentType, contentType)
-		h.Set(conf.HeaderContentDisposition, "attachment; filename="+filename)
+		h.Set("Content-Type", contentType)
+		h.Set("Content-Disposition", "attachment; filename="+filename)
 		h.Set("Content-Length", strconv.FormatInt(n, 10))
 		if r.Method == http.MethodHead {
 			return

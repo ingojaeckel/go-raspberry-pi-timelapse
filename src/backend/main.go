@@ -60,7 +60,7 @@ func selfCheck(ctx context.Context, opts options, backend timelapse.Backend, w i
 		Backend:         backend,
 		CaptureTimeout:  captureTimeout,
 		StorageFolder:   opts.storageFolder,
-		SettingsFile:    conf.SettingsFile,
+		SettingsFile:    settingsFile,
 		DefaultSettings: conf.Default(opts.secondsBetweenCaptures),
 		MinFreeBytes:    uint64(opts.minFreeDiskMB) << 20,
 		MinBrightness:   float64(opts.selfCheckMinBrightness),

@@ -31,7 +31,7 @@ Local settings that should not be committed go into `src/installer/custompios/co
 
 `make pi` cross-compiles the app for the Pi Zero W into `modules/timelapsepi/filesystem/root/opt/timelapse/timelapse` (gitignored). The image build copies it to `/opt/timelapse/timelapse`, and `timelapse.service` runs it from there. The image therefore contains exactly the app of your checkout; nothing is cloned from GitHub at build time, and the image has no git checkout of this repo.
 
-- The service runs as `pi` with `WorkingDirectory=/home/pi`, so `timelapse.log` (rotated at 10 MB to `timelapse.log.1`), `timelapse-settings.db` and `timelapse.running` (see [Health log](#health-log)) live in `/home/pi`. It restarts automatically (`Restart=always`) after crashes and failed starts.
+- The service runs as `pi` with `WorkingDirectory=/home/pi`, so `timelapse.log` (rotated at 10 MB to `timelapse.log.1`), `timelapse-settings.json` (the settings, readable JSON) and `timelapse.running` (see [Health log](#health-log)) live in `/home/pi`. It restarts automatically (`Restart=always`) after crashes and failed starts.
 - The service has the capability to set the system clock (`AmbientCapabilities=CAP_SYS_TIME`), for the web UI's clock button (see [Real-time clock](#real-time-clock)). Programs the app starts (`rpicam-still`, `vcgencmd`) inherit it.
 - `/etc/sudoers.d/010_timelapse` lets `pi` run exactly `/sbin/shutdown -h now` and `/sbin/shutdown -r now`, which the web UI uses to shut down and restart the Pi, and `/usr/sbin/hwclock --rtc=/dev/rtc0 --systohc --utc`, which copies the clock set in the web UI to a clock module.
 - To update the app on a running Pi without reflashing, build it with `make pi`, connect to the Pi's access point and run:

@@ -91,11 +91,11 @@ func TestCaptureFailsWhenRenameFails(t *testing.T) {
 }
 
 func TestPhotoAndPreviewOptions(t *testing.T) {
-	s := conf.Settings{PhotoResolutionWidth: 3, PhotoResolutionHeight: 2, PreviewResolutionWidth: 30, PreviewResolutionHeight: 20, Quality: 7, RotateBy: 180}
+	s := conf.Settings{PhotoResolutionWidth: 3, PhotoResolutionHeight: 2, Quality: 7, RotateBy: 180}
 	if got := PhotoOptions(s); got != (Options{Width: 3, Height: 2, Quality: 7, Rotate: true}) {
 		t.Errorf("photo %+v", got)
 	}
-	if got := PreviewOptions(s); got != (Options{Width: 30, Height: 20, Quality: 7, Rotate: true}) {
+	if got := PreviewOptions(s); got != (Options{Width: 640, Height: 480, Quality: 7, Rotate: true}) {
 		t.Errorf("preview %+v", got)
 	}
 }

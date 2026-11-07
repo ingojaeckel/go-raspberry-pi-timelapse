@@ -48,7 +48,7 @@ export function App() {
 
       <main className="main">
         {route === 'photos' && <PhotosView settings={settings.data} next={next} />}
-        {route === 'preview' && <PreviewView settings={settings.data} />}
+        {route === 'preview' && <PreviewView />}
         {route === 'status' && <StatusView settings={settings.data} />}
         {route === 'settings' && <SettingsView settings={settings.data} error={settings.error} onSaved={settings.set} />}
         {route === 'logs' && <LogsView />}

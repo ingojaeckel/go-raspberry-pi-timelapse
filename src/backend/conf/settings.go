@@ -1,15 +1,19 @@
+// Package conf holds the capture settings: their rules (Validate,
+// Normalized) and their storage (Store).
 package conf
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/ingojaeckel/go-raspberry-pi-timelapse/sun"
 )
 
 const (
+	DefaultSecondsBetweenCaptures = 1800 // 30 min
+	DefaultOffsetWithinHour       = 900  // 15 min
+
 	MinSecondsBetweenCaptures = 60
 	MaxSecondsBetweenCaptures = 3600
 	// OffsetDisabled turns off alignment to the hour: captures then run every
@@ -35,11 +39,9 @@ type Settings struct {
 	SecondsBetweenCaptures int
 	// OffsetWithinHour is the first capture in seconds past the hour,
 	// 0 <= offset < SecondsBetweenCaptures, or OffsetDisabled.
-	OffsetWithinHour        int
-	PhotoResolutionWidth    int
-	PhotoResolutionHeight   int
-	PreviewResolutionWidth  int
-	PreviewResolutionHeight int
+	OffsetWithinHour      int
+	PhotoResolutionWidth  int
+	PhotoResolutionHeight int
 	// RotateBy is 0 or 180.
 	RotateBy     int
 	Quality      int
@@ -63,13 +65,11 @@ func (s Settings) String() string {
 // Default returns the settings used when nothing has been saved yet.
 func Default(secondsBetweenCaptures int) Settings {
 	return Settings{
-		SecondsBetweenCaptures:  secondsBetweenCaptures,
-		OffsetWithinHour:        DefaultOffsetWithinHour % secondsBetweenCaptures,
-		PhotoResolutionWidth:    DefaultPhotoWidth,
-		PhotoResolutionHeight:   DefaultPhotoHeight,
-		PreviewResolutionWidth:  640,
-		PreviewResolutionHeight: 480,
-		Quality:                 100,
+		SecondsBetweenCaptures: secondsBetweenCaptures,
+		OffsetWithinHour:       DefaultOffsetWithinHour % secondsBetweenCaptures,
+		PhotoResolutionWidth:   DefaultPhotoWidth,
+		PhotoResolutionHeight:  DefaultPhotoHeight,
+		Quality:                100,
 	}
 }
 
@@ -91,58 +91,86 @@ func ValidIntervals() []int {
 	return out
 }
 
+// A rule is one requirement on the settings: what Validate reports when it
+// is broken, and how Normalized repairs it.
+type rule struct {
+	ok      func(Settings) bool
+	problem func(Settings) string
+	repair  func(*Settings)
+}
+
+// rules are checked and repaired in order: the offset depends on the
+// interval, skipping nights on the location.
+var rules = []rule{{
+	ok: func(s Settings) bool { return ValidInterval(s.SecondsBetweenCaptures) },
+	problem: func(s Settings) string {
+		return fmt.Sprintf("SecondsBetweenCaptures must be between %d and %d and divide an hour evenly, got %d",
+			MinSecondsBetweenCaptures, MaxSecondsBetweenCaptures, s.SecondsBetweenCaptures)
+	},
+	// Older versions accepted any interval, treating anything under a minute
+	// as a minute and anything over an hour as an hour.
+	repair: func(s *Settings) { s.SecondsBetweenCaptures = roundUpInterval(s.SecondsBetweenCaptures) },
+}, {
+	ok: func(s Settings) bool { return validOffset(s.OffsetWithinHour, s.SecondsBetweenCaptures) },
+	problem: func(s Settings) string {
+		return fmt.Sprintf("OffsetWithinHour must be %d or between 0 and %d, got %d", OffsetDisabled, s.SecondsBetweenCaptures-1, s.OffsetWithinHour)
+	},
+	// An offset at or beyond the interval, reduced modulo the interval, gives
+	// the same capture times every hour.
+	repair: func(s *Settings) {
+		if s.OffsetWithinHour < 0 {
+			s.OffsetWithinHour = OffsetDisabled
+		} else {
+			s.OffsetWithinHour %= s.SecondsBetweenCaptures
+		}
+	},
+}, {
+	ok:      func(s Settings) bool { return s.Quality >= 1 && s.Quality <= 100 },
+	problem: func(s Settings) string { return fmt.Sprintf("Quality must be between 1 and 100, got %d", s.Quality) },
+	repair:  func(s *Settings) { s.Quality = min(max(s.Quality, 1), 100) },
+}, {
+	ok:      func(s Settings) bool { return s.RotateBy == 0 || s.RotateBy == 180 },
+	problem: func(s Settings) string { return fmt.Sprintf("RotateBy must be 0 or 180, got %d", s.RotateBy) },
+	repair:  func(s *Settings) { s.RotateBy = 0 }, // only 180 ever had an effect on the camera
+}, {
+	ok: func(s Settings) bool { return sun.ValidLocation(s.Latitude, s.Longitude) },
+	problem: func(s Settings) string {
+		return fmt.Sprintf("Latitude must be between -90 and 90 and Longitude between -180 and 180, got %v, %v", s.Latitude, s.Longitude)
+	},
+	repair: func(s *Settings) { s.Latitude, s.Longitude = 0, 0 },
+}, {
+	ok:      func(s Settings) bool { return !s.SkipNightPhotos || s.Latitude != 0 || s.Longitude != 0 },
+	problem: func(Settings) string { return "SkipNightPhotos needs the camera's location (Latitude and Longitude)" },
+	repair:  func(s *Settings) { s.SkipNightPhotos = false },
+}, {
+	ok: func(s Settings) bool { return validSide(s.PhotoResolutionWidth) && validSide(s.PhotoResolutionHeight) },
+	problem: func(s Settings) string {
+		return fmt.Sprintf("the photo size must be between %d and %d pixels on each side, got %dx%d",
+			MinPhotoSide, MaxPhotoSide, s.PhotoResolutionWidth, s.PhotoResolutionHeight)
+	},
+	repair: func(s *Settings) {
+		s.PhotoResolutionWidth, s.PhotoResolutionHeight = DefaultPhotoWidth, DefaultPhotoHeight
+	},
+}}
+
 // Validate reports the first problem with s, wrapping ErrInvalid.
 func (s Settings) Validate() error {
-	invalid := func(format string, args ...any) error {
-		return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, args...))
-	}
-	if !ValidInterval(s.SecondsBetweenCaptures) {
-		return invalid("SecondsBetweenCaptures must be between %d and %d and divide an hour evenly, got %d",
-			MinSecondsBetweenCaptures, MaxSecondsBetweenCaptures, s.SecondsBetweenCaptures)
-	}
-	if !validOffset(s.OffsetWithinHour, s.SecondsBetweenCaptures) {
-		return invalid("OffsetWithinHour must be %d or between 0 and %d, got %d",
-			OffsetDisabled, s.SecondsBetweenCaptures-1, s.OffsetWithinHour)
-	}
-	if s.Quality < 1 || s.Quality > 100 {
-		return invalid("Quality must be between 1 and 100, got %d", s.Quality)
-	}
-	if s.RotateBy != 0 && s.RotateBy != 180 {
-		return invalid("RotateBy must be 0 or 180, got %d", s.RotateBy)
-	}
-	if !sun.ValidLocation(s.Latitude, s.Longitude) {
-		return invalid("Latitude must be between -90 and 90 and Longitude between -180 and 180, got %v, %v", s.Latitude, s.Longitude)
-	}
-	if s.SkipNightPhotos && s.Latitude == 0 && s.Longitude == 0 {
-		return invalid("SkipNightPhotos needs the camera's location (Latitude and Longitude)")
-	}
-	if !validSide(s.PhotoResolutionWidth) || !validSide(s.PhotoResolutionHeight) {
-		return invalid("the photo size must be between %d and %d pixels on each side, got %dx%d",
-			MinPhotoSide, MaxPhotoSide, s.PhotoResolutionWidth, s.PhotoResolutionHeight)
+	for _, r := range rules {
+		if !r.ok(s) {
+			return fmt.Errorf("%w: %s", ErrInvalid, r.problem(s))
+		}
 	}
 	return nil
 }
 
-// Normalized repairs settings saved by older versions, which accepted any
-// interval, into the closest valid ones while keeping the capture times the
-// camera actually used:
-//   - intervals round up to the next valid one (anything under a minute was
-//     already treated as a minute, anything over an hour as an hour);
-//   - an offset at or beyond the interval is reduced modulo the interval,
-//     which yields the same capture times every hour.
+// Normalized repairs whatever Validate would reject, e.g. settings saved by
+// older versions, keeping the capture times the camera actually used where
+// possible. The result always passes Validate.
 func (s Settings) Normalized() Settings {
-	s.SecondsBetweenCaptures = roundUpInterval(s.SecondsBetweenCaptures)
-	if s.OffsetWithinHour < 0 {
-		s.OffsetWithinHour = OffsetDisabled
-	} else {
-		s.OffsetWithinHour %= s.SecondsBetweenCaptures
-	}
-	s.Quality = min(max(s.Quality, 1), 100)
-	if s.RotateBy != 180 {
-		s.RotateBy = 0 // only 180 ever had an effect on the camera
-	}
-	if !validSide(s.PhotoResolutionWidth) || !validSide(s.PhotoResolutionHeight) {
-		s.PhotoResolutionWidth, s.PhotoResolutionHeight = DefaultPhotoWidth, DefaultPhotoHeight
+	for _, r := range rules {
+		if !r.ok(s) {
+			r.repair(&s)
+		}
 	}
 	return s
 }
@@ -150,9 +178,10 @@ func (s Settings) Normalized() Settings {
 // roundUpInterval returns the smallest valid interval >= seconds, or the
 // longest one.
 func roundUpInterval(seconds int) int {
-	valid := ValidIntervals()
-	if i := slices.IndexFunc(valid, func(v int) bool { return v >= seconds }); i >= 0 {
-		return valid[i]
+	for v := max(seconds, MinSecondsBetweenCaptures); v < MaxSecondsBetweenCaptures; v++ {
+		if ValidInterval(v) {
+			return v
+		}
 	}
 	return MaxSecondsBetweenCaptures
 }

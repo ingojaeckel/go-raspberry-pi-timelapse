@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { urls, type Settings } from '../api';
+import { urls } from '../api';
 import { Icon } from '../components/Icon';
 import { Notice, PageHeader } from '../components/ui';
 
-export function PreviewView({ settings }: { settings: Settings | undefined }) {
+/** The size of preview photos: timelapse.PreviewWidth x PreviewHeight on the camera. */
+const PREVIEW_SIZE = '640×480';
+
+export function PreviewView() {
   const [shot, setShot] = useState(() => Date.now());
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [elapsed, setElapsed] = useState(0);
@@ -30,13 +33,8 @@ export function PreviewView({ settings }: { settings: Settings | undefined }) {
       </PageHeader>
 
       <p className="lede">
-        A quick, low-resolution shot to check framing and focus. It is not saved with your timelapse.
-        {settings && (
-          <>
-            {' '}
-            Taken at {settings.PreviewResolutionWidth}×{settings.PreviewResolutionHeight}.
-          </>
-        )}
+        A quick, low-resolution shot to check framing and focus. It is not saved with your timelapse. Taken at{' '}
+        {PREVIEW_SIZE}.
       </p>
 
       {state === 'error' && (

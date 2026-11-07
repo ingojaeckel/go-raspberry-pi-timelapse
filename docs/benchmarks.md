@@ -86,7 +86,7 @@ These run with `go test ./...` and are skipped with `-short`.
 
 ## Unattended Operation and Power Cuts
 
-- **Power cuts**: photos are written to `.partial-*`, fsync'ed, renamed and the folder fsync'ed, so after a power cut a photo is either complete or absent, never empty or truncated. Leftover `.partial-*` files are hidden, so nothing else would ever delete them; they are removed at start-up. The settings database (bbolt) is crash-safe and moved aside if corrupt.
+- **Power cuts**: photos are written to `.partial-*`, fsync'ed, renamed and the folder fsync'ed, so after a power cut a photo is either complete or absent, never empty or truncated. Leftover `.partial-*` files are hidden, so nothing else would ever delete them; they are removed at start-up. The settings file is replaced the same way (temp file, fsync, rename, fsync the folder), so it is always either the old or the new version; a damaged one is moved aside.
 - **Hangs**: `timelapse.service` has `WatchdogSec=2min`. The app pings systemd every minute, but only while the capture loop keeps waking up (at least once a minute, and after every capture including retries). If the loop stalls, systemd restarts the app. `/etc/systemd/system.conf.d/watchdog.conf` enables the Pi's hardware watchdog, which reboots the Pi if the kernel or systemd hang.
 - **Crashes and failed starts**: `Restart=always` with `StartLimitIntervalSec=0` restarts forever.
 - **Stuck clients**: every response has a 2 minute `WriteTimeout`; downloads extend it while they make progress.

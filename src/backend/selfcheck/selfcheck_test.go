@@ -385,9 +385,12 @@ func TestARunningAppIsAWarning(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
+	if _, err := s.Update(func(v *conf.Settings) { v.Quality = 77 }); err != nil {
+		t.Fatal(err)
+	}
 	r := find(t, Run(t.Context(), cfg), "settings")
-	if r.Status != Warn || !strings.Contains(r.Detail, "running") {
-		t.Fatalf("got %s %q", r.Status, r.Detail)
+	if r.Status != Warn || !strings.Contains(r.Detail, "running") || !strings.Contains(r.Detail, "quality 77") {
+		t.Fatalf("got %s %q, want a warning with the saved settings", r.Status, r.Detail)
 	}
 }
 

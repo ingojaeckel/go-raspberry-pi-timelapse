@@ -27,6 +27,22 @@ import (
 // live on disk (see package web).
 const frontendPath = "/static/frontend/build/"
 
+// Files the app keeps in its working directory (WorkingDirectory in
+// timelapse.service).
+const (
+	settingsFile = "timelapse-settings.json"
+	// legacySettingsFile is where versions before settingsFile kept the
+	// settings (a bbolt database); see conf.MigrateLegacy.
+	legacySettingsFile = "timelapse-settings.db"
+	logFile            = "timelapse.log"
+	logFileMaxSize     = 10 << 20 // bytes before the log is rotated to logFile.1
+	// runMarkerFile exists while the app runs; finding it at start-up means
+	// the previous run did not stop cleanly (see health.StartRun).
+	runMarkerFile = "timelapse.running"
+	// tempFolder holds preview photos and unfinished downloads.
+	tempFolder = "/tmp"
+)
+
 const (
 	captureTimeout  = time.Minute
 	retryDelay      = time.Second
@@ -107,7 +123,7 @@ func (a *app) startLogging() error {
 // markRun logs how the previous run ended, and marks this one as running
 // until close. Without a marker (read-only folder) the camera still runs.
 func (a *app) markRun() error {
-	previous, done, err := health.StartRun(conf.RunMarkerFile, health.BootIDFile)
+	previous, done, err := health.StartRun(runMarkerFile, health.BootIDFile)
 	if err != nil {
 		slog.Warn("cannot tell how the previous run ended", "err", err)
 		return nil
@@ -135,7 +151,10 @@ func (a *app) openSettings() error {
 		d := sensor.DefaultResolution()
 		defaults.PhotoResolutionWidth, defaults.PhotoResolutionHeight = d.Width, d.Height
 	}
-	store, err := conf.OpenStore(conf.SettingsFile, defaults)
+	if err := conf.MigrateLegacy(legacySettingsFile, settingsFile); err != nil {
+		slog.Warn("could not take over the settings of the previous version, using the defaults", "err", err)
+	}
+	store, err := conf.OpenStore(settingsFile, defaults)
 	if err != nil {
 		return err
 	}
@@ -175,7 +194,7 @@ func (a *app) createStorageFolder() error {
 	if err := os.MkdirAll(a.opts.storageFolder, 0o700); err != nil {
 		return fmt.Errorf("create storage folder: %w", err)
 	}
-	for _, dir := range []string{a.opts.storageFolder, conf.TempFilesFolder} {
+	for _, dir := range []string{a.opts.storageFolder, tempFolder} {
 		if removed, err := timelapse.RemovePartials(dir); err != nil {
 			slog.Warn("removing unfinished photos", "folder", dir, "err", err)
 		} else if len(removed) > 0 {
@@ -380,8 +399,8 @@ func (a *app) api() *rest.Server {
 		Settings:      a.store,
 		Camera:        a.camera,
 		Photos:        a.photos,
-		TempFolder:    conf.TempFilesFolder,
-		LogFile:       conf.LogFile, // served whenever it exists
+		TempFolder:    tempFolder,
+		LogFile:       logFile, // served whenever it exists
 		ThermalFile:   a.thermalFile,
 		CPUFreqDir:    a.cpuFreqDir,
 		Version:       a.version,

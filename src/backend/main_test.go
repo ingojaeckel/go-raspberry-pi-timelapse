@@ -24,11 +24,11 @@ func TestParseFlagsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := options{
-		listen:                 conf.DefaultListenAddress,
-		storageFolder:          conf.DefaultStorageFolder,
+		listen:                 defaultListenAddress,
+		storageFolder:          defaultStorageFolder,
 		secondsBetweenCaptures: conf.DefaultSecondsBetweenCaptures,
-		captureRetries:         conf.DefaultCaptureRetries,
-		minFreeDiskMB:          conf.DefaultMinFreeDiskMB,
+		captureRetries:         defaultCaptureRetries,
+		minFreeDiskMB:          defaultMinFreeDiskMB,
 		selfCheckMinBrightness: defaultSelfCheckMinBrightness,
 	}
 	if o != want {
@@ -130,7 +130,7 @@ func TestRunServesTheAppAndShutsDownCleanly(t *testing.T) {
 	if _, err := os.Stat("photos"); err != nil {
 		t.Errorf("storage folder not created: %v", err)
 	}
-	if _, err := os.Stat(conf.SettingsFile); err != nil {
+	if _, err := os.Stat(settingsFile); err != nil {
 		t.Errorf("settings not stored in the working directory: %v", err)
 	}
 	if code, _ := get("/debug/pprof/"); code == 200 {
@@ -204,8 +204,8 @@ func TestSelfCheck(t *testing.T) {
 			t.Errorf("lacks %q:\n%s", want, out.String())
 		}
 	}
-	if _, err := os.Stat(conf.SettingsFile); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("the self-check created %s", conf.SettingsFile)
+	if _, err := os.Stat(settingsFile); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the self-check created %s", settingsFile)
 	}
 
 	out.Reset()

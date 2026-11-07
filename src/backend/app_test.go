@@ -1,6 +1,8 @@
 package main
 
 import (
+	bolt "go.etcd.io/bbolt"
+
 	"bytes"
 	"context"
 	"errors"
@@ -167,10 +169,10 @@ func TestMarkRunReportsHowThePreviousRunEnded(t *testing.T) {
 		t.Fatalf("after a kill:\n%s", logs)
 	}
 	b.close()
-	if _, err := os.Stat(conf.RunMarkerFile); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(runMarkerFile); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("marker left after a clean stop: %v", err)
 	}
-	os.Mkdir(conf.RunMarkerFile, 0o700) // unreadable: warn, but start anyway
+	os.Mkdir(runMarkerFile, 0o700) // unreadable: warn, but start anyway
 	if err := (&app{}).markRun(); err != nil || !strings.Contains(logs.String(), "cannot tell how the previous run ended") {
 		t.Fatalf("err %v\n%s", err, logs)
 	}
@@ -321,7 +323,7 @@ func TestFirstRunUsesTheCamerasDefaultSize(t *testing.T) {
 
 func TestSavedUnsupportedSizeIsKeptAndLogged(t *testing.T) {
 	t.Chdir(t.TempDir())
-	s, err := conf.OpenStore(conf.SettingsFile, conf.Default(600)) // 2186x1642
+	s, err := conf.OpenStore(settingsFile, conf.Default(600)) // 2186x1642
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,8 +339,30 @@ func TestSavedUnsupportedSizeIsKeptAndLogged(t *testing.T) {
 	if got.PhotoResolutionWidth != 2186 {
 		t.Fatalf("saved size changed to %dx%d", got.PhotoResolutionWidth, got.PhotoResolutionHeight)
 	}
-	if logs, _ := os.ReadFile(conf.LogFile); !strings.Contains(string(logs), "not one of the camera's sizes") {
+	if logs, _ := os.ReadFile(logFile); !strings.Contains(string(logs), "not one of the camera's sizes") {
 		t.Fatalf("logs:\n%s", logs)
+	}
+}
+
+func TestSettingsOfOlderVersionsAreMigrated(t *testing.T) {
+	t.Chdir(t.TempDir())
+	db, err := bolt.Open(legacySettingsFile, 0o600, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Update(func(tx *bolt.Tx) error {
+		bucket, _ := tx.CreateBucket([]byte("settings"))
+		return bucket.Put([]byte("s"), []byte(`{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"PhotoResolutionWidth":1640,"PhotoResolutionHeight":1232,"Quality":77}`))
+	})
+	db.Close()
+	a, err := newApp(options{storageFolder: "photos", secondsBetweenCaptures: 1800, listen: "127.0.0.1:0"}, noCamera{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := a.store.Get()
+	a.close()
+	if got.Quality != 77 || got.SecondsBetweenCaptures != 600 {
+		t.Fatalf("got %s, want the settings of the old database", got)
 	}
 }
 
@@ -364,7 +388,7 @@ func TestFailedCameraDetectionKeepsTheDefaultSizeAndWarns(t *testing.T) {
 	if want := conf.Default(600); got.PhotoResolutionWidth != want.PhotoResolutionWidth || got.PhotoResolutionHeight != want.PhotoResolutionHeight {
 		t.Fatalf("first run saved %dx%d, want the default %dx%d", got.PhotoResolutionWidth, got.PhotoResolutionHeight, want.PhotoResolutionWidth, want.PhotoResolutionHeight)
 	}
-	if logs, _ := os.ReadFile(conf.LogFile); !strings.Contains(string(logs), "camera not detected") {
+	if logs, _ := os.ReadFile(logFile); !strings.Contains(string(logs), "camera not detected") {
 		t.Fatalf("logs:\n%s", logs)
 	}
 }

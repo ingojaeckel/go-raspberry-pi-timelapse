@@ -17,7 +17,7 @@ func setupLogging(toFile bool, level *slog.LevelVar) (func(), error) {
 	var out io.Writer = os.Stdout
 	closer := func() {}
 	if toFile {
-		w, err := logfile.Open(conf.LogFile, conf.LogFileMaxSize)
+		w, err := logfile.Open(logFile, logFileMaxSize)
 		if err != nil {
 			return nil, fmt.Errorf("open log file: %w", err)
 		}

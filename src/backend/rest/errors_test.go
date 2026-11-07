@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -18,7 +19,7 @@ import (
 
 func TestUpdateConfigurationStorageErrorIs500(t *testing.T) {
 	e := newEnv(t)
-	e.store.Close() // writes fail from now on
+	os.RemoveAll(filepath.Dir(e.settingsFile)) // the card went away: writes fail from now on
 	res, body := do(t, "POST", e.url+"/configuration", `{"SecondsBetweenCaptures":600,"OffsetWithinHour":0,"Quality":90}`)
 	wantStatus(t, res, body, 500)
 }
