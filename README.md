@@ -48,6 +48,7 @@ Requires Go (see `src/backend/go.mod`), Node (see `src/frontend/.nvmrc`), and `m
 ```bash
 make            # frontend build + tests, Go vet + tests, development build
 make pi         # same, then cross-compile for the Pi Zero W
+make pi64       # same, but for 64-bit Raspberry Pi OS (Pi Zero 2 W, 3, 4, 5), to copy to a Pi by hand
 make image      # make pi, then build the SD card image (requires Docker), see docs/installer.md
 make run        # build the frontend and run the server on http://localhost:8080
 make loadtest   # k6 load test against a local build (requires k6)

@@ -184,3 +184,23 @@ func (s *Store) load() (v Settings, err error) {
 	})
 	return v, err
 }
+
+// ReadSettings reads the settings saved at path without creating, repairing
+// or locking the file for writing, for tools that run next to the app. It
+// fails with os.ErrNotExist when nothing was saved yet, and with a lock
+// timeout while the app has the file open.
+func ReadSettings(path string) (Settings, error) {
+	if _, err := os.Stat(path); err != nil {
+		return Settings{}, err
+	}
+	db, err := bolt.Open(path, 0o600, &bolt.Options{Timeout: time.Second, ReadOnly: true})
+	if err != nil {
+		return Settings{}, err
+	}
+	defer db.Close()
+	v, err := (&Store{db: db}).load()
+	if err != nil {
+		return Settings{}, err
+	}
+	return v.Normalized(), nil
+}

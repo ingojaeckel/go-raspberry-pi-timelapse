@@ -19,7 +19,14 @@ type options struct {
 	pprof                  bool
 	version                bool
 	allowedHosts           string
+	selfCheck              bool
+	selfCheckKeep          bool
+	selfCheckMinBrightness int
 }
+
+// defaultSelfCheckMinBrightness is the lowest mean brightness (0..255) the
+// self-check accepts: lower is a black photo (lens cap, no light, no signal).
+const defaultSelfCheckMinBrightness = 10
 
 func parseFlags(args []string) (options, error) {
 	var o options
@@ -40,6 +47,9 @@ func (o *options) register(fs *flag.FlagSet) {
 	fs.IntVar(&o.captureRetries, "captureRetries", conf.DefaultCaptureRetries, "Additional attempts within the same slot when a capture fails.")
 	fs.IntVar(&o.minFreeDiskMB, "minFreeDiskMB", conf.DefaultMinFreeDiskMB, "Free disk space to keep. The oldest photos are deleted before a capture to keep at least this much free.")
 	fs.BoolVar(&o.pprof, "pprof", false, "Enable pprof profiling endpoints at /debug/pprof/")
+	fs.BoolVar(&o.selfCheck, "selfcheck", false, "Take one test photo with the saved settings, check it and the Pi (camera detected and free, storage, power, temperature), print the results and exit: 0 when no check failed, 1 otherwise. Run it after installing or changing the hardware.")
+	fs.BoolVar(&o.selfCheckKeep, "selfcheckKeep", false, "With -selfcheck, keep the test photo and print its path.")
+	fs.IntVar(&o.selfCheckMinBrightness, "selfcheckMinBrightness", defaultSelfCheckMinBrightness, "With -selfcheck, the lowest mean brightness (0-255) of a usable photo. Lower it, or use 0, when testing in the dark.")
 	fs.StringVar(&o.allowedHosts, "allowedHosts", "", "Comma-separated public host names the UI may be reached under. IP addresses, localhost, single-label names and .local/.lan/.home.arpa/.internal names are always allowed; anything else is rejected to block DNS rebinding.")
 }
 
@@ -51,6 +61,8 @@ func (o options) validate() error {
 		return errors.New("-captureRetries must not be negative")
 	case o.minFreeDiskMB < 0:
 		return errors.New("-minFreeDiskMB must not be negative")
+	case o.selfCheckMinBrightness < 0 || o.selfCheckMinBrightness > 255:
+		return errors.New("-selfcheckMinBrightness must be between 0 and 255")
 	}
 	return nil
 }

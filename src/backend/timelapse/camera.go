@@ -50,6 +50,8 @@ func DetectBackend() Backend {
 
 type rpicamStill struct{}
 
+func (rpicamStill) String() string { return commandRpicamStill }
+
 func (rpicamStill) Capture(ctx context.Context, path string, o Options) error {
 	return runCommand(ctx, commandRpicamStill, rpicamStillArgs(path, o)...)
 }
@@ -67,6 +69,8 @@ func rpicamStillArgs(path string, o Options) []string {
 }
 
 type ffmpeg struct{ goos string }
+
+func (ffmpeg) String() string { return commandFfmpeg }
 
 func (f ffmpeg) Capture(ctx context.Context, path string, o Options) error {
 	return runCommand(ctx, commandFfmpeg, ffmpegArgs(f.goos, path, o)...)

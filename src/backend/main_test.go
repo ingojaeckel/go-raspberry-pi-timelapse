@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"image"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"os"
@@ -25,6 +28,7 @@ func TestParseFlagsDefaults(t *testing.T) {
 		secondsBetweenCaptures: conf.DefaultSecondsBetweenCaptures,
 		captureRetries:         conf.DefaultCaptureRetries,
 		minFreeDiskMB:          conf.DefaultMinFreeDiskMB,
+		selfCheckMinBrightness: defaultSelfCheckMinBrightness,
 	}
 	if o != want {
 		t.Fatalf("got %+v, want %+v", o, want)
@@ -32,11 +36,11 @@ func TestParseFlagsDefaults(t *testing.T) {
 }
 
 func TestParseFlags(t *testing.T) {
-	o, err := parseFlags([]string{"-port=:9090", "-logToFile=true", "-storageFolder=/p", "-secondsBetweenCaptures=600", "-captureRetries=0", "-minFreeDiskMB=10", "-pprof", "-allowedHosts=camera.example.org, cam.example.net"})
+	o, err := parseFlags([]string{"-port=:9090", "-logToFile=true", "-storageFolder=/p", "-secondsBetweenCaptures=600", "-captureRetries=0", "-minFreeDiskMB=10", "-pprof", "-allowedHosts=camera.example.org, cam.example.net", "-selfcheck", "-selfcheckKeep", "-selfcheckMinBrightness=0"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := options{listen: ":9090", logToFile: true, storageFolder: "/p", secondsBetweenCaptures: 600, captureRetries: 0, minFreeDiskMB: 10, pprof: true, allowedHosts: "camera.example.org, cam.example.net"}
+	want := options{listen: ":9090", logToFile: true, storageFolder: "/p", secondsBetweenCaptures: 600, captureRetries: 0, minFreeDiskMB: 10, pprof: true, allowedHosts: "camera.example.org, cam.example.net", selfCheck: true, selfCheckKeep: true}
 	if o != want {
 		t.Fatalf("got %+v, want %+v", o, want)
 	}
@@ -48,6 +52,8 @@ func TestParseFlagsRejectsInvalidValues(t *testing.T) {
 		{"-secondsBetweenCaptures=10"},
 		{"-captureRetries=-1"},
 		{"-minFreeDiskMB=-1"},
+		{"-selfcheckMinBrightness=-1"},
+		{"-selfcheckMinBrightness=256"},
 		{"-unknown"},
 	} {
 		if _, err := parseFlags(args); err == nil {
@@ -146,5 +152,47 @@ func TestRunFailsWhenThePortIsTaken(t *testing.T) {
 	err := run(ctx, options{listen: taken, storageFolder: "b", secondsBetweenCaptures: 600}, noCamera{}, nil)
 	if err == nil {
 		t.Fatal("expected an error so systemd restarts the service")
+	}
+}
+
+// photoBackend writes a JPEG of the requested size in one shade of grey with
+// a gradient, so it has contrast.
+type photoBackend struct{ shade uint8 }
+
+func (b photoBackend) Capture(_ context.Context, path string, o timelapse.Options) error {
+	img := image.NewGray(image.Rect(0, 0, o.Width/8, o.Height/8))
+	for i := range img.Pix {
+		img.Pix[i] = b.shade + uint8(i%3)*b.shade/4
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return jpeg.Encode(f, img, nil)
+}
+
+func TestSelfCheck(t *testing.T) {
+	t.Chdir(t.TempDir())
+	opts, err := parseFlags([]string{"-selfcheck"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if code := selfCheck(t.Context(), opts, photoBackend{shade: 100}, &out); code != 0 {
+		t.Fatalf("exit code %d:\n%s", code, out.String())
+	}
+	for _, want := range []string{"PASS  capture", "photo            273x205 JPEG, brightness", "nothing saved yet"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("lacks %q:\n%s", want, out.String())
+		}
+	}
+	if _, err := os.Stat(conf.SettingsFile); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the self-check created %s", conf.SettingsFile)
+	}
+
+	out.Reset()
+	if code := selfCheck(t.Context(), opts, photoBackend{shade: 1}, &out); code != 1 || !strings.Contains(out.String(), "too dark") {
+		t.Fatalf("black photo: exit code %d:\n%s", code, out.String())
 	}
 }

@@ -219,3 +219,42 @@ func TestStoreRecoversFromALargeCorruptFile(t *testing.T) {
 		t.Fatalf("found %v", matches)
 	}
 }
+
+func TestReadSettingsReturnsTheSavedSettings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.db")
+	s := openTestStore(t, path)
+	if _, err := s.Update(func(v *Settings) { v.Quality = 42 }); err != nil {
+		t.Fatal(err)
+	}
+	want := s.Get()
+	s.Close()
+	got, err := ReadSettings(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestReadSettingsDoesNotCreateAMissingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.db")
+	if _, err := ReadSettings(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("err %v, want ErrNotExist", err)
+	}
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("ReadSettings created the file")
+	}
+}
+
+func TestReadSettingsGivesUpWhileTheAppHoldsTheFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.db")
+	openTestStore(t, path) // stays open, like the running app
+	start := time.Now()
+	if _, err := ReadSettings(path); !errors.Is(err, berrors.ErrTimeout) {
+		t.Fatalf("err %v, want a lock timeout", err)
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Fatalf("took %v", d)
+	}
+}

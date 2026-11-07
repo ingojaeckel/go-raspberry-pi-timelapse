@@ -11,6 +11,7 @@ Raspberry Pi Zero W timelapse camera system: a Go HTTP server with embedded Reac
 # From the repo root (Makefile is the entry point):
 make            # frontend build + tests, Go vet + tests, dev build
 make pi         # same, then cross-compile for Pi Zero W (ARM v6) into the image module (src/installer/custompios/modules/timelapsepi/filesystem/root/opt/timelapse/, gitignored)
+make pi64       # same tests, then cross-compile for 64-bit Raspberry Pi OS (arm64: Zero 2 W, 3, 4, 5) into src/backend/timelapse-linux-arm64 (gitignored; copy to a Pi by hand)
 make image      # make pi, then the SD card image via CustomPiOS in Docker
 make test       # frontend tests + Go vet/tests
 make frontend   # build frontend into src/backend/web/dist
@@ -53,6 +54,7 @@ All Go paths below are relative to `src/backend/`.
 - `conf/` — `Settings` + `Validate`/`Normalized`; `Store` keeps bbolt (`timelapse-settings.db`) open, serves settings from memory, notifies subscribers, recovers from a corrupt file
 - `files/` — `Index` (cached listing, oldest first, skips hidden/partial files; re-reads the folder only when its mtime changed and stats only new names, so it relies on photos never being modified in place), streaming ZIP/TAR with exact `TarSize`/`ZipSize` for `Content-Length` (tar content via sendfile; zip single pass with CRC in a data descriptor; byte-identical to `archive/tar`/`archive/zip`), `RemoveFile(s)` and `Index.Reclaim` (delete oldest photos when free space < `-minFreeDiskMB`, ring buffer) via `os.Root`
 - `health/` — `Throttled` (decodes `vcgencmd get_throttled`), `ReadCPUFreq`, `ReadCelsius`, `StartRun` (run marker with the boot ID: stopped cleanly / app died / Pi restarted), `Recorder` (daily summary counts; logs power problems when they appear or end)
+- `selfcheck/` — `-selfcheck` (`main.selfCheck`): one test photo with the saved settings (`conf.ReadSettings`, read-only, so it runs next to the app), JPEG decode plus brightness/contrast (black or blank fails), `rpicam-still --list-cameras`, other processes holding `/dev/media*`/`/dev/video*` (from `/proc`, with their systemd unit), storage, power, temperature, CPU. PASS/SKIP/WARN/FAIL lines with hints; exit 1 only on FAIL
 - `logfile/` — Size-capped rotating log (`timelapse.log` → `.1` at 10 MB) and `Tail` for `/logs`
 
 **Key data flow:** `POST /configuration` → `conf.Store.Update` (validates, persists, notifies). The scheduler and the debug log level subscribe to the store and read the latest settings with `Get()`; nothing is passed through buffered channels that could drop updates.
@@ -69,7 +71,7 @@ Version info is injected via ldflags: `-X 'main.gitCommit=...' -X 'main.builtAt=
 
 If ldflags are not set, the version comes from the VCS info Go embeds (`debug.ReadBuildInfo`).
 
-CLI flags: `-port`, `-logToFile`, `-storageFolder`, `-secondsBetweenCaptures` (first-run default only; once settings are saved the database wins), `-captureRetries` (default 2), `-minFreeDiskMB` (default 256), `-allowedHosts` (extra public host names; IPs, localhost, single-label and .local/.lan/.home.arpa/.internal names are always allowed), `-pprof`, `-version`
+CLI flags: `-port`, `-logToFile`, `-storageFolder`, `-secondsBetweenCaptures` (first-run default only; once settings are saved the database wins), `-captureRetries` (default 2), `-minFreeDiskMB` (default 256), `-allowedHosts` (extra public host names; IPs, localhost, single-label and .local/.lan/.home.arpa/.internal names are always allowed), `-pprof`, `-version`, `-selfcheck` (with `-selfcheckKeep`, `-selfcheckMinBrightness`, default 10)
 
 Go version: `go.mod` pins `go 1.27.0` / `toolchain go1.27.3`. Dependencies: `go.etcd.io/bbolt`, `golang.org/x/sys` only.
 

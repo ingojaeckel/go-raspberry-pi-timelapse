@@ -3,6 +3,7 @@ package timelapse
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,5 +141,11 @@ func TestRetriesStopWhenTheCaptureWasCancelled(t *testing.T) {
 	s.captureWithRetries(ctx)
 	if attempts != 1 {
 		t.Fatalf("%d attempts, want 1", attempts)
+	}
+}
+
+func TestBackendsNameTheirCommand(t *testing.T) {
+	if got := fmt.Sprint(rpicamStill{}, " ", ffmpeg{goos: "linux"}); got != "rpicam-still ffmpeg" {
+		t.Fatalf("got %q", got)
 	}
 }

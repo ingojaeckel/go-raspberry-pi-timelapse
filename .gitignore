@@ -5,6 +5,7 @@
 
 # Local dev build output (make pi writes into the image module, see below)
 src/backend/go-raspberry-pi-timelapse
+src/backend/timelapse-linux-arm64
 timelapse-pictures/
 timelapse-settings.db
 

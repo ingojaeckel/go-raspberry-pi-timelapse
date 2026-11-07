@@ -38,8 +38,34 @@ Local settings that should not be committed go into `src/installer/custompios/co
 
   ```bash
   scp src/installer/custompios/modules/timelapsepi/filesystem/root/opt/timelapse/timelapse pi@192.168.50.1:/tmp/
-  ssh -t pi@192.168.50.1 "sudo install -m 755 /tmp/timelapse /opt/timelapse/timelapse && sudo systemctl restart timelapse"
+  ssh -t pi@192.168.50.1 "sudo install -m 755 /tmp/timelapse /opt/timelapse/timelapse && sudo systemctl restart timelapse && /opt/timelapse/timelapse -selfcheck"
   ```
+
+  On a weak Wi-Fi connection, `rsync -z --partial-dir=.rsync-partial` instead of `scp` resumes an interrupted copy. A Pi with 64-bit Raspberry Pi OS (rather than this image) needs `make pi64` (`src/backend/timelapse-linux-arm64`).
+
+### Self-check
+
+After installing or updating the app, or changing the camera, run on the Pi:
+
+```bash
+cd ~ && ./timelapse -selfcheck          # in the image: cd /home/pi && /opt/timelapse/timelapse -selfcheck
+```
+
+It takes one test photo with the saved settings (read only; it can run while the app runs) into a hidden folder in `-storageFolder`, deletes it again, and prints one line per check with a hint for every problem. Exit code 0 means no check failed.
+
+| Check | Fails when |
+|---|---|
+| settings | (warns while the app runs: a scheduled capture can collide with the test photo) |
+| storage | the photo folder is not writable (warns below `-minFreeDiskMB`) |
+| camera detected | `rpicam-still --list-cameras` finds no camera: ribbon cable, or the `dtoverlay=` of a third-party sensor such as Arducam (warns when the photo resolution is larger than the sensor) |
+| camera free | another program has the camera open; names its process and systemd unit |
+| capture | `rpicam-still` fails or times out; the hint explains the error |
+| photo | the file is not a JPEG, too dark (mean brightness below `-selfcheckMinBrightness`, default 10 of 255) or blank (every pixel alike); warns when its size differs from the requested one |
+| power | under-voltage or throttling now (warns when it happened since boot) |
+| temperature | 80 °C or more (warns from 70 °C) |
+| cpu | never; shows the clock and governor |
+
+`-selfcheckKeep` keeps the test photo and prints its path. For a test in the dark, use `-selfcheckMinBrightness=0`. Checks that need a Raspberry Pi are skipped elsewhere.
 
 ### Devices with older images
 
